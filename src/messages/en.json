@@ -33,7 +33,7 @@
     "comparePrices": "Compare Prices",
     "comparePricesDesc": "Find generic equivalents and save",
     "browseByCategory": "Browse by Category",
-    "browseByategoryDesc": "Explore medications by therapeutic class",
+    "browseByCategoryDesc": "Explore medications by therapeutic class",
     "dataSourceNote": "Data from Belgium's official SAM database"
   },
   "atc": {

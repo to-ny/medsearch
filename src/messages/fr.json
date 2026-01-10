@@ -33,7 +33,7 @@
     "comparePrices": "Comparer les prix",
     "comparePricesDesc": "Trouver des génériques et économiser",
     "browseByCategory": "Parcourir par catégorie",
-    "browseByategoryDesc": "Explorer les médicaments par classe thérapeutique",
+    "browseByCategoryDesc": "Explorer les médicaments par classe thérapeutique",
     "dataSourceNote": "Données de la base SAM officielle de Belgique"
   },
   "atc": {

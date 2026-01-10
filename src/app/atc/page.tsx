@@ -10,17 +10,6 @@ import { useAtcBrowser } from '@/hooks/useAtcBrowser';
 import type { AtcClassification } from '@/lib/types';
 
 /**
- * ATC level descriptions
- */
-const ATC_LEVEL_NAMES: Record<number, string> = {
-  1: 'Anatomical main group',
-  2: 'Therapeutic subgroup',
-  3: 'Pharmacological subgroup',
-  4: 'Chemical subgroup',
-  5: 'Chemical substance',
-};
-
-/**
  * Colors for different ATC levels
  */
 const ATC_LEVEL_COLORS: Record<number, string> = {
@@ -278,7 +267,7 @@ interface AtcCategoryCardProps {
 }
 
 function AtcCategoryCard({ classification, onClick, t }: AtcCategoryCardProps) {
-  const isExpandable = classification.level < 5;
+  const isLevel5 = classification.level >= 5;
 
   const handleClick = () => {
     onClick(classification);
@@ -291,16 +280,65 @@ function AtcCategoryCard({ classification, onClick, t }: AtcCategoryCardProps) {
     }
   };
 
+  // Level 5 items link to search - wrap in Link component
+  if (isLevel5) {
+    return (
+      <Link href={`/search?atc=${classification.code}`}>
+        <Card className="cursor-pointer transition-all hover:shadow-md hover:border-pink-300 dark:hover:border-pink-600 focus-within:ring-2 focus-within:ring-pink-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-gray-900">
+          <CardContent>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
+                    {classification.code}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      ATC_LEVEL_COLORS[classification.level] || 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {t(`atc.level${classification.level}`)}
+                  </span>
+                </div>
+                <h3 className="mt-1 font-medium text-gray-900 dark:text-white">
+                  {classification.name}
+                </h3>
+                {classification.description && (
+                  <p className="mt-1 line-clamp-2 text-sm text-gray-500 dark:text-gray-400">
+                    {classification.description}
+                  </p>
+                )}
+              </div>
+              {/* Search icon for level 5 */}
+              <svg
+                className="h-5 w-5 flex-shrink-0 text-pink-500 dark:text-pink-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    );
+  }
+
   return (
     <Card
-      className={`cursor-pointer transition-all hover:shadow-md ${
-        isExpandable ? 'hover:border-blue-300 dark:hover:border-blue-600' : ''
-      }`}
+      className="cursor-pointer transition-all hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}
       role="button"
-      aria-label={`${classification.code}: ${classification.name}${isExpandable ? `, ${t('atc.clickToExpand')}` : ''}`}
+      aria-label={`${classification.code}: ${classification.name}, ${t('atc.clickToExpand')}`}
     >
       <CardContent>
         <div className="flex items-start justify-between gap-2">
@@ -326,22 +364,21 @@ function AtcCategoryCard({ classification, onClick, t }: AtcCategoryCardProps) {
               </p>
             )}
           </div>
-          {isExpandable && (
-            <svg
-              className="h-5 w-5 flex-shrink-0 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          )}
+          {/* Chevron icon for expandable items */}
+          <svg
+            className="h-5 w-5 flex-shrink-0 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
         </div>
       </CardContent>
     </Card>

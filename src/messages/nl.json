@@ -33,7 +33,7 @@
     "comparePrices": "Prijzen vergelijken",
     "comparePricesDesc": "Vind generieke alternatieven en bespaar",
     "browseByCategory": "Op categorie bladeren",
-    "browseByategoryDesc": "Verken geneesmiddelen per therapeutische klasse",
+    "browseByCategoryDesc": "Verken geneesmiddelen per therapeutische klasse",
     "dataSourceNote": "Gegevens uit de officiële Belgische SAM-databank"
   },
   "atc": {

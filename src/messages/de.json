@@ -33,7 +33,7 @@
     "comparePrices": "Preise vergleichen",
     "comparePricesDesc": "Generika finden und sparen",
     "browseByCategory": "Nach Kategorie durchsuchen",
-    "browseByategoryDesc": "Arzneimittel nach therapeutischer Klasse erkunden",
+    "browseByCategoryDesc": "Arzneimittel nach therapeutischer Klasse erkunden",
     "dataSourceNote": "Daten aus Belgiens offizieller SAM-Datenbank"
   },
   "atc": {

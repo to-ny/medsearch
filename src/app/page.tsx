@@ -133,7 +133,7 @@ export default function HomePage() {
               {t('home.browseByCategory')}
             </h2>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {t('home.browseByategoryDesc')}
+              {t('home.browseByCategoryDesc')}
             </p>
           </Link>
         </div>
