@@ -23,8 +23,14 @@ export function CardHeader({ children, className = '' }: { children: ReactNode; 
   return <div className={`mb-4 ${className}`}>{children}</div>;
 }
 
-export function CardTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <h3 className={`text-lg font-semibold text-gray-900 dark:text-white ${className}`}>{children}</h3>;
+export interface CardTitleProps {
+  children: ReactNode;
+  className?: string;
+  as?: 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+}
+
+export function CardTitle({ children, className = '', as: Component = 'h2' }: CardTitleProps) {
+  return <Component className={`text-lg font-semibold text-gray-900 dark:text-white ${className}`}>{children}</Component>;
 }
 
 export function CardDescription({ children, className = '' }: { children: ReactNode; className?: string }) {
