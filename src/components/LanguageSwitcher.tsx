@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 
 export type Language = 'en' | 'nl' | 'fr' | 'de';
 
@@ -13,7 +13,7 @@ const LANGUAGES: Record<Language, { label: string; flag: string }> = {
 
 const STORAGE_KEY = 'health-search-language';
 
-export function getStoredLanguage(): Language {
+function getStoredLanguageFromStorage(): Language {
   if (typeof window === 'undefined') return 'en';
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored && stored in LANGUAGES) return stored as Language;
@@ -23,37 +23,58 @@ export function getStoredLanguage(): Language {
   return 'en';
 }
 
+// External store for language state - shared across all useLanguage hooks
+// Using a closure to encapsulate the mutable state
+function createLanguageStore() {
+  let currentLanguage: Language = 'en';
+  let isInitialized = false;
+  const listeners = new Set<() => void>();
+
+  return {
+    subscribe(listener: () => void): () => void {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    getSnapshot(): Language {
+      // Lazy initialization on first client-side access
+      if (!isInitialized && typeof window !== 'undefined') {
+        isInitialized = true;
+        currentLanguage = getStoredLanguageFromStorage();
+        document.documentElement.lang = currentLanguage;
+      }
+      return currentLanguage;
+    },
+    getServerSnapshot(): Language {
+      return 'en';
+    },
+    setLanguage(lang: Language): void {
+      currentLanguage = lang;
+      localStorage.setItem(STORAGE_KEY, lang);
+      document.documentElement.lang = lang;
+      listeners.forEach((listener) => listener());
+    },
+  };
+}
+
+const languageStore = createLanguageStore();
+
+// Exported for backward compatibility
+export function getStoredLanguage(): Language {
+  return getStoredLanguageFromStorage();
+}
+
 export function setStoredLanguage(lang: Language): void {
-  localStorage.setItem(STORAGE_KEY, lang);
-  // Update HTML lang attribute for accessibility and SEO
-  document.documentElement.lang = lang;
-  // Dispatch event for other components to react
-  window.dispatchEvent(new CustomEvent('languagechange', { detail: lang }));
+  languageStore.setLanguage(lang);
 }
 
 export function useLanguage(): [Language, (lang: Language) => void] {
-  const [language, setLanguage] = useState<Language>('en');
+  const language = useSyncExternalStore(
+    languageStore.subscribe,
+    languageStore.getSnapshot,
+    languageStore.getServerSnapshot
+  );
 
-  useEffect(() => {
-    const storedLang = getStoredLanguage();
-    setLanguage(storedLang);
-    // Sync HTML lang attribute on initial load
-    document.documentElement.lang = storedLang;
-
-    const handleChange = (e: CustomEvent<Language>) => {
-      setLanguage(e.detail);
-    };
-
-    window.addEventListener('languagechange', handleChange as EventListener);
-    return () => window.removeEventListener('languagechange', handleChange as EventListener);
-  }, []);
-
-  const updateLanguage = (lang: Language) => {
-    setStoredLanguage(lang);
-    setLanguage(lang);
-  };
-
-  return [language, updateLanguage];
+  return [language, languageStore.setLanguage];
 }
 
 export function LanguageSwitcher() {

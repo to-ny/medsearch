@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useRef, useLayoutEffect, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 
 interface TooltipProps {
@@ -13,11 +13,16 @@ export function Tooltip({ content, children }: TooltipProps) {
   const [position, setPosition] = useState<'top' | 'bottom'>('top');
   const triggerRef = useRef<HTMLSpanElement>(null);
 
-  useEffect(() => {
+  // Calculate tooltip position based on viewport space
+  // useLayoutEffect is intentional here: we need to measure DOM and update position
+  // synchronously before paint to avoid visual flicker
+  useLayoutEffect(() => {
     if (isVisible && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       // Show below if too close to top of viewport
-      setPosition(rect.top < 60 ? 'bottom' : 'top');
+      const newPosition = rect.top < 60 ? 'bottom' : 'top';
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: DOM measurement requires effect + setState
+      setPosition(newPosition);
     }
   }, [isVisible]);
 

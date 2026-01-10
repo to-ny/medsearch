@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
+import { useState, useCallback, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
@@ -23,14 +23,15 @@ async function fetchCompany(actorNr: string, language: string): Promise<Company 
   }
 }
 
-// Helper to build initial search params from URL
-function buildInitialSearchParams(
+// Build search params from URL - pure function, no side effects
+function buildSearchParams(
   queryFromUrl: string | null,
-  typeFromUrl: 'name' | 'cnk' | 'ingredient' | null,
+  typeFromUrl: SearchType | null,
   companyFromUrl: string | null,
-  language: Language
+  language: Language,
+  offset: number
 ): MedicationSearchParams {
-  const params: MedicationSearchParams = { language };
+  const params: MedicationSearchParams = { language, offset };
 
   if (companyFromUrl) {
     params.companyActorNr = companyFromUrl;
@@ -57,41 +58,40 @@ function SearchContent() {
   const t = useTranslations();
   const router = useRouter();
   const urlParams = useSearchParams();
-  const companyFromUrl = urlParams.get('company');
-  const queryFromUrl = urlParams.get('q');
-  const typeFromUrl = urlParams.get('type') as 'name' | 'cnk' | 'ingredient' | null;
   const [language] = useLanguage();
 
-  // Initialize state from URL params
-  const [searchParams, setSearchParams] = useState<MedicationSearchParams>(() =>
-    buildInitialSearchParams(queryFromUrl, typeFromUrl, companyFromUrl, language)
-  );
+  // URL is the single source of truth for search state
+  const queryFromUrl = urlParams.get('q');
+  const typeFromUrl = (urlParams.get('type') as SearchType | null) || 'name';
+  const companyFromUrl = urlParams.get('company');
+
+  // Local UI state only for company filter input (before applying)
   const [companyFilterInput, setCompanyFilterInput] = useState(companyFromUrl || '');
-  const [activeCompanyFilter, setActiveCompanyFilter] = useState<string | undefined>(companyFromUrl || undefined);
-  const [currentSearchType, setCurrentSearchType] = useState<SearchType>(typeFromUrl || 'name');
 
-  // Track if we're programmatically updating the URL to avoid sync loops
-  const isUpdatingUrl = useRef(false);
+  // Pagination offset resets when URL changes (intentional - new search = page 1)
+  const [paginationOffset, setPaginationOffset] = useState(0);
 
-  // Sync state when URL changes (e.g., browser back/forward navigation)
-  useEffect(() => {
-    // Skip if we just updated the URL ourselves
-    if (isUpdatingUrl.current) {
-      isUpdatingUrl.current = false;
-      return;
-    }
-
-    // Sync all state from URL params
-    const newSearchParams = buildInitialSearchParams(queryFromUrl, typeFromUrl, companyFromUrl, language);
-    setSearchParams(newSearchParams);
-    setActiveCompanyFilter(companyFromUrl || undefined);
+  // Reset pagination when URL params change
+  const urlKey = `${queryFromUrl}-${typeFromUrl}-${companyFromUrl}`;
+  const [prevUrlKey, setPrevUrlKey] = useState(urlKey);
+  if (urlKey !== prevUrlKey) {
+    setPrevUrlKey(urlKey);
+    setPaginationOffset(0);
+    // Also sync company filter input when URL changes (e.g., back/forward)
     setCompanyFilterInput(companyFromUrl || '');
-    setCurrentSearchType(typeFromUrl || 'name');
-  }, [queryFromUrl, typeFromUrl, companyFromUrl, language]);
+  }
 
-  // Helper to update URL without full page reload
+  // Derive search params from URL (single source of truth)
+  const searchParams = useMemo(
+    () => buildSearchParams(queryFromUrl, typeFromUrl, companyFromUrl, language, paginationOffset),
+    [queryFromUrl, typeFromUrl, companyFromUrl, language, paginationOffset]
+  );
+
+  // Derived state from URL
+  const hasSearched = Boolean(queryFromUrl || companyFromUrl);
+
+  // Helper to update URL (the only way to change search state)
   const updateUrl = useCallback((params: { q?: string; type?: SearchType; company?: string }) => {
-    isUpdatingUrl.current = true;
     const newParams = new URLSearchParams();
     if (params.q) newParams.set('q', params.q);
     if (params.type && params.type !== 'name') newParams.set('type', params.type);
@@ -103,76 +103,35 @@ function SearchContent() {
 
   // Fetch company details when filter is active
   const { data: companyData } = useQuery({
-    queryKey: ['company', activeCompanyFilter, language],
-    queryFn: () => fetchCompany(activeCompanyFilter!, language),
-    enabled: Boolean(activeCompanyFilter),
+    queryKey: ['company', companyFromUrl, language],
+    queryFn: () => fetchCompany(companyFromUrl!, language),
+    enabled: Boolean(companyFromUrl),
   });
 
   const { data, isLoading, error } = useMedicationSearch(searchParams);
 
   const handleSearch = useCallback((query: string, type: SearchType) => {
-    const params: MedicationSearchParams = { language };
-
-    // Include active company filter in search
-    if (activeCompanyFilter) {
-      params.companyActorNr = activeCompanyFilter;
-    }
-
-    switch (type) {
-      case 'name':
-        params.query = query;
-        break;
-      case 'cnk':
-        params.cnk = query;
-        break;
-      case 'ingredient':
-        params.ingredient = query;
-        break;
-    }
-
-    setSearchParams(params);
-    setCurrentSearchType(type);
-
-    // Update URL to reflect current search state
-    updateUrl({ q: query, type, company: activeCompanyFilter });
-  }, [language, activeCompanyFilter, updateUrl]);
+    // Only update URL - derived state will follow
+    updateUrl({ q: query, type, company: companyFromUrl || undefined });
+  }, [companyFromUrl, updateUrl]);
 
   const handleApplyCompanyFilter = useCallback(() => {
     const trimmed = companyFilterInput.trim();
     if (trimmed) {
-      setActiveCompanyFilter(trimmed);
-      setSearchParams((prev) => ({ ...prev, companyActorNr: trimmed, language }));
-
-      // Update URL with company filter
-      const currentQuery = searchParams.query || searchParams.cnk || searchParams.ingredient;
-      updateUrl({ q: currentQuery, type: currentSearchType, company: trimmed });
+      updateUrl({ q: queryFromUrl || undefined, type: typeFromUrl, company: trimmed });
     }
-  }, [companyFilterInput, language, searchParams, currentSearchType, updateUrl]);
-
-  const handleLoadMore = useCallback(() => {
-    if (data?.hasMore) {
-      setSearchParams((prev) => ({
-        ...prev,
-        offset: (prev.offset || 0) + (prev.limit || 50),
-      }));
-    }
-  }, [data?.hasMore]);
-
-  const hasSearched = Boolean(searchParams.query || searchParams.cnk || searchParams.ingredient || searchParams.companyActorNr);
+  }, [companyFilterInput, queryFromUrl, typeFromUrl, updateUrl]);
 
   const handleClearCompanyFilter = useCallback(() => {
     setCompanyFilterInput('');
-    setActiveCompanyFilter(undefined);
-    setSearchParams((prev) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { companyActorNr, ...rest } = prev;
-      return rest;
-    });
+    updateUrl({ q: queryFromUrl || undefined, type: typeFromUrl, company: undefined });
+  }, [queryFromUrl, typeFromUrl, updateUrl]);
 
-    // Update URL without company filter
-    const currentQuery = searchParams.query || searchParams.cnk || searchParams.ingredient;
-    updateUrl({ q: currentQuery, type: currentSearchType, company: undefined });
-  }, [searchParams, currentSearchType, updateUrl]);
+  const handleLoadMore = useCallback(() => {
+    if (data?.hasMore) {
+      setPaginationOffset((prev) => prev + 50);
+    }
+  }, [data?.hasMore]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -183,12 +142,12 @@ function SearchContent() {
       {/* Search */}
       <div className="mb-8">
         <SearchBar
-          key={`${queryFromUrl || ''}-${typeFromUrl || 'name'}`}
+          key={`${queryFromUrl || ''}-${typeFromUrl}`}
           onSearch={handleSearch}
           loading={isLoading}
           placeholder={t('search.placeholder')}
           initialQuery={queryFromUrl || ''}
-          initialType={typeFromUrl || 'name'}
+          initialType={typeFromUrl}
         />
 
         {/* Company filter */}
@@ -205,11 +164,11 @@ function SearchContent() {
               </svg>
             </Button>
 
-            {activeCompanyFilter ? (
+            {companyFromUrl ? (
               <>
                 <div className="flex flex-1 items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 dark:border-blue-700 dark:bg-blue-900/30">
                   <span className="truncate text-sm font-medium text-blue-800 dark:text-blue-200">
-                    {companyData?.name || `#${activeCompanyFilter}`}
+                    {companyData?.name || `#${companyFromUrl}`}
                   </span>
                 </div>
                 <Button variant="outline" onClick={handleClearCompanyFilter}>
