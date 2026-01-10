@@ -9,6 +9,7 @@ import { MedicationCard } from '@/components/medication/MedicationCard';
 import { IngredientList } from '@/components/medication/IngredientList';
 import { ReimbursementInfo } from '@/components/medication/ReimbursementInfo';
 import { PriceComparison } from '@/components/medication/PriceComparison';
+import { AllergenWarnings } from '@/components/medication/AllergenWarnings';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { SkeletonCard, Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
@@ -125,6 +126,9 @@ export default function MedicationPage({ params }: MedicationPageProps) {
       <h1 className="mb-6 text-3xl font-bold text-gray-900 dark:text-white">
         {medication.name}
       </h1>
+
+      {/* Allergen warnings */}
+      <AllergenWarnings components={medication.components} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main content */}
