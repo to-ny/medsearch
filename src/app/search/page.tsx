@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useCallback, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useCallback, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { SearchBar, SearchResults, type SearchType } from '@/components/search';
-import { useLanguage } from '@/components/LanguageSwitcher';
+import { useLanguage, type Language } from '@/components/LanguageSwitcher';
 import { useMedicationSearch } from '@/hooks';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
@@ -23,15 +23,63 @@ async function fetchCompany(actorNr: string, language: string): Promise<Company 
   }
 }
 
+// Helper to build initial search params from URL
+function buildInitialSearchParams(
+  queryFromUrl: string | null,
+  typeFromUrl: 'name' | 'cnk' | 'ingredient' | null,
+  companyFromUrl: string | null,
+  language: Language
+): MedicationSearchParams {
+  const params: MedicationSearchParams = { language };
+
+  if (companyFromUrl) {
+    params.companyActorNr = companyFromUrl;
+  }
+
+  if (queryFromUrl) {
+    const type = typeFromUrl || 'name';
+    switch (type) {
+      case 'cnk':
+        params.cnk = queryFromUrl;
+        break;
+      case 'ingredient':
+        params.ingredient = queryFromUrl;
+        break;
+      default:
+        params.query = queryFromUrl;
+    }
+  }
+
+  return params;
+}
+
 function SearchContent() {
   const t = useTranslations();
+  const router = useRouter();
   const urlParams = useSearchParams();
   const companyFromUrl = urlParams.get('company');
   const queryFromUrl = urlParams.get('q');
+  const typeFromUrl = urlParams.get('type') as 'name' | 'cnk' | 'ingredient' | null;
   const [language] = useLanguage();
-  const [searchParams, setSearchParams] = useState<MedicationSearchParams>({});
+
+  // Initialize state from URL params
+  const [searchParams, setSearchParams] = useState<MedicationSearchParams>(() =>
+    buildInitialSearchParams(queryFromUrl, typeFromUrl, companyFromUrl, language)
+  );
   const [companyFilterInput, setCompanyFilterInput] = useState(companyFromUrl || '');
   const [activeCompanyFilter, setActiveCompanyFilter] = useState<string | undefined>(companyFromUrl || undefined);
+  const [currentSearchType, setCurrentSearchType] = useState<SearchType>(typeFromUrl || 'name');
+
+  // Helper to update URL without full page reload
+  const updateUrl = useCallback((params: { q?: string; type?: SearchType; company?: string }) => {
+    const newParams = new URLSearchParams();
+    if (params.q) newParams.set('q', params.q);
+    if (params.type && params.type !== 'name') newParams.set('type', params.type);
+    if (params.company) newParams.set('company', params.company);
+
+    const newUrl = newParams.toString() ? `/search?${newParams.toString()}` : '/search';
+    router.replace(newUrl, { scroll: false });
+  }, [router]);
 
   // Fetch company details when filter is active
   const { data: companyData } = useQuery({
@@ -39,18 +87,6 @@ function SearchContent() {
     queryFn: () => fetchCompany(activeCompanyFilter!, language),
     enabled: Boolean(activeCompanyFilter),
   });
-
-  // Auto-trigger search from URL params
-  useEffect(() => {
-    if (companyFromUrl) {
-      setCompanyFilterInput(companyFromUrl);
-      setActiveCompanyFilter(companyFromUrl);
-      setSearchParams((prev) => ({ ...prev, companyActorNr: companyFromUrl, language }));
-    }
-    if (queryFromUrl) {
-      setSearchParams((prev) => ({ ...prev, query: queryFromUrl, language }));
-    }
-  }, [companyFromUrl, queryFromUrl, language]);
 
   const { data, isLoading, error } = useMedicationSearch(searchParams);
 
@@ -75,15 +111,23 @@ function SearchContent() {
     }
 
     setSearchParams(params);
-  }, [language, activeCompanyFilter]);
+    setCurrentSearchType(type);
+
+    // Update URL to reflect current search state
+    updateUrl({ q: query, type, company: activeCompanyFilter });
+  }, [language, activeCompanyFilter, updateUrl]);
 
   const handleApplyCompanyFilter = useCallback(() => {
     const trimmed = companyFilterInput.trim();
     if (trimmed) {
       setActiveCompanyFilter(trimmed);
       setSearchParams((prev) => ({ ...prev, companyActorNr: trimmed, language }));
+
+      // Update URL with company filter
+      const currentQuery = searchParams.query || searchParams.cnk || searchParams.ingredient;
+      updateUrl({ q: currentQuery, type: currentSearchType, company: trimmed });
     }
-  }, [companyFilterInput, language]);
+  }, [companyFilterInput, language, searchParams, currentSearchType, updateUrl]);
 
   const handleLoadMore = useCallback(() => {
     if (data?.hasMore) {
@@ -100,10 +144,15 @@ function SearchContent() {
     setCompanyFilterInput('');
     setActiveCompanyFilter(undefined);
     setSearchParams((prev) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { companyActorNr, ...rest } = prev;
       return rest;
     });
-  }, []);
+
+    // Update URL without company filter
+    const currentQuery = searchParams.query || searchParams.cnk || searchParams.ingredient;
+    updateUrl({ q: currentQuery, type: currentSearchType, company: undefined });
+  }, [searchParams, currentSearchType, updateUrl]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -118,6 +167,7 @@ function SearchContent() {
           loading={isLoading}
           placeholder={t('search.placeholder')}
           initialQuery={queryFromUrl || ''}
+          initialType={typeFromUrl || 'name'}
         />
 
         {/* Company filter */}
