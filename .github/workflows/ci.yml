@@ -81,9 +81,13 @@ jobs:
       - name: Build
         run: bun run build
 
+  # E2E and Lighthouse run only on main branch (post-merge smoke tests)
+  # PRs are verified by Vercel preview deployments
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
 
@@ -115,6 +119,8 @@ jobs:
   lighthouse:
     name: Lighthouse
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
 
