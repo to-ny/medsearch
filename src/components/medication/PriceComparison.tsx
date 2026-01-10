@@ -5,14 +5,20 @@ import { useTranslations } from 'next-intl';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { LocalizedName } from '@/components/ui/LocalizedName';
-import { formatPrice, calculateSavings } from '@/lib/utils/price';
+import { formatPrice, calculateSavings, calculatePricePerUnit, formatPricePerUnit, type PricePerUnitResult } from '@/lib/utils/price';
 import type { MedicationSearchResult } from '@/lib/types';
+
+interface MedicationWithPricePerUnit extends MedicationSearchResult {
+  pricePerUnit: PricePerUnitResult | null;
+}
 
 interface PriceComparisonProps {
   currentMedication: MedicationSearchResult;
   equivalents: MedicationSearchResult[];
   title?: string;
   showCompareLink?: boolean;
+  /** Pharmaceutical form for calculating price per unit */
+  pharmaceuticalForm?: string;
 }
 
 export function PriceComparison({
@@ -20,13 +26,64 @@ export function PriceComparison({
   equivalents,
   title,
   showCompareLink = true,
+  pharmaceuticalForm,
 }: PriceComparisonProps) {
   const t = useTranslations();
   const displayTitle = title || t('priceComparison.title');
-  // Sort by price, cheapest first
-  const sortedEquivalents = [...equivalents]
+
+  // Calculate price per unit for current medication
+  const currentPricePerUnit = calculatePricePerUnit(
+    currentMedication.price,
+    currentMedication.packDisplayValue,
+    pharmaceuticalForm
+  );
+
+  // Sort by price, cheapest first, and calculate price per unit
+  const sortedEquivalents: MedicationWithPricePerUnit[] = [...equivalents]
     .filter((eq) => eq.price !== undefined)
+    .map((eq) => ({
+      ...eq,
+      pricePerUnit: calculatePricePerUnit(eq.price, eq.packDisplayValue, pharmaceuticalForm),
+    }))
     .sort((a, b) => (a.price || Infinity) - (b.price || Infinity));
+
+  // Find best value (lowest price per unit) among items with the same unit type
+  // Only consider items where we can calculate price per unit
+  const getBestValueIndex = (): number => {
+    const itemsWithPricePerUnit = sortedEquivalents
+      .map((eq, idx) => ({ eq, idx }))
+      .filter(({ eq }) => eq.pricePerUnit !== null);
+
+    if (itemsWithPricePerUnit.length === 0) return -1;
+
+    // Get the unit type from the first item that has price per unit
+    const primaryUnit = currentPricePerUnit?.unit || itemsWithPricePerUnit[0]?.eq.pricePerUnit?.unit;
+    if (!primaryUnit) return -1;
+
+    // Only compare items with the same unit type
+    const sameUnitItems = itemsWithPricePerUnit.filter(
+      ({ eq }) => eq.pricePerUnit?.unit === primaryUnit
+    );
+
+    if (sameUnitItems.length === 0) return -1;
+
+    // Include current medication in comparison if it has the same unit
+    let lowestPricePerUnit = currentPricePerUnit?.unit === primaryUnit
+      ? currentPricePerUnit.pricePerUnit
+      : Infinity;
+    let bestValueIdx = -1; // -1 means current medication is best value
+
+    for (const { eq, idx } of sameUnitItems) {
+      if (eq.pricePerUnit && eq.pricePerUnit.pricePerUnit < lowestPricePerUnit) {
+        lowestPricePerUnit = eq.pricePerUnit.pricePerUnit;
+        bestValueIdx = idx;
+      }
+    }
+
+    return bestValueIdx;
+  };
+
+  const bestValueIndex = getBestValueIndex();
 
   const cheapest = sortedEquivalents[0];
   const currentPrice = currentMedication.price;
@@ -82,6 +139,9 @@ export function PriceComparison({
                   {t('priceComparison.columnPrice')}
                 </th>
                 <th className="pb-3 text-right text-sm font-medium text-gray-500 dark:text-gray-400">
+                  {t('priceComparison.columnPerUnit')}
+                </th>
+                <th className="pb-3 text-right text-sm font-medium text-gray-500 dark:text-gray-400">
                   {t('priceComparison.columnVsCurrent')}
                 </th>
               </tr>
@@ -92,6 +152,9 @@ export function PriceComparison({
                 <td className="py-3">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <Badge variant="info" size="sm">{t('priceComparison.current')}</Badge>
+                    {bestValueIndex === -1 && currentPricePerUnit && (
+                      <Badge variant="success" size="sm">{t('priceComparison.bestValue')}</Badge>
+                    )}
                     <span className="flex items-center gap-2">
                       <LocalizedName
                         name={currentMedication.name}
@@ -110,6 +173,15 @@ export function PriceComparison({
                 </td>
                 <td className="py-3 text-right font-semibold text-gray-900 dark:text-white">
                   {formatPrice(currentPrice)}
+                </td>
+                <td className="py-3 text-right text-sm text-gray-600 dark:text-gray-400">
+                  {currentPricePerUnit && formatPricePerUnit(currentPricePerUnit) && (
+                    <span className={bestValueIndex === -1 ? 'font-medium text-green-600 dark:text-green-400' : ''}>
+                      {t(`priceComparison.pricePerUnit.${currentPricePerUnit.unit}`, {
+                        price: formatPricePerUnit(currentPricePerUnit) ?? '',
+                      })}
+                    </span>
+                  )}
                 </td>
                 <td className="py-3 text-right text-gray-500 dark:text-gray-400">—</td>
               </tr>
@@ -162,6 +234,20 @@ export function PriceComparison({
                     </td>
                     <td className="py-3 text-right font-semibold text-gray-900 dark:text-white">
                       {formatPrice(eq.price)}
+                    </td>
+                    <td className="py-3 text-right text-sm text-gray-600 dark:text-gray-400">
+                      {eq.pricePerUnit && formatPricePerUnit(eq.pricePerUnit) && (
+                        <div className="flex flex-wrap items-center justify-end gap-1">
+                          <span className={index === bestValueIndex ? 'font-medium text-green-600 dark:text-green-400' : ''}>
+                            {t(`priceComparison.pricePerUnit.${eq.pricePerUnit.unit}`, {
+                              price: formatPricePerUnit(eq.pricePerUnit) ?? '',
+                            })}
+                          </span>
+                          {index === bestValueIndex && (
+                            <Badge variant="success" size="sm">{t('priceComparison.bestValue')}</Badge>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 text-right">
                       {savings && savings.amount !== 0 ? (

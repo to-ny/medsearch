@@ -15,7 +15,7 @@ import { SkeletonCard, Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
 import { Acronym } from '@/components/ui/Tooltip';
 import { LocalizedName } from '@/components/ui/LocalizedName';
-import { getPrimaryPrice } from '@/lib/utils/price';
+import { getPrimaryPrice, calculatePricePerUnit, formatPricePerUnit } from '@/lib/utils/price';
 import { formatLanguage, parsePackSize } from '@/lib/utils/format';
 import { MedicationJsonLd } from '@/components/seo/MedicationJsonLd';
 
@@ -89,12 +89,14 @@ export default function MedicationPage({ params }: MedicationPageProps) {
   const price = getPrimaryPrice(medication);
 
   // Create search result format for comparison
+  const pharmaceuticalForm = medication.components[0]?.pharmaceuticalForm?.name;
   const currentAsSearchResult = {
     ampCode: medication.ampCode,
     name: medication.name,
     companyName: medication.companyName,
     cnk: medication.packages[0]?.cnkCodes.find((c) => c.deliveryEnvironment === 'P')?.code,
     price,
+    packDisplayValue: medication.packages[0]?.packDisplayValue,
     isReimbursed: Boolean(reimbursement?.length),
     status: medication.status,
   };
@@ -189,6 +191,7 @@ export default function MedicationPage({ params }: MedicationPageProps) {
               currentMedication={currentAsSearchResult}
               equivalents={equivalents}
               title={t('priceComparison.title')}
+              pharmaceuticalForm={pharmaceuticalForm}
             />
           )}
         </div>
@@ -237,13 +240,28 @@ export default function MedicationPage({ params }: MedicationPageProps) {
                             </p>
                           )}
                         </div>
-                        {/* Primary price - top right */}
+                        {/* Primary price and price per unit - top right */}
                         {(() => {
                           const primaryPrice = pkg.cnkCodes.find(c => c.price !== undefined)?.price;
+                          const pharmaceuticalForm = medication.components[0]?.pharmaceuticalForm?.name;
+                          const pricePerUnitResult = calculatePricePerUnit(
+                            primaryPrice,
+                            pkg.packDisplayValue || pkg.name,
+                            pharmaceuticalForm
+                          );
                           return primaryPrice !== undefined ? (
-                            <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                              €{primaryPrice.toFixed(2)}
-                            </span>
+                            <div className="text-right">
+                              <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                                €{primaryPrice.toFixed(2)}
+                              </span>
+                              {pricePerUnitResult && formatPricePerUnit(pricePerUnitResult) && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {t(`priceComparison.pricePerUnit.${pricePerUnitResult.unit}`, {
+                                    price: formatPricePerUnit(pricePerUnitResult) ?? '',
+                                  })}
+                                </p>
+                              )}
+                            </div>
                           ) : null;
                         })()}
                       </div>

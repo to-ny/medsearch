@@ -4,6 +4,7 @@
 
 import type { Medication, MedicationSearchResult, Reimbursement, PriceComparisonItem } from '@/lib/types';
 import { calculatePatientCost } from '@/lib/services/reimbursement';
+import { parsePackSize } from '@/lib/utils/format';
 
 /**
  * Formats a price in euros
@@ -15,6 +16,72 @@ export function formatPrice(price: number | undefined, locale = 'nl-BE'): string
     style: 'currency',
     currency: 'EUR',
   }).format(price);
+}
+
+/**
+ * Result of price-per-unit calculation
+ */
+export interface PricePerUnitResult {
+  /** The price per single unit */
+  pricePerUnit: number;
+  /** The unit key for translation (e.g., 'tablet', 'ml', 'dose') */
+  unit: string;
+}
+
+/**
+ * Calculates price per unit for a medication package
+ *
+ * @param price - The total package price
+ * @param packSize - The pack display value (e.g., "30", "20 x 10 ml")
+ * @param pharmaceuticalForm - The pharmaceutical form name (e.g., "film-coated tablet")
+ * @returns Price per unit with unit type, or null if cannot be calculated
+ */
+export function calculatePricePerUnit(
+  price: number | undefined,
+  packSize: string | number | undefined,
+  pharmaceuticalForm?: string
+): PricePerUnitResult | null {
+  // Handle edge cases: zero, undefined, or negative prices
+  if (price === undefined || price <= 0) {
+    return null;
+  }
+
+  // Parse the pack size to get count and unit
+  const packInfo = parsePackSize(packSize, pharmaceuticalForm);
+
+  // If we can't determine the count or it's zero, we can't calculate price per unit
+  if (packInfo.displayRaw || !packInfo.count || packInfo.count <= 0) {
+    return null;
+  }
+
+  // Calculate price per unit
+  const pricePerUnit = price / packInfo.count;
+
+  return {
+    pricePerUnit,
+    unit: packInfo.unitKey || 'unit',
+  };
+}
+
+/**
+ * Formats a price-per-unit result for display
+ *
+ * @param result - The price-per-unit calculation result
+ * @param locale - The locale for number formatting
+ * @returns Formatted string like "0.45" (without currency symbol, for use with translations)
+ */
+export function formatPricePerUnit(
+  result: PricePerUnitResult | null,
+  locale = 'nl-BE'
+): string | null {
+  if (!result) return null;
+
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(result.pricePerUnit);
 }
 
 /**
