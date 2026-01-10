@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/Card';
 import { SkeletonList } from '@/components/ui/Skeleton';
+import { Acronym } from '@/components/ui/Tooltip';
 import { useAtcBrowser } from '@/hooks/useAtcBrowser';
 import type { AtcClassification } from '@/lib/types';
 
@@ -78,8 +79,13 @@ export default function AtcBrowserPage() {
       <h1 className="mb-2 text-3xl font-bold text-gray-900 dark:text-white">
         {t('atc.title')}
       </h1>
-      <p className="mb-8 text-gray-600 dark:text-gray-400">
+      <p className="mb-2 text-gray-600 dark:text-gray-400">
         {t('atc.description')}
+      </p>
+      <p className="mb-8 text-sm text-gray-500 dark:text-gray-500">
+        {t.rich('atc.descriptionWithAcronym', {
+          acronym: () => <Acronym term="ATC">ATC</Acronym>
+        })}
       </p>
 
       {/* Breadcrumbs */}

@@ -21,5 +21,10 @@ test.describe('Home Page', () => {
     await page.goto('/');
     await page.getByRole('link', { name: /Browse Companies/i }).click();
     await expect(page).toHaveURL('/companies');
+
+    // Navigate back and go to categories
+    await page.goto('/');
+    await page.getByRole('link', { name: /Browse by Category/i }).click();
+    await expect(page).toHaveURL('/categories');
   });
 });

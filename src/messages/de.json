@@ -37,8 +37,9 @@
     "dataSourceNote": "Daten aus Belgiens offizieller SAM-Datenbank"
   },
   "atc": {
-    "title": "ATC-Klassifikationsbrowser",
-    "description": "Durchsuchen Sie Arzneimittel nach Anatomisch-Therapeutisch-Chemischer (ATC) Klassifikation",
+    "title": "Arzneimittelkategorien",
+    "description": "Arzneimittel nach therapeutischer Klassifikation durchsuchen",
+    "descriptionWithAcronym": "Basierend auf dem {acronym} System",
     "breadcrumbLabel": "ATC-Kategorienavigation",
     "allCategories": "Alle Kategorien",
     "level1": "Anatomische Gruppe",

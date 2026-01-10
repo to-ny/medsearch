@@ -37,8 +37,9 @@
     "dataSourceNote": "Data from Belgium's official SAM database"
   },
   "atc": {
-    "title": "ATC Classification Browser",
-    "description": "Browse medications by Anatomical Therapeutic Chemical (ATC) classification",
+    "title": "Medication Categories",
+    "description": "Browse medications by therapeutic classification",
+    "descriptionWithAcronym": "Based on the {acronym} system",
     "breadcrumbLabel": "ATC category navigation",
     "allCategories": "All Categories",
     "level1": "Anatomical group",

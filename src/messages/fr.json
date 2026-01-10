@@ -37,8 +37,9 @@
     "dataSourceNote": "Données de la base SAM officielle de Belgique"
   },
   "atc": {
-    "title": "Navigateur de classification ATC",
-    "description": "Parcourez les médicaments par classification Anatomique Thérapeutique Chimique (ATC)",
+    "title": "Catégories de médicaments",
+    "description": "Parcourir les médicaments par classification thérapeutique",
+    "descriptionWithAcronym": "Basé sur le système {acronym}",
     "breadcrumbLabel": "Navigation des catégories ATC",
     "allCategories": "Toutes les catégories",
     "level1": "Groupe anatomique",

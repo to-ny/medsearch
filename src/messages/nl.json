@@ -37,8 +37,9 @@
     "dataSourceNote": "Gegevens uit de officiële Belgische SAM-databank"
   },
   "atc": {
-    "title": "ATC Classificatiebrowser",
-    "description": "Blader door geneesmiddelen op basis van de Anatomisch Therapeutisch Chemische (ATC) classificatie",
+    "title": "Medicatiecategorieën",
+    "description": "Blader door geneesmiddelen op basis van therapeutische classificatie",
+    "descriptionWithAcronym": "Gebaseerd op het {acronym} systeem",
     "breadcrumbLabel": "ATC categorie navigatie",
     "allCategories": "Alle categorieën",
     "level1": "Anatomische groep",

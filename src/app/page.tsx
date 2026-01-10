@@ -110,7 +110,7 @@ export default function HomePage() {
 
           {/* Browse by Category (ATC) */}
           <Link
-            href="/atc"
+            href="/categories"
             className="group flex flex-col items-center rounded-2xl border border-gray-200 bg-white p-8 text-center transition-all hover:border-orange-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:border-orange-600"
           >
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 transition-transform group-hover:scale-110 dark:bg-orange-900/50 dark:text-orange-400">
