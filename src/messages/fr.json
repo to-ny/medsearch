@@ -199,12 +199,19 @@
     "language": "Langue",
     "address": "Adresse",
     "postbox": "Boîte postale : {value}",
-    "productsTitle": "Produits de cette entreprise",
-    "productsDesc": "Voir tous les médicaments fabriqués par {name}",
+    "productsTitle": "Produits",
+    "productsTitleWithCount": "Produits ({count} au total)",
+    "productsDesc": "Voir tous les produits de {name}",
+    "loadProducts": "Charger les produits",
     "viewProducts": "Voir les produits",
     "productCount": "{count, plural, =1 {# produit} other {# produits}}",
+    "productsLoading": "Récupération du catalogue de produits...",
+    "productsLoadingLong": "Chargement en cours... Les catalogues volumineux peuvent prendre plus de temps.",
+    "productsCancel": "Annuler",
+    "productsTryAgain": "Réessayer",
+    "productsCollapse": "Masquer les produits",
     "productsError": "Impossible de charger les produits. Veuillez réessayer plus tard.",
-    "noProducts": "{name} n'a aucun produit dans la base de données."
+    "noProducts": "Aucun produit trouvé pour cette entreprise"
   },
   "reimbursement": {
     "title": "Remboursement",

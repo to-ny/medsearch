@@ -199,12 +199,19 @@
     "language": "Taal",
     "address": "Adres",
     "postbox": "Postbus: {value}",
-    "productsTitle": "Producten van dit bedrijf",
-    "productsDesc": "Bekijk alle geneesmiddelen geproduceerd door {name}",
+    "productsTitle": "Producten",
+    "productsTitleWithCount": "Producten ({count} totaal)",
+    "productsDesc": "Bekijk alle producten van {name}",
+    "loadProducts": "Producten laden",
     "viewProducts": "Producten bekijken",
     "productCount": "{count, plural, =1 {# product} other {# producten}}",
+    "productsLoading": "Productcatalogus ophalen...",
+    "productsLoadingLong": "Nog bezig met laden... Grote catalogi kunnen langer duren.",
+    "productsCancel": "Annuleren",
+    "productsTryAgain": "Opnieuw proberen",
+    "productsCollapse": "Producten verbergen",
     "productsError": "Producten konden niet worden geladen. Probeer het later opnieuw.",
-    "noProducts": "{name} heeft geen producten in de database."
+    "noProducts": "Geen producten gevonden voor dit bedrijf"
   },
   "reimbursement": {
     "title": "Terugbetaling",
