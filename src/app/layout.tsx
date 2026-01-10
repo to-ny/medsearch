@@ -25,22 +25,30 @@ export const metadata: Metadata = {
   keywords: ['medication', 'Belgium', 'pharmacy', 'drugs', 'reimbursement', 'CNK', 'generic'],
 };
 
+// Validate nonce is valid base64 (defense in depth against header injection)
+function isValidNonce(nonce: string): boolean {
+  return /^[A-Za-z0-9+/]+=*$/.test(nonce) && nonce.length >= 16 && nonce.length <= 64;
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const nonce = (await headers()).get('x-nonce') ?? '';
+  const rawNonce = (await headers()).get('x-nonce') ?? '';
+  const nonce = isValidNonce(rawNonce) ? rawNonce : '';
 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script
-          nonce={nonce}
-          dangerouslySetInnerHTML={{
-            __html: `window.__webpack_nonce__ = "${nonce}";`,
-          }}
-        />
+        {nonce && (
+          <script
+            nonce={nonce}
+            dangerouslySetInnerHTML={{
+              __html: `window.__webpack_nonce__ = "${nonce}";`,
+            }}
+          />
+        )}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-50 font-sans antialiased dark:bg-gray-900`}
