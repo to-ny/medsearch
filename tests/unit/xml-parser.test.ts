@@ -6,6 +6,7 @@ import {
   parseFindVmpResponse,
   parseFindCompanyResponse,
   parseFindReimbursementResponse,
+  parseFindAtcResponse,
   extractText,
   extractTextWithLang,
   extractAllTextVersions,
@@ -343,6 +344,172 @@ describe('XML Parser', () => {
       // We treat this as success with empty data (medication simply isn't reimbursed)
       expect(result.success).toBe(true);
       expect(result.data).toEqual([]);
+    });
+  });
+
+  describe('parseFindAtcResponse', () => {
+    it('should parse valid ATC classification response', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <ns4:FindCommentedClassificationResponse xmlns:ns4="urn:be:fgov:ehealth:dics:protocol:v5"
+              SearchDate="2024-01-01" SamId="12345">
+              <CommentedClassification>
+                <CommentedClassificationCode>A</CommentedClassificationCode>
+                <Title>
+                  <Text xml:lang="en">Alimentary tract and metabolism</Text>
+                  <Text xml:lang="nl">Spijsverteringskanaal en stofwisseling</Text>
+                </Title>
+              </CommentedClassification>
+              <CommentedClassification>
+                <CommentedClassificationCode>A01</CommentedClassificationCode>
+                <Title>
+                  <Text xml:lang="en">Stomatological preparations</Text>
+                </Title>
+              </CommentedClassification>
+            </ns4:FindCommentedClassificationResponse>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindAtcResponse(xml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data!.length).toBe(2);
+      expect(result.searchDate).toBe('2024-01-01');
+      // samId may be parsed as number or string depending on XML parser config
+      expect(String(result.samId)).toBe('12345');
+    });
+
+    it('should extract CommentedClassificationCode', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <ns4:FindCommentedClassificationResponse xmlns:ns4="urn:be:fgov:ehealth:dics:protocol:v5">
+              <CommentedClassification>
+                <CommentedClassificationCode>N02BE01</CommentedClassificationCode>
+                <Title>
+                  <Text xml:lang="en">Paracetamol</Text>
+                </Title>
+              </CommentedClassification>
+            </ns4:FindCommentedClassificationResponse>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindAtcResponse(xml);
+
+      expect(result.success).toBe(true);
+      expect(result.data![0].CommentedClassificationCode).toBe('N02BE01');
+    });
+
+    it('should extract Title with multiple languages', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <ns4:FindCommentedClassificationResponse xmlns:ns4="urn:be:fgov:ehealth:dics:protocol:v5">
+              <CommentedClassification>
+                <CommentedClassificationCode>A</CommentedClassificationCode>
+                <Title>
+                  <Text xml:lang="en">Alimentary tract</Text>
+                  <Text xml:lang="nl">Spijsvertering</Text>
+                  <Text xml:lang="fr">Voies digestives</Text>
+                </Title>
+              </CommentedClassification>
+            </ns4:FindCommentedClassificationResponse>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindAtcResponse(xml);
+
+      expect(result.success).toBe(true);
+      expect(result.data![0].Title).toBeDefined();
+
+      const textArray = getTextArray(result.data![0].Title);
+      expect(textArray).toBeDefined();
+      expect(textArray!.length).toBe(3);
+    });
+
+    it('should handle no results found (code 1008) as empty array', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>no results</faultstring>
+              <detail>
+                <ns2:BusinessError xmlns:ns2="urn:be:fgov:ehealth:errors:service:v1">
+                  <Code>1008</Code>
+                </ns2:BusinessError>
+              </detail>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindAtcResponse(xml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle SOAP fault response', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>Internal server error</faultstring>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindAtcResponse(xml);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('SOAP_FAULT');
+    });
+
+    it('should handle invalid XML', () => {
+      const result = parseFindAtcResponse('not xml at all');
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('PARSE_ERROR');
+    });
+
+    it('should handle empty response', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <ns4:FindCommentedClassificationResponse xmlns:ns4="urn:be:fgov:ehealth:dics:protocol:v5">
+            </ns4:FindCommentedClassificationResponse>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindAtcResponse(xml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle single classification (not wrapped in array)', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <ns4:FindCommentedClassificationResponse xmlns:ns4="urn:be:fgov:ehealth:dics:protocol:v5">
+              <CommentedClassification>
+                <CommentedClassificationCode>B</CommentedClassificationCode>
+                <Title>
+                  <Text xml:lang="en">Blood</Text>
+                </Title>
+              </CommentedClassification>
+            </ns4:FindCommentedClassificationResponse>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindAtcResponse(xml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(1);
+      expect(result.data![0].CommentedClassificationCode).toBe('B');
     });
   });
 });
