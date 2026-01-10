@@ -59,3 +59,30 @@ export function SkeletonList({ count = 3 }: { count?: number }) {
     </div>
   );
 }
+
+export function ProductCardSkeleton() {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <div className="flex-1">
+        <Skeleton variant="text" className="mb-2 h-5 w-3/4" />
+        <Skeleton variant="text" className="mb-2 h-4 w-1/2" />
+        <div className="flex gap-2">
+          <Skeleton variant="rectangular" className="h-5 w-16" />
+        </div>
+      </div>
+      <div className="ml-4">
+        <Skeleton variant="text" className="h-6 w-16" />
+      </div>
+    </div>
+  );
+}
+
+export function ProductCardSkeletonList({ count = 4 }: { count?: number }) {
+  return (
+    <div className="space-y-3" role="list" aria-label="Loading products">
+      {Array.from({ length: count }).map((_, i) => (
+        <ProductCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}

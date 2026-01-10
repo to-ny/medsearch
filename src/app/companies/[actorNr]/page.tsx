@@ -1,12 +1,13 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Skeleton, SkeletonList } from '@/components/ui/Skeleton';
+import { Skeleton, ProductCardSkeletonList } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { useLanguage } from '@/components/LanguageSwitcher';
 import { useCompanyProducts } from '@/hooks/useCompanyProducts';
 import { formatCountry, formatLanguage } from '@/lib/utils/format';
@@ -173,6 +174,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ actorN
 }
 
 const INITIAL_PRODUCTS_LIMIT = 10;
+const EXTENDED_LOADING_TIMEOUT_MS = 6000;
 
 interface CompanyProductsProps {
   actorNr: string;
@@ -180,92 +182,273 @@ interface CompanyProductsProps {
   language: string;
 }
 
+function useExtendedLoadingTimer(isLoading: boolean, delayMs: number) {
+  const [showExtendedMessage, setShowExtendedMessage] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    if (isLoading) {
+      // Schedule the extended message to show after delay
+      timeoutRef.current = setTimeout(() => {
+        setShowExtendedMessage(true);
+      }, delayMs);
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      // Reset when loading stops or effect cleanup
+      setShowExtendedMessage(false);
+    };
+  }, [isLoading, delayMs]);
+
+  return { showExtendedMessage: isLoading && showExtendedMessage };
+}
+
 function CompanyProducts({ actorNr, companyName, language }: CompanyProductsProps) {
   const t = useTranslations();
+  const queryClient = useQueryClient();
+  const [isExpanded, setIsExpanded] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
-  const { data, isLoading, error } = useCompanyProducts({
-    actorNr,
-    language,
-  });
+  const queryKey = useMemo(
+    () => ['company', actorNr, 'products', language, undefined, undefined],
+    [actorNr, language]
+  );
+
+  const { data, isFetching, error, refetch } = useCompanyProducts(
+    { actorNr, language },
+    isExpanded
+  );
+
+  const isActivelyFetching = isFetching && isExpanded;
+  const { showExtendedMessage: showExtendedLoadingMessage } = useExtendedLoadingTimer(
+    isActivelyFetching,
+    EXTENDED_LOADING_TIMEOUT_MS
+  );
 
   const products = data?.results || [];
   const totalCount = data?.totalCount || 0;
   const displayedProducts = showAll ? products : products.slice(0, INITIAL_PRODUCTS_LIMIT);
   const hasMoreToShow = totalCount > INITIAL_PRODUCTS_LIMIT && !showAll;
+  const hasLoadedData = data !== undefined && !error;
+
+  const handleLoadProducts = useCallback(() => {
+    setIsExpanded(true);
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    queryClient.cancelQueries({ queryKey });
+    setIsExpanded(false);
+  }, [queryClient, queryKey]);
+
+  const handleCollapse = useCallback(() => {
+    setIsExpanded(false);
+    setShowAll(false);
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  const renderCollapsedState = () => (
+    <div className="py-6 text-center">
+      <svg
+        className="mx-auto h-12 w-12 text-gray-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+        />
+      </svg>
+      <p className="mt-3 text-gray-600 dark:text-gray-400">
+        {t('company.productsDesc', { name: companyName })}
+      </p>
+      <Button
+        onClick={handleLoadProducts}
+        variant="primary"
+        className="mt-4"
+        aria-label={t('company.loadProducts')}
+      >
+        {t('company.loadProducts')}
+      </Button>
+    </div>
+  );
+
+  const renderLoadingState = () => (
+    <div>
+      <div
+        className="mb-4 flex items-center justify-between"
+        role="status"
+        aria-live="polite"
+      >
+        <p className="text-gray-600 dark:text-gray-400">
+          {showExtendedLoadingMessage
+            ? t('company.productsLoadingLong')
+            : t('company.productsLoading')}
+        </p>
+        <Button
+          onClick={handleCancel}
+          variant="outline"
+          size="sm"
+          aria-label={t('company.productsCancel')}
+        >
+          {t('company.productsCancel')}
+        </Button>
+      </div>
+      <ProductCardSkeletonList count={4} />
+    </div>
+  );
+
+  const renderErrorState = () => (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+      <p className="text-red-600 dark:text-red-400">{t('company.productsError')}</p>
+      <Button
+        onClick={handleRetry}
+        variant="outline"
+        size="sm"
+        className="mt-3"
+        aria-label={t('company.productsTryAgain')}
+      >
+        {t('company.productsTryAgain')}
+      </Button>
+    </div>
+  );
+
+  const renderEmptyState = () => (
+    <div className="py-8 text-center">
+      <svg
+        className="mx-auto h-12 w-12 text-gray-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+        />
+      </svg>
+      <p className="mt-4 text-gray-500 dark:text-gray-400">
+        {t('company.noProducts')}
+      </p>
+    </div>
+  );
+
+  const renderLoadedState = () => (
+    <>
+      <ul className="space-y-3" role="list">
+        {displayedProducts.map((product) => (
+          <li key={product.ampCode}>
+            <ProductCard product={product} />
+          </li>
+        ))}
+      </ul>
+
+      {hasMoreToShow && (
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => setShowAll(true)}
+            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            {t('common.showMore', { count: totalCount - INITIAL_PRODUCTS_LIMIT })}
+          </button>
+        </div>
+      )}
+
+      {showAll && totalCount > INITIAL_PRODUCTS_LIMIT && (
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => setShowAll(false)}
+            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            {t('common.showLess')}
+          </button>
+        </div>
+      )}
+
+      <div className="mt-4 border-t border-gray-200 pt-4 text-center dark:border-gray-700">
+        <button
+          onClick={handleCollapse}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          aria-label={t('company.productsCollapse')}
+        >
+          {t('company.productsCollapse')}
+        </button>
+      </div>
+    </>
+  );
+
+  const renderContent = () => {
+    if (!isExpanded && !hasLoadedData) {
+      return renderCollapsedState();
+    }
+
+    if (isFetching && !hasLoadedData) {
+      return renderLoadingState();
+    }
+
+    if (error) {
+      return renderErrorState();
+    }
+
+    if (hasLoadedData && products.length === 0) {
+      return renderEmptyState();
+    }
+
+    if (hasLoadedData) {
+      return renderLoadedState();
+    }
+
+    return renderCollapsedState();
+  };
+
+  const getTitle = () => {
+    if (hasLoadedData && totalCount > 0) {
+      return t('company.productsTitleWithCount', { count: totalCount });
+    }
+    return t('company.productsTitle');
+  };
 
   return (
     <Card className="mt-6">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>{t('company.productsTitle')}</span>
-          {totalCount > 0 && (
-            <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-              {t('company.productCount', { count: totalCount })}
-            </span>
-          )}
+        <CardTitle className="flex items-center gap-2">
+          <svg
+            className="h-5 w-5 text-gray-500 dark:text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+            />
+          </svg>
+          <span>{getTitle()}</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <SkeletonList count={3} />
-        ) : error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-            <p className="text-red-600 dark:text-red-400">{t('company.productsError')}</p>
-          </div>
-        ) : products.length === 0 ? (
-          <div className="py-8 text-center">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-              />
-            </svg>
-            <p className="mt-4 text-gray-500 dark:text-gray-400">
-              {t('company.noProducts', { name: companyName })}
-            </p>
-          </div>
-        ) : (
-          <>
-            <ul className="space-y-3" role="list">
-              {displayedProducts.map((product) => (
-                <li key={product.ampCode}>
-                  <ProductCard product={product} />
-                </li>
-              ))}
-            </ul>
-
-            {hasMoreToShow && (
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => setShowAll(true)}
-                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                >
-                  {t('common.showMore', { count: totalCount - INITIAL_PRODUCTS_LIMIT })}
-                </button>
-              </div>
-            )}
-
-            {showAll && totalCount > INITIAL_PRODUCTS_LIMIT && (
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => setShowAll(false)}
-                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                >
-                  {t('common.showLess')}
-                </button>
-              </div>
-            )}
-          </>
-        )}
+        {renderContent()}
       </CardContent>
     </Card>
   );

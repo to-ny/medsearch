@@ -10,14 +10,19 @@ interface UseCompanyProductsParams {
   offset?: number;
 }
 
-async function fetchCompanyProducts(params: UseCompanyProductsParams): Promise<MedicationSearchResponse> {
+async function fetchCompanyProducts(
+  params: UseCompanyProductsParams,
+  signal?: AbortSignal
+): Promise<MedicationSearchResponse> {
   const searchParams = new URLSearchParams();
 
   if (params.language) searchParams.set('lang', params.language);
   if (params.limit) searchParams.set('limit', String(params.limit));
   if (params.offset) searchParams.set('offset', String(params.offset));
 
-  const response = await fetch(`/api/companies/${params.actorNr}/products?${searchParams.toString()}`);
+  const response = await fetch(`/api/companies/${params.actorNr}/products?${searchParams.toString()}`, {
+    signal,
+  });
 
   if (!response.ok) {
     const error: ErrorResponse = await response.json();
@@ -30,7 +35,7 @@ async function fetchCompanyProducts(params: UseCompanyProductsParams): Promise<M
 export function useCompanyProducts(params: UseCompanyProductsParams, enabled = true) {
   return useQuery({
     queryKey: ['company', params.actorNr, 'products', params.language, params.limit, params.offset],
-    queryFn: () => fetchCompanyProducts(params),
+    queryFn: ({ signal }) => fetchCompanyProducts(params, signal),
     enabled: enabled && Boolean(params.actorNr),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

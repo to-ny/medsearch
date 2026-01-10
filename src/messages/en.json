@@ -199,12 +199,19 @@
     "language": "Language",
     "address": "Address",
     "postbox": "Postbox: {value}",
-    "productsTitle": "Products by this company",
-    "productsDesc": "View all medications manufactured by {name}",
+    "productsTitle": "Products",
+    "productsTitleWithCount": "Products ({count} total)",
+    "productsDesc": "View all products from {name}",
+    "loadProducts": "Load Products",
     "viewProducts": "View products",
     "productCount": "{count, plural, =1 {# product} other {# products}}",
+    "productsLoading": "Fetching product catalog...",
+    "productsLoadingLong": "Still loading... Large catalogs may take longer.",
+    "productsCancel": "Cancel",
+    "productsTryAgain": "Try Again",
+    "productsCollapse": "Hide Products",
     "productsError": "Failed to load products. Please try again later.",
-    "noProducts": "{name} has no products in the database."
+    "noProducts": "No products found for this company"
   },
   "reimbursement": {
     "title": "Reimbursement",
