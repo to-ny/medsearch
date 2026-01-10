@@ -8,6 +8,16 @@ import {
 } from '@/lib/utils/chapterIV';
 import type { Reimbursement } from '@/lib/types';
 
+// Helper to create minimal Reimbursement test fixtures
+function createReimbursement(criterion?: { code: string; category: string }): Reimbursement {
+  return {
+    cnk: '1234567',
+    deliveryEnvironment: 'P',
+    copayments: [],
+    criterion,
+  };
+}
+
 describe('Chapter IV Utilities', () => {
   describe('isChapterIVCriterion', () => {
     it('should return true for criterion codes ending with "f"', () => {
@@ -46,28 +56,17 @@ describe('Chapter IV Utilities', () => {
 
   describe('isChapterIV', () => {
     it('should return true for reimbursement with Chapter IV criterion', () => {
-      const reimbursement: Reimbursement = {
-        criterion: { code: 'Af', description: 'Test criterion' },
-        category: 'A',
-      };
-
+      const reimbursement = createReimbursement({ code: 'Af', category: 'A' });
       expect(isChapterIV(reimbursement)).toBe(true);
     });
 
     it('should return false for reimbursement without Chapter IV criterion', () => {
-      const reimbursement: Reimbursement = {
-        criterion: { code: 'A', description: 'Test criterion' },
-        category: 'A',
-      };
-
+      const reimbursement = createReimbursement({ code: 'A', category: 'A' });
       expect(isChapterIV(reimbursement)).toBe(false);
     });
 
     it('should return false for reimbursement without criterion', () => {
-      const reimbursement: Reimbursement = {
-        category: 'A',
-      };
-
+      const reimbursement = createReimbursement(undefined);
       expect(isChapterIV(reimbursement)).toBe(false);
     });
 
@@ -83,8 +82,8 @@ describe('Chapter IV Utilities', () => {
   describe('hasChapterIVReimbursement', () => {
     it('should return true if any reimbursement is Chapter IV', () => {
       const reimbursements: Reimbursement[] = [
-        { criterion: { code: 'A', description: 'Regular' }, category: 'A' },
-        { criterion: { code: 'Bf', description: 'Chapter IV' }, category: 'B' },
+        createReimbursement({ code: 'A', category: 'A' }),
+        createReimbursement({ code: 'Bf', category: 'B' }),
       ];
 
       expect(hasChapterIVReimbursement(reimbursements)).toBe(true);
@@ -92,8 +91,8 @@ describe('Chapter IV Utilities', () => {
 
     it('should return false if no reimbursements are Chapter IV', () => {
       const reimbursements: Reimbursement[] = [
-        { criterion: { code: 'A', description: 'Regular' }, category: 'A' },
-        { criterion: { code: 'B', description: 'Also regular' }, category: 'B' },
+        createReimbursement({ code: 'A', category: 'A' }),
+        createReimbursement({ code: 'B', category: 'B' }),
       ];
 
       expect(hasChapterIVReimbursement(reimbursements)).toBe(false);
