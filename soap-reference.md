@@ -56,7 +56,7 @@ Priority operations to document:
 - findIngredient — get ingredients
 - findCompany — search companies
 - findFormula — magistral preparations
-- findCommentedClassification — ATC codes
+- findCommentedClassification — BCFI categories (not WHO ATC)
 
 ### 4. Error Handling
 - Document common error responses
