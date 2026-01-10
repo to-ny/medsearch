@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Simple in-memory rate limiter using sliding window
+//
 // LIMITATION: In serverless environments (Vercel, AWS Lambda), each instance has its own
-// rate limit map. This means rate limiting is per-instance only. For production deployments
-// requiring strict rate limiting, use Vercel KV, Upstash Redis, or similar distributed store.
+// rate limit map. This means rate limiting is per-instance only.
+//
+// This is acceptable for this app because:
+// 1. The app serves public health information (no sensitive write operations)
+// 2. The external SAM API has its own rate limits as a secondary protection
+// 3. Per-instance limiting still provides basic DDoS protection
+//
+// For stricter requirements, migrate to: Vercel KV, Upstash Redis, or similar distributed store.
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
@@ -73,6 +80,7 @@ function buildProductionCSP(nonce: string): string {
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",
+    "report-uri /api/csp-report",
   ].join("; ");
 }
 
@@ -99,8 +107,8 @@ function buildDevelopmentCSP(): string {
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Handle API routes - rate limiting only
-  if (pathname.startsWith('/api/')) {
+  // Handle API routes - rate limiting (except CSP report endpoint)
+  if (pathname.startsWith('/api/') && pathname !== '/api/csp-report') {
     const ip = getClientIP(request);
     const { limited, remaining, resetIn } = isRateLimited(ip);
 
