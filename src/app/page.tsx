@@ -19,8 +19,8 @@ export default function HomePage() {
       </div>
 
       {/* Navigation cards - primary actions */}
-      <div className="mx-auto max-w-4xl">
-        <div className="grid gap-6 md:grid-cols-3">
+      <div className="mx-auto max-w-5xl">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {/* Search */}
           <Link
             href="/search"
@@ -105,6 +105,35 @@ export default function HomePage() {
             </h2>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
               {t('home.browseCompaniesDesc')}
+            </p>
+          </Link>
+
+          {/* Browse by Category (ATC) */}
+          <Link
+            href="/atc"
+            className="group flex flex-col items-center rounded-2xl border border-gray-200 bg-white p-8 text-center transition-all hover:border-orange-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:border-orange-600"
+          >
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 transition-transform group-hover:scale-110 dark:bg-orange-900/50 dark:text-orange-400">
+              <svg
+                className="h-8 w-8"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 10h16M4 14h16M4 18h16"
+                />
+              </svg>
+            </div>
+            <h2 className="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
+              {t('home.browseByCategory')}
+            </h2>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {t('home.browseByategoryDesc')}
             </p>
           </Link>
         </div>

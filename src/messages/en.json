@@ -32,7 +32,26 @@
     "browseCompaniesDesc": "View pharmaceutical manufacturers",
     "comparePrices": "Compare Prices",
     "comparePricesDesc": "Find generic equivalents and save",
+    "browseByCategory": "Browse by Category",
+    "browseByategoryDesc": "Explore medications by therapeutic class",
     "dataSourceNote": "Data from Belgium's official SAM database"
+  },
+  "atc": {
+    "title": "ATC Classification Browser",
+    "description": "Browse medications by Anatomical Therapeutic Chemical (ATC) classification",
+    "breadcrumbLabel": "ATC category navigation",
+    "allCategories": "All Categories",
+    "level1": "Anatomical group",
+    "level2": "Therapeutic group",
+    "level3": "Pharmacological group",
+    "level4": "Chemical group",
+    "level5": "Chemical substance",
+    "viewMedications": "View medications",
+    "viewMedicationsHint": "Click to view medications in this category",
+    "clickToExpand": "click to expand",
+    "noSubcategories": "No subcategories",
+    "emptyStateTitle": "Loading categories",
+    "emptyStateDesc": "ATC classification categories will appear here"
   },
   "search": {
     "title": "Search Medications",

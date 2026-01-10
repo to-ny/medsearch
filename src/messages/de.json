@@ -32,7 +32,26 @@
     "browseCompaniesDesc": "Pharmahersteller anzeigen",
     "comparePrices": "Preise vergleichen",
     "comparePricesDesc": "Generika finden und sparen",
+    "browseByCategory": "Nach Kategorie durchsuchen",
+    "browseByategoryDesc": "Arzneimittel nach therapeutischer Klasse erkunden",
     "dataSourceNote": "Daten aus Belgiens offizieller SAM-Datenbank"
+  },
+  "atc": {
+    "title": "ATC-Klassifikationsbrowser",
+    "description": "Durchsuchen Sie Arzneimittel nach Anatomisch-Therapeutisch-Chemischer (ATC) Klassifikation",
+    "breadcrumbLabel": "ATC-Kategorienavigation",
+    "allCategories": "Alle Kategorien",
+    "level1": "Anatomische Gruppe",
+    "level2": "Therapeutische Gruppe",
+    "level3": "Pharmakologische Gruppe",
+    "level4": "Chemische Gruppe",
+    "level5": "Chemische Substanz",
+    "viewMedications": "Arzneimittel anzeigen",
+    "viewMedicationsHint": "Klicken Sie, um Arzneimittel in dieser Kategorie anzuzeigen",
+    "clickToExpand": "klicken zum Erweitern",
+    "noSubcategories": "Keine Unterkategorien",
+    "emptyStateTitle": "Kategorien werden geladen",
+    "emptyStateDesc": "ATC-Klassifikationskategorien werden hier angezeigt"
   },
   "search": {
     "title": "Arzneimittel suchen",

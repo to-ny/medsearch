@@ -32,7 +32,26 @@
     "browseCompaniesDesc": "Bekijk farmaceutische fabrikanten",
     "comparePrices": "Prijzen vergelijken",
     "comparePricesDesc": "Vind generieke alternatieven en bespaar",
+    "browseByCategory": "Op categorie bladeren",
+    "browseByategoryDesc": "Verken geneesmiddelen per therapeutische klasse",
     "dataSourceNote": "Gegevens uit de officiële Belgische SAM-databank"
+  },
+  "atc": {
+    "title": "ATC Classificatiebrowser",
+    "description": "Blader door geneesmiddelen op basis van de Anatomisch Therapeutisch Chemische (ATC) classificatie",
+    "breadcrumbLabel": "ATC categorie navigatie",
+    "allCategories": "Alle categorieën",
+    "level1": "Anatomische groep",
+    "level2": "Therapeutische groep",
+    "level3": "Farmacologische groep",
+    "level4": "Chemische groep",
+    "level5": "Chemische stof",
+    "viewMedications": "Geneesmiddelen bekijken",
+    "viewMedicationsHint": "Klik om geneesmiddelen in deze categorie te bekijken",
+    "clickToExpand": "klik om uit te vouwen",
+    "noSubcategories": "Geen subcategorieën",
+    "emptyStateTitle": "Categorieën laden",
+    "emptyStateDesc": "ATC classificatiecategorieën verschijnen hier"
   },
   "search": {
     "title": "Geneesmiddelen zoeken",
