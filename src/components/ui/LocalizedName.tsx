@@ -23,7 +23,8 @@ interface LocalizedNameProps {
  *   translation on its own line with language badge in front
  */
 export function LocalizedName({ allNames, name, nameLanguage, size = 'md', className = '' }: LocalizedNameProps) {
-  const [selectedLanguage] = useLanguage();
+  // Hook triggers re-render on language change; value not directly used as nameLanguage indicates mismatch
+  useLanguage();
   const textSizeClass = size === 'lg' ? 'text-lg' : size === 'sm' ? 'text-sm' : 'text-base';
 
   // Check if the displayed name is in the selected language
