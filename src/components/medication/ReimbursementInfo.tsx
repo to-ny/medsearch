@@ -3,8 +3,10 @@
 import { useTranslations } from 'next-intl';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { ChapterIVBadge, ChapterIVInfoBox } from '@/components/medication/ChapterIVBadge';
 import { formatPrice } from '@/lib/utils/price';
 import { getReimbursementCategoryDescription } from '@/lib/services/reimbursement';
+import { hasChapterIVReimbursement } from '@/lib/utils/chapterIV';
 import type { Reimbursement } from '@/lib/types';
 
 interface ReimbursementInfoProps {
@@ -50,15 +52,23 @@ export function ReimbursementInfo({ reimbursements, medicationPrice }: Reimburse
   const patientCost = ambulatoryCopay?.feeAmount;
   const insurancePays = ambulatoryCopay?.reimbursementAmount;
 
+  // Check if this is a Chapter IV medication
+  const isChapterIV = hasChapterIVReimbursement(reimbursements);
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>{t('reimbursement.title')}</CardTitle>
-          <Badge variant="success">{t('reimbursement.reimbursed')}</Badge>
+          <div className="flex items-center gap-2">
+            {isChapterIV && <ChapterIVBadge size="md" />}
+            <Badge variant="success">{t('reimbursement.reimbursed')}</Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Chapter IV Info Box */}
+        {isChapterIV && <ChapterIVInfoBox />}
         {/* Category */}
         {reimbursement.criterion && (
           <div>

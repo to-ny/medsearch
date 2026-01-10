@@ -135,13 +135,30 @@
     "savingsPercent": "({percent}% less)",
     "columnMedication": "Medication",
     "columnPrice": "Price",
+    "columnPerUnit": "Per Unit",
     "columnVsCurrent": "vs. Current",
     "current": "Current",
     "cheapest": "Cheapest",
+    "bestValue": "Best Value",
     "lowestAlternative": "Lowest Alternative",
     "same": "Same",
     "viewFullComparison": "View full comparison with patient costs",
-    "noEquivalents": "No equivalent medications found for comparison."
+    "noEquivalents": "No equivalent medications found for comparison.",
+    "pricePerUnit": {
+      "tablet": "{price}/tablet",
+      "capsule": "{price}/capsule",
+      "suppository": "{price}/suppository",
+      "sachet": "{price}/sachet",
+      "patch": "{price}/patch",
+      "dose": "{price}/dose",
+      "ampoule": "{price}/ampoule",
+      "vial": "{price}/vial",
+      "pen": "{price}/pen",
+      "inhaler": "{price}/inhaler",
+      "syringe": "{price}/syringe",
+      "implant": "{price}/implant",
+      "unit": "{price}/unit"
+    }
   },
   "company": {
     "title": "Pharmaceutical Companies",
@@ -164,7 +181,10 @@
     "postbox": "Postbox: {value}",
     "productsTitle": "Products by this company",
     "productsDesc": "View all medications manufactured by {name}",
-    "viewProducts": "View products"
+    "viewProducts": "View products",
+    "productCount": "{count, plural, =1 {# product} other {# products}}",
+    "productsError": "Failed to load products. Please try again later.",
+    "noProducts": "{name} has no products in the database."
   },
   "reimbursement": {
     "title": "Reimbursement",
@@ -198,6 +218,14 @@
     "reimbursed": "Reimbursed",
     "cheapest": "Cheapest"
   },
+  "chapterIV": {
+    "badge": "Chapter IV",
+    "title": "Chapter IV Medication",
+    "requiresPriorAuth": "This medication requires prior authorization from your health insurer",
+    "doctorMustSubmit": "Your doctor must submit a request before you can receive reimbursement",
+    "learnMore": "Learn more about Chapter IV",
+    "learnMoreAriaLabel": "Learn more about Chapter IV prior authorization requirements (opens in new tab)"
+  },
   "acronym": {
     "CNK": "Code National Kode - Belgian national product code (7 digits)",
     "VMP": "Virtual Medicinal Product - Generic product grouping",
@@ -215,6 +243,13 @@
     "RCP": "Résumé des Caractéristiques du Produit - Product information document (French)",
     "SKP": "Samenvatting van de Productkenmerken - Product information document (Dutch)",
     "FI": "Fachinformation - Product information document (German)"
+  },
+  "allergenWarnings": {
+    "allergenTitle": "Allergen Notice",
+    "allergenMessage": "This medication contains {allergen}, which is a common allergen.",
+    "excludedIngredientTitle": "Excluded Ingredient Alert",
+    "excludedIngredientMessage": "This medication contains ingredients you have excluded: {ingredients}",
+    "dismiss": "Dismiss warning"
   },
   "enum": {
     "status": {

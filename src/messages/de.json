@@ -135,13 +135,30 @@
     "savingsPercent": "({percent}% weniger)",
     "columnMedication": "Arzneimittel",
     "columnPrice": "Preis",
+    "columnPerUnit": "Pro Einheit",
     "columnVsCurrent": "vs. Aktuell",
     "current": "Aktuell",
     "cheapest": "Günstigste",
+    "bestValue": "Bestes Angebot",
     "lowestAlternative": "Günstigste Alternative",
     "same": "Gleich",
     "viewFullComparison": "Vollständigen Vergleich mit Patientenkosten anzeigen",
-    "noEquivalents": "Keine äquivalenten Arzneimittel zum Vergleich gefunden."
+    "noEquivalents": "Keine äquivalenten Arzneimittel zum Vergleich gefunden.",
+    "pricePerUnit": {
+      "tablet": "{price}/Tablette",
+      "capsule": "{price}/Kapsel",
+      "suppository": "{price}/Zäpfchen",
+      "sachet": "{price}/Beutel",
+      "patch": "{price}/Pflaster",
+      "dose": "{price}/Dosis",
+      "ampoule": "{price}/Ampulle",
+      "vial": "{price}/Durchstechflasche",
+      "pen": "{price}/Pen",
+      "inhaler": "{price}/Inhalator",
+      "syringe": "{price}/Spritze",
+      "implant": "{price}/Implantat",
+      "unit": "{price}/Einheit"
+    }
   },
   "company": {
     "title": "Pharmaunternehmen",
@@ -164,7 +181,10 @@
     "postbox": "Postfach: {value}",
     "productsTitle": "Produkte dieses Unternehmens",
     "productsDesc": "Alle von {name} hergestellten Arzneimittel anzeigen",
-    "viewProducts": "Produkte anzeigen"
+    "viewProducts": "Produkte anzeigen",
+    "productCount": "{count, plural, =1 {# Produkt} other {# Produkte}}",
+    "productsError": "Produkte konnten nicht geladen werden. Bitte versuchen Sie es später erneut.",
+    "noProducts": "{name} hat keine Produkte in der Datenbank."
   },
   "reimbursement": {
     "title": "Erstattung",
@@ -198,6 +218,14 @@
     "reimbursed": "Erstattet",
     "cheapest": "Günstigste"
   },
+  "chapterIV": {
+    "badge": "Kapitel IV",
+    "title": "Kapitel IV Arzneimittel",
+    "requiresPriorAuth": "Dieses Arzneimittel erfordert eine vorherige Genehmigung Ihrer Krankenkasse",
+    "doctorMustSubmit": "Ihr Arzt muss einen Antrag stellen, bevor Sie eine Erstattung erhalten können",
+    "learnMore": "Mehr über Kapitel IV erfahren",
+    "learnMoreAriaLabel": "Mehr über die Anforderungen zur vorherigen Genehmigung von Kapitel IV erfahren (öffnet in neuem Tab)"
+  },
   "acronym": {
     "CNK": "Code National Kode - Belgischer nationaler Produktcode (7 Ziffern)",
     "VMP": "Virtual Medicinal Product - Generische Produktgruppierung",
@@ -215,6 +243,13 @@
     "RCP": "Résumé des Caractéristiques du Produit - Produktinformationsdokument (Französisch)",
     "SKP": "Samenvatting van de Productkenmerken - Produktinformationsdokument (Niederländisch)",
     "FI": "Fachinformation - Detaillierte Informationen für medizinisches Fachpersonal"
+  },
+  "allergenWarnings": {
+    "allergenTitle": "Allergenhinweis",
+    "allergenMessage": "Dieses Arzneimittel enthält {allergen}, ein häufiges Allergen.",
+    "excludedIngredientTitle": "Warnung: Ausgeschlossener Inhaltsstoff",
+    "excludedIngredientMessage": "Dieses Arzneimittel enthält Inhaltsstoffe, die Sie ausgeschlossen haben: {ingredients}",
+    "dismiss": "Warnung schließen"
   },
   "enum": {
     "status": {

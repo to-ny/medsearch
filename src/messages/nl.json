@@ -135,13 +135,30 @@
     "savingsPercent": "({percent}% minder)",
     "columnMedication": "Geneesmiddel",
     "columnPrice": "Prijs",
+    "columnPerUnit": "Per stuk",
     "columnVsCurrent": "vs. Huidig",
     "current": "Huidig",
     "cheapest": "Goedkoopst",
+    "bestValue": "Beste waarde",
     "lowestAlternative": "Goedkoopste alternatief",
     "same": "Gelijk",
     "viewFullComparison": "Volledige vergelijking bekijken met patiëntkosten",
-    "noEquivalents": "Geen equivalente geneesmiddelen gevonden voor vergelijking."
+    "noEquivalents": "Geen equivalente geneesmiddelen gevonden voor vergelijking.",
+    "pricePerUnit": {
+      "tablet": "{price}/tablet",
+      "capsule": "{price}/capsule",
+      "suppository": "{price}/zetpil",
+      "sachet": "{price}/sachet",
+      "patch": "{price}/pleister",
+      "dose": "{price}/dosis",
+      "ampoule": "{price}/ampul",
+      "vial": "{price}/flacon",
+      "pen": "{price}/pen",
+      "inhaler": "{price}/inhalator",
+      "syringe": "{price}/spuit",
+      "implant": "{price}/implantaat",
+      "unit": "{price}/eenheid"
+    }
   },
   "company": {
     "title": "Farmaceutische bedrijven",
@@ -164,7 +181,10 @@
     "postbox": "Postbus: {value}",
     "productsTitle": "Producten van dit bedrijf",
     "productsDesc": "Bekijk alle geneesmiddelen geproduceerd door {name}",
-    "viewProducts": "Producten bekijken"
+    "viewProducts": "Producten bekijken",
+    "productCount": "{count, plural, =1 {# product} other {# producten}}",
+    "productsError": "Producten konden niet worden geladen. Probeer het later opnieuw.",
+    "noProducts": "{name} heeft geen producten in de database."
   },
   "reimbursement": {
     "title": "Terugbetaling",
@@ -198,6 +218,14 @@
     "reimbursed": "Terugbetaald",
     "cheapest": "Goedkoopst"
   },
+  "chapterIV": {
+    "badge": "Hoofdstuk IV",
+    "title": "Hoofdstuk IV Geneesmiddel",
+    "requiresPriorAuth": "Dit geneesmiddel vereist voorafgaande toestemming van uw ziekenfonds",
+    "doctorMustSubmit": "Uw arts moet een aanvraag indienen voordat u terugbetaling kunt ontvangen",
+    "learnMore": "Meer info over Hoofdstuk IV",
+    "learnMoreAriaLabel": "Meer informatie over Hoofdstuk IV voorafgaande toestemmingsvereisten (opent in nieuw tabblad)"
+  },
   "acronym": {
     "CNK": "Code National Kode - Belgische nationale productcode (7 cijfers)",
     "VMP": "Virtual Medicinal Product - Generieke productgroepering",
@@ -215,6 +243,13 @@
     "RCP": "Résumé des Caractéristiques du Produit - Productinformatiedocument (Frans)",
     "SKP": "Samenvatting van de Productkenmerken - Gedetailleerde informatie voor zorgprofessionals",
     "FI": "Fachinformation - Productinformatiedocument (Duits)"
+  },
+  "allergenWarnings": {
+    "allergenTitle": "Allergenenmelding",
+    "allergenMessage": "Dit geneesmiddel bevat {allergen}, een veelvoorkomend allergeen.",
+    "excludedIngredientTitle": "Waarschuwing uitgesloten ingrediënt",
+    "excludedIngredientMessage": "Dit geneesmiddel bevat ingrediënten die u heeft uitgesloten: {ingredients}",
+    "dismiss": "Waarschuwing sluiten"
   },
   "enum": {
     "status": {

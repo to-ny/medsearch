@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { ChapterIVBadge } from '@/components/medication/ChapterIVBadge';
 import { SkeletonList } from '@/components/ui/Skeleton';
 import { formatPrice } from '@/lib/utils/price';
 import type { MedicationSearchResult } from '@/lib/types';
@@ -188,6 +189,7 @@ function MedicationResultCard({ medication }: MedicationResultCardProps) {
                   {t('badge.reimbursed')}
                 </Badge>
               )}
+              {medication.isChapterIV && <ChapterIVBadge size="sm" />}
               {medication.status !== 'AUTHORIZED' && (
                 <Badge variant="warning" size="sm">
                   {medication.status}
