@@ -15,23 +15,15 @@ bun lint && bun typecheck && bun run test  # Quality check (run before committin
 
 ## Domain
 
-### Medication Hierarchy
-- **VTM** (Virtual Therapeutic Moiety): Active substance
-- **VMP** (Virtual Medicinal Product): Generic definition (VTM + strength + form)
-- **AMP** (Actual Medicinal Product): Branded product from a company
-- **AMPP**: Package presentation (e.g., 30 tablets vs 100 tablets)
-- **CNK code**: 7-digit Belgian medication identifier (on AMPP level)
-- **ATC code**: WHO therapeutic classification for categorizing medications
+For full documentation, glossary, and SOAP API reference, see **soap-reference.md**.
 
-### Reimbursement
-- **Categories**: A (100%), B (75%), C (50%), Cs/Cx (special conditions), Fa/Fb (lump-sum)
-- **Chapter IV**: Restricted drugs requiring prior authorization
-- **Patient status**: Standard vs preferential - affects out-of-pocket cost
+### Quick Reference
 
-### Ingredients
-- **Active ingredients**: Therapeutic substances (linked to VTM)
-- **Excipients**: Inactive ingredients (fillers, binders, coatings)
-- **Allergens to flag**: lactose, gluten, colorants, aspartame
+- **Medication hierarchy:** VTM (substance) → VMP (generic) → AMP (branded) → AMPP (package)
+- **CNK code:** 7-digit Belgian pharmacy identifier on packaging
+- **Reimbursement categories:** A (100%), B (75%), C (50%), Cs/Cx (special), Fa/Fb (lump-sum)
+- **Chapter IV:** Restricted drugs requiring prior authorization
+- **Excipients/Allergens:** Inactive ingredients parsed from SmPC documents (not available in SOAP API)
 
 ## Testing
 
