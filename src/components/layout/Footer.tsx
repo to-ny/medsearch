@@ -4,7 +4,7 @@ export function Footer() {
       <div className="container mx-auto px-4">
         <div className="flex justify-end">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Made with &lt;3 by{' '}
+            Made with ❤️ by{' '}
             <a
               href="https://to-ny.github.io/"
               target="_blank"
