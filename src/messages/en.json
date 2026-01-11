@@ -7,10 +7,6 @@
     "toggleMenu": "Toggle menu",
     "selectLanguage": "Select language"
   },
-  "footer": {
-    "dataSource": "Data from Belgium SAM v2 database. For informational purposes only.",
-    "disclaimer": "Always consult a healthcare professional for medical advice."
-  },
   "common": {
     "loading": "Loading...",
     "search": "Search",
