@@ -11,7 +11,7 @@ const LANGUAGES: Record<Language, { label: string; flag: string }> = {
   de: { label: 'Deutsch', flag: 'DE' },
 };
 
-const STORAGE_KEY = 'health-search-language';
+const STORAGE_KEY = 'medsearch-language';
 const DEFAULT_LANGUAGE: Language = 'en';
 
 function getStoredLanguageFromStorage(): Language {

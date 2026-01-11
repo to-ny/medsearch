@@ -20,7 +20,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Health-search | Belgium Medication Database',
+  title: 'MedSearch | Belgium Medication Database',
   description: 'Search and compare medications from Belgium\'s official SAM database. Find prices, reimbursement info, generic equivalents, and more.',
   keywords: ['medication', 'Belgium', 'pharmacy', 'drugs', 'reimbursement', 'CNK', 'generic'],
 };

@@ -26,7 +26,7 @@ export function Header() {
             />
           </svg>
           <span className="text-xl font-bold text-gray-900 dark:text-white">
-            Health-search
+            MedSearch
           </span>
         </Link>
 

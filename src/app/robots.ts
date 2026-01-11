@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://health-search.be';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.medsearch.be';
 
   return {
     rules: [

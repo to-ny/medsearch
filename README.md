@@ -1,4 +1,4 @@
-# Health-search
+# MedSearch
 
 A web application for searching Belgium's medication database (SAM v2). Search for medications, compare prices, check reimbursement status, and find generic equivalents.
 
@@ -23,7 +23,7 @@ A web application for searching Belgium's medication database (SAM v2). Search f
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd health-search
+cd medsearch
 
 # Install dependencies
 bun install

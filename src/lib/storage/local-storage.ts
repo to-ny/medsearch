@@ -6,9 +6,9 @@ import type { IStorageService, UserPreferences, RecentSearch } from './types';
 import { DEFAULT_PREFERENCES } from './types';
 
 const STORAGE_KEYS = {
-  FAVORITES: 'health-search:favorites',
-  RECENT_SEARCHES: 'health-search:recent-searches',
-  PREFERENCES: 'health-search:preferences',
+  FAVORITES: 'medsearch:favorites',
+  RECENT_SEARCHES: 'medsearch:recent-searches',
+  PREFERENCES: 'medsearch:preferences',
 } as const;
 
 const MAX_RECENT_SEARCHES = 20;

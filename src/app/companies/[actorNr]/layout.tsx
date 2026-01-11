@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
 
   if (!result.success || !result.data) {
     return {
-      title: 'Company Not Found | Health-search',
+      title: 'Company Not Found | MedSearch',
       description: 'The requested pharmaceutical company could not be found.',
     };
   }
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   const description = `${company.name}${locationText}. View company information, contact details, and browse medications from this pharmaceutical manufacturer.`;
 
   return {
-    title: `${company.name} | Health-search`,
+    title: `${company.name} | MedSearch`,
     description,
     openGraph: {
       title: company.name,

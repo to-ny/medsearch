@@ -1,8 +1,8 @@
-# Health-search: Requirements
+# MedSearch: Requirements
 
 ## Project Overview
 
-"Health-search" is a web application that makes Belgium's official medication database (SAM v2) accessible to ordinary people. The app consumes public SOAP API endpoints from the Belgian eHealth platform and presents the data in a user-friendly interface.
+"MedSearch" is a web application that makes Belgium's official medication database (SAM v2) accessible to ordinary people. The app consumes public SOAP API endpoints from the Belgian eHealth platform and presents the data in a user-friendly interface.
 
 ## Functional Requirements
 

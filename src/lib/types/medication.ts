@@ -1,5 +1,5 @@
 /**
- * Medication types for the Health-search application
+ * Medication types for the MedSearch application
  * These represent the normalized/transformed data from SAM v2 SOAP responses
  */
 

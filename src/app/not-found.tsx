@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Page Not Found | Health-search',
+  title: 'Page Not Found | MedSearch',
   description: 'The page you are looking for could not be found.',
 };
 

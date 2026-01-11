@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
 
   if (!result.success || !result.data) {
     return {
-      title: 'Medication Not Found | Health-search',
+      title: 'Medication Not Found | MedSearch',
       description: 'The requested medication could not be found.',
     };
   }
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   const description = `${medication.name}${priceText}${companyText}. View detailed information, ingredients, reimbursement status, and compare prices with generic alternatives.`;
 
   return {
-    title: `${medication.name} | Health-search`,
+    title: `${medication.name} | MedSearch`,
     description,
     openGraph: {
       title: medication.name,
