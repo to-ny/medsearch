@@ -62,7 +62,9 @@ export async function getReimbursementByCnk(
       language,
     });
 
-    const response = await soapRequest('dics', soapXml);
+    const response = await soapRequest('dics', soapXml, {
+      cacheType: 'reimbursement',
+    });
     const parsed = parseFindReimbursementResponse(response);
 
     if (!parsed.success || !parsed.data) {
@@ -107,7 +109,9 @@ export async function getReimbursementByAmpp(
       language,
     });
 
-    const response = await soapRequest('dics', soapXml);
+    const response = await soapRequest('dics', soapXml, {
+      cacheType: 'reimbursement',
+    });
     const parsed = parseFindReimbursementResponse(response);
 
     if (!parsed.success || !parsed.data) {

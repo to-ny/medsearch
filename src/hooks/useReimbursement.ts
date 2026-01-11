@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { getClientStaleTime } from '@/lib/cache';
 import type { Reimbursement, ErrorResponse } from '@/lib/types';
 
 interface ReimbursementResponse {
@@ -40,6 +41,6 @@ export function useReimbursement(options: ReimbursementOptions) {
     queryKey: ['reimbursement', options],
     queryFn: () => fetchReimbursement(options),
     enabled: hasId,
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    staleTime: getClientStaleTime('reimbursement'),
   });
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { getClientStaleTime } from '@/lib/cache';
 import type { AtcSearchResponse, ErrorResponse } from '@/lib/types';
 
 interface UseAtcBrowserParams {
@@ -34,7 +35,7 @@ export function useAtcBrowser(params: UseAtcBrowserParams = {}, enabled = true) 
     queryKey: ['atc', params.code || 'top-level', params.language || 'en'],
     queryFn: () => fetchAtcClassifications(params),
     enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes - ATC data changes infrequently
+    staleTime: getClientStaleTime('atc'),
   });
 }
 

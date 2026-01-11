@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchAmp } from '@/lib/services/amp';
+import { createCacheHeaders } from '@/lib/cache';
 import type { MedicationSearchParams, MedicationSearchResponse, ErrorResponse } from '@/lib/types';
 
-export const revalidate = 3600; // 1 hour cache
+// Medication data: 6 hour revalidation (see CACHE_CONFIG.medications)
+export const revalidate = 21600;
 
 /**
  * GET /api/medications
@@ -69,9 +71,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<Medication
     };
 
     return NextResponse.json(response, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-      },
+      headers: createCacheHeaders('medications'),
     });
   } catch (error) {
     console.error('Medication search error:', error);

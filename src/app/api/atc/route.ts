@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchAtc } from '@/lib/services/atc';
+import { createCacheHeaders } from '@/lib/cache';
 import type { AtcSearchResponse, ErrorResponse } from '@/lib/types';
 
-export const revalidate = 3600; // 1 hour cache
+// ATC classifications: 24 hour revalidation (see CACHE_CONFIG.atc)
+export const revalidate = 86400;
 
 /**
  * GET /api/atc
@@ -51,9 +53,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<AtcSearchR
     }
 
     return NextResponse.json(result.data, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-      },
+      headers: createCacheHeaders('atc'),
     });
   } catch (error) {
     console.error('ATC search error:', error);

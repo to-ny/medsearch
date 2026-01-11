@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { getClientStaleTime } from '@/lib/cache';
 import type { MedicationSearchResponse, MedicationSearchParams, ErrorResponse } from '@/lib/types';
 
 async function fetchMedications(params: MedicationSearchParams): Promise<MedicationSearchResponse> {
@@ -33,6 +34,6 @@ export function useMedicationSearch(params: MedicationSearchParams, enabled = tr
     queryKey: ['medications', 'search', params],
     queryFn: () => fetchMedications(params),
     enabled: enabled && hasSearchCriteria,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: getClientStaleTime('medications'),
   });
 }

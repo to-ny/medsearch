@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAmpDetail, getAmpsByVmp } from '@/lib/services/amp';
 import { getVmpDetail } from '@/lib/services/vmp';
 import { getReimbursementByCnk } from '@/lib/services/reimbursement';
+import { createCacheHeaders } from '@/lib/cache';
 import type { MedicationDetailResponse, ErrorResponse } from '@/lib/types';
 
-export const revalidate = 3600; // 1 hour cache
+// Medication data: 6 hour revalidation (see CACHE_CONFIG.medications)
+export const revalidate = 21600;
 
 interface RouteParams {
   params: Promise<{ cnk: string }>;
@@ -84,9 +86,7 @@ export async function GET(
     }
 
     return NextResponse.json(response, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-      },
+      headers: createCacheHeaders('medications'),
     });
   } catch (error) {
     console.error('Medication detail error:', error);

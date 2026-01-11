@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { getClientStaleTime } from '@/lib/cache';
 import type { MedicationDetailResponse, ErrorResponse, Company } from '@/lib/types';
 
 interface DetailOptions {
@@ -56,6 +57,6 @@ export function useMedicationDetail(id: string | undefined, options: DetailOptio
     queryKey: ['medications', 'detail', id, options],
     queryFn: () => fetchMedicationDetail(id!, options),
     enabled: Boolean(id),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: getClientStaleTime('medications'),
   });
 }

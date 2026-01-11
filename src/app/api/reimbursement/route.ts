@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getReimbursementByCnk, getReimbursementByAmpp, calculatePatientCost } from '@/lib/services/reimbursement';
+import { createCacheHeaders } from '@/lib/cache';
 import type { Reimbursement, ErrorResponse } from '@/lib/types';
 
-export const revalidate = 86400; // 24 hour cache
+// Reimbursement data: 24 hour revalidation (see CACHE_CONFIG.reimbursement)
+export const revalidate = 86400;
 
 interface ReimbursementResponse {
   reimbursements: Reimbursement[];
@@ -60,9 +62,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<Reimbursem
     }
 
     return NextResponse.json(response, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
-      },
+      headers: createCacheHeaders('reimbursement'),
     });
   } catch (error) {
     console.error('Reimbursement lookup error:', error);

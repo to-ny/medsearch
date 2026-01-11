@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCompanyProducts } from '@/lib/services/company';
+import { createCacheHeaders } from '@/lib/cache';
 import type { MedicationSearchResponse, ErrorResponse } from '@/lib/types';
 
-export const revalidate = 3600; // 1 hour cache
+// Company products: 6 hour revalidation (see CACHE_CONFIG.companyProducts)
+export const revalidate = 21600;
 
 /**
  * GET /api/companies/[actorNr]/products
@@ -53,9 +55,7 @@ export async function GET(
     };
 
     return NextResponse.json(response, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-      },
+      headers: createCacheHeaders('companyProducts'),
     });
   } catch (error) {
     console.error('Company products lookup error:', error);

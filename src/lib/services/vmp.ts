@@ -106,7 +106,9 @@ export async function searchVmp(params: SearchVmpParams): Promise<ApiResponse<Ge
       language,
     });
 
-    const response = await soapRequest('dics', soapXml);
+    const response = await soapRequest('dics', soapXml, {
+      cacheType: 'medications',
+    });
     const parsed = parseFindVmpResponse(response);
 
     if (!parsed.success || !parsed.data) {
@@ -151,7 +153,9 @@ export async function getVmpDetail(
       language,
     });
 
-    const response = await soapRequest('dics', soapXml);
+    const response = await soapRequest('dics', soapXml, {
+      cacheType: 'medications',
+    });
     const parsed = parseFindVmpResponse(response);
 
     if (!parsed.success || !parsed.data || parsed.data.length === 0) {

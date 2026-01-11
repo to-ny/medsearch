@@ -83,7 +83,9 @@ export async function searchAtc(params: SearchAtcParams): Promise<ApiResponse<At
       language,
     });
 
-    const response = await soapRequest('dics', soapXml);
+    const response = await soapRequest('dics', soapXml, {
+      cacheType: 'atc',
+    });
     const parsed = parseFindAtcResponse(response);
 
     if (!parsed.success || !parsed.data) {

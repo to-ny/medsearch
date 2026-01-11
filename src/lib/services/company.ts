@@ -60,7 +60,9 @@ export async function searchCompany(params: SearchCompanyParams): Promise<ApiRes
       language,
     });
 
-    const response = await soapRequest('dics', soapXml);
+    const response = await soapRequest('dics', soapXml, {
+      cacheType: 'companies',
+    });
     const parsed = parseFindCompanyResponse(response);
 
     if (!parsed.success || !parsed.data) {
@@ -109,7 +111,9 @@ export async function getCompanyByActorNr(
       language,
     });
 
-    const response = await soapRequest('dics', soapXml);
+    const response = await soapRequest('dics', soapXml, {
+      cacheType: 'companies',
+    });
     const parsed = parseFindCompanyResponse(response);
 
     if (!parsed.success || !parsed.data || parsed.data.length === 0) {

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCompanyByActorNr } from '@/lib/services/company';
+import { createCacheHeaders } from '@/lib/cache';
 import type { Company, ErrorResponse } from '@/lib/types';
 
-export const revalidate = 86400; // 24 hour cache
+// Company data: 24 hour revalidation (see CACHE_CONFIG.companies)
+export const revalidate = 86400;
 
 /**
  * GET /api/companies/[actorNr]
@@ -35,9 +37,7 @@ export async function GET(
     }
 
     return NextResponse.json(result.data, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
-      },
+      headers: createCacheHeaders('companies'),
     });
   } catch (error) {
     console.error('Company lookup error:', error);
