@@ -24,7 +24,7 @@
     "clearFilter": "Clear filter"
   },
   "home": {
-    "title": "Belgium Medication Database",
+    "title": "Belgian Medication Search",
     "tagline": "Search medications, compare prices, and find generic equivalents",
     "searchMedications": "Search Medications",
     "searchMedicationsDesc": "Find by name, CNK code, or ingredient",

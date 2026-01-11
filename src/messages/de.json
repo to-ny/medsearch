@@ -24,7 +24,7 @@
     "clearFilter": "Filter löschen"
   },
   "home": {
-    "title": "Belgische Arzneimitteldatenbank",
+    "title": "Belgische Arzneimittelsuche",
     "tagline": "Arzneimittel suchen, Preise vergleichen und Generika finden",
     "searchMedications": "Arzneimittel suchen",
     "searchMedicationsDesc": "Nach Name, CNK-Code oder Wirkstoff",

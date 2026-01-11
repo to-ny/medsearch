@@ -24,7 +24,7 @@
     "clearFilter": "Effacer le filtre"
   },
   "home": {
-    "title": "Base de données des médicaments belges",
+    "title": "Recherche de Médicaments Belges",
     "tagline": "Recherchez des médicaments, comparez les prix et trouvez des génériques",
     "searchMedications": "Rechercher des médicaments",
     "searchMedicationsDesc": "Par nom, code CNK ou ingrédient",

@@ -4,7 +4,7 @@ test.describe('Home Page', () => {
   test('should display home page with navigation cards', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Belgium Medication Database');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Belgian Medication Search');
     await expect(page.getByRole('heading', { name: 'Search Medications' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Compare Prices' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Browse Companies' })).toBeVisible();
