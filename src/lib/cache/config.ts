@@ -5,7 +5,6 @@
  *
  * - REFERENCE_DATA (7 days): Static data that rarely changes (companies, ATC, reimbursement)
  * - CORE_DATA (24h): Core medication data (search results, product details)
- * - DYNAMIC_DATA (15min): Frequently changing data (not currently used)
  *
  * SAM v2 API data update frequency:
  * - Medication database: Updated weekly/monthly
@@ -16,6 +15,16 @@
  * With stale-while-revalidate, users always get cached data instantly
  * while fresh data is fetched in the background. This means revalidation
  * is invisible to end users.
+ *
+ * ## Cache Layers
+ *
+ * 1. **Vercel Data Cache**: Caches external SOAP API responses (serverCache duration)
+ * 2. **Vercel CDN**: Caches API route responses (serverCache + staleWhileRevalidate)
+ * 3. **React Query**: Client-side cache (clientStaleTime)
+ *
+ * Client staleTime is intentionally shorter than server cache to allow
+ * React Query to refetch in the background, picking up any server-side
+ * cache updates without blocking the UI.
  */
 
 /**
@@ -23,19 +32,36 @@
  */
 export const CACHE_DURATIONS = {
   /** Reference/static data - 7 days */
-  REFERENCE_DATA: 604800, // 7 * 24 * 60 * 60
+  REFERENCE_DATA: 604800,
 
   /** Core medication data - 24 hours */
-  CORE_DATA: 86400, // 24 * 60 * 60
-
-  /** Dynamic/user-specific data - 15 minutes */
-  DYNAMIC_DATA: 900, // 15 * 60
+  CORE_DATA: 86400,
 
   /** Stale-while-revalidate period - 14 days */
-  SWR_LONG: 1209600, // 14 * 24 * 60 * 60
+  SWR_LONG: 1209600,
 
   /** Stale-while-revalidate period - 7 days */
-  SWR_MEDIUM: 604800, // 7 * 24 * 60 * 60
+  SWR_MEDIUM: 604800,
+} as const;
+
+/**
+ * Static revalidate values for API route exports.
+ *
+ * Next.js requires static values for route segment config, so these
+ * cannot be computed from CACHE_DURATIONS. Keep these in sync with
+ * CACHE_DURATIONS manually.
+ *
+ * Usage in API routes:
+ * ```ts
+ * // Use the static value directly (required by Next.js)
+ * export const revalidate = 604800; // REVALIDATE_TIMES.REFERENCE_DATA
+ * ```
+ */
+export const REVALIDATE_TIMES = {
+  /** 7 days in seconds - for companies, ATC, reimbursement */
+  REFERENCE_DATA: 604800,
+  /** 24 hours in seconds - for medications, company products */
+  CORE_DATA: 86400,
 } as const;
 
 /**
@@ -48,10 +74,9 @@ export const CACHE_CONFIG = {
    * - Company search results
    */
   companies: {
-    revalidate: CACHE_DURATIONS.REFERENCE_DATA,
-    sMaxAge: CACHE_DURATIONS.REFERENCE_DATA,
+    serverCache: CACHE_DURATIONS.REFERENCE_DATA,
     staleWhileRevalidate: CACHE_DURATIONS.SWR_LONG,
-    clientStaleTime: 24 * 60 * 60 * 1000, // 24 hours in ms
+    clientStaleTime: 60 * 60 * 1000, // 1 hour - allows background refresh
   },
 
   /**
@@ -60,10 +85,9 @@ export const CACHE_CONFIG = {
    * - Copayment information
    */
   reimbursement: {
-    revalidate: CACHE_DURATIONS.REFERENCE_DATA,
-    sMaxAge: CACHE_DURATIONS.REFERENCE_DATA,
+    serverCache: CACHE_DURATIONS.REFERENCE_DATA,
     staleWhileRevalidate: CACHE_DURATIONS.SWR_LONG,
-    clientStaleTime: 24 * 60 * 60 * 1000, // 24 hours in ms
+    clientStaleTime: 60 * 60 * 1000, // 1 hour
   },
 
   /**
@@ -71,10 +95,9 @@ export const CACHE_CONFIG = {
    * Longest cache duration as this data almost never changes
    */
   atc: {
-    revalidate: CACHE_DURATIONS.REFERENCE_DATA,
-    sMaxAge: CACHE_DURATIONS.REFERENCE_DATA,
+    serverCache: CACHE_DURATIONS.REFERENCE_DATA,
     staleWhileRevalidate: CACHE_DURATIONS.SWR_LONG,
-    clientStaleTime: 24 * 60 * 60 * 1000, // 24 hours in ms
+    clientStaleTime: 60 * 60 * 1000, // 1 hour
   },
 
   /**
@@ -84,20 +107,18 @@ export const CACHE_CONFIG = {
    * - Package information
    */
   medications: {
-    revalidate: CACHE_DURATIONS.CORE_DATA,
-    sMaxAge: CACHE_DURATIONS.CORE_DATA,
+    serverCache: CACHE_DURATIONS.CORE_DATA,
     staleWhileRevalidate: CACHE_DURATIONS.SWR_MEDIUM,
-    clientStaleTime: 5 * 60 * 1000, // 5 minutes in ms
+    clientStaleTime: 5 * 60 * 1000, // 5 minutes
   },
 
   /**
    * Company products - same as medications
    */
   companyProducts: {
-    revalidate: CACHE_DURATIONS.CORE_DATA,
-    sMaxAge: CACHE_DURATIONS.CORE_DATA,
+    serverCache: CACHE_DURATIONS.CORE_DATA,
     staleWhileRevalidate: CACHE_DURATIONS.SWR_MEDIUM,
-    clientStaleTime: 5 * 60 * 1000, // 5 minutes in ms
+    clientStaleTime: 5 * 60 * 1000, // 5 minutes
   },
 } as const;
 

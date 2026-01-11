@@ -3,7 +3,7 @@ import { getCompanyProducts } from '@/lib/services/company';
 import { createCacheHeaders } from '@/lib/cache';
 import type { MedicationSearchResponse, ErrorResponse } from '@/lib/types';
 
-// Company products: 24 hour revalidation (see CACHE_CONFIG.companyProducts)
+// Company products: 24 hour revalidation (REVALIDATE_TIMES.CORE_DATA)
 export const revalidate = 86400;
 
 /**

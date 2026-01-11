@@ -36,7 +36,7 @@ export function getCacheControlHeader(
   }
 
   // s-maxage for CDN caching (Vercel)
-  parts.push(`s-maxage=${config.sMaxAge}`);
+  parts.push(`s-maxage=${config.serverCache}`);
 
   // stale-while-revalidate for better UX
   if (allowStale) {
@@ -66,16 +66,15 @@ export function createCacheHeaders(
 }
 
 /**
- * Gets the revalidate value for Next.js route segment config
- * Use this with `export const revalidate = getRevalidateValue('medications');`
- */
-export function getRevalidateValue(dataType: CacheConfigKey): number {
-  return CACHE_CONFIG[dataType].revalidate;
-}
-
-/**
  * Gets the client-side stale time for React Query
  */
 export function getClientStaleTime(dataType: CacheConfigKey): number {
   return CACHE_CONFIG[dataType].clientStaleTime;
+}
+
+/**
+ * Gets the server cache duration for a data type
+ */
+export function getServerCacheDuration(dataType: CacheConfigKey): number {
+  return CACHE_CONFIG[dataType].serverCache;
 }

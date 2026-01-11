@@ -5,7 +5,7 @@ import { getReimbursementByCnk } from '@/lib/services/reimbursement';
 import { createCacheHeaders } from '@/lib/cache';
 import type { MedicationDetailResponse, ErrorResponse } from '@/lib/types';
 
-// Medication data: 24 hour revalidation (see CACHE_CONFIG.medications)
+// Medication data: 24 hour revalidation (REVALIDATE_TIMES.CORE_DATA)
 export const revalidate = 86400;
 
 interface RouteParams {

@@ -4,12 +4,14 @@
  * Centralized caching utilities for the medication search application.
  * Designed for Vercel deployment with Next.js Data Cache.
  *
- * @example
- * ```ts
- * // In API routes - use cache headers
- * import { createCacheHeaders, CACHE_CONFIG } from '@/lib/cache';
+ * ## Usage
  *
- * export const revalidate = CACHE_CONFIG.medications.revalidate;
+ * ### API Routes
+ * ```ts
+ * import { createCacheHeaders, REVALIDATE_TIMES } from '@/lib/cache';
+ *
+ * // Static revalidate (required by Next.js - must be literal value)
+ * export const revalidate = 604800; // REVALIDATE_TIMES.REFERENCE_DATA
  *
  * export async function GET() {
  *   const data = await fetchData();
@@ -19,19 +21,16 @@
  * }
  * ```
  *
- * @example
+ * ### Services (SOAP client)
  * ```ts
- * // In services - use cached fetch
- * import { cachedFetch, CACHE_CONFIG } from '@/lib/cache';
+ * import { createFetchCacheOptions } from '@/lib/cache';
  *
- * const response = await cachedFetch(url, {
- *   cacheType: 'medications',
- * });
+ * const cacheOptions = createFetchCacheOptions({ cacheType: 'medications' });
+ * const response = await fetch(url, { ...options, ...cacheOptions });
  * ```
  *
- * @example
+ * ### React Query Hooks
  * ```ts
- * // In React Query hooks - use client stale time
  * import { getClientStaleTime } from '@/lib/cache';
  *
  * useQuery({
@@ -45,18 +44,18 @@
 export {
   CACHE_DURATIONS,
   CACHE_CONFIG,
+  REVALIDATE_TIMES,
   type CacheConfigKey,
 } from './config';
 
 export {
   getCacheControlHeader,
   createCacheHeaders,
-  getRevalidateValue,
   getClientStaleTime,
+  getServerCacheDuration,
 } from './headers';
 
 export {
-  cachedFetch,
   createFetchCacheOptions,
-  type CachedFetchOptions,
+  type FetchCacheOptions,
 } from './fetch';

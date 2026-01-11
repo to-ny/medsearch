@@ -6,7 +6,7 @@
  * external API calls.
  */
 
-import { createFetchCacheOptions, type CacheConfigKey } from '@/lib/cache';
+import { createFetchCacheOptions, type CacheConfigKey, type FetchCacheOptions } from '@/lib/cache';
 
 const ENDPOINTS = {
   dics: 'https://apps.samdb.ehealth.fgov.be/samv2/dics/v5',

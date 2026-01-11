@@ -1,16 +1,16 @@
 /**
- * Cached Fetch Utilities
+ * Next.js Data Cache Utilities
  *
- * Provides fetch wrappers that leverage Next.js Data Cache
- * for Vercel deployment optimization.
+ * Provides utilities for leveraging Next.js Data Cache
+ * with external fetch calls (e.g., SOAP API).
  */
 
 import { CACHE_CONFIG, type CacheConfigKey } from './config';
 
 /**
- * Options for cached fetch
+ * Options for creating fetch cache options
  */
-export interface CachedFetchOptions extends RequestInit {
+export interface FetchCacheOptions {
   /** Data type for cache configuration */
   cacheType?: CacheConfigKey;
   /** Custom revalidate time in seconds (overrides cacheType) */
@@ -22,12 +22,25 @@ export interface CachedFetchOptions extends RequestInit {
 }
 
 /**
- * Creates Next.js cache options for fetch
+ * Creates Next.js cache options for fetch calls.
+ *
+ * Use this to add caching to external API calls (like SOAP requests).
+ * The returned options should be spread into the fetch options.
  *
  * @see https://nextjs.org/docs/app/api-reference/functions/fetch
+ *
+ * @example
+ * ```ts
+ * const cacheOptions = createFetchCacheOptions({ cacheType: 'medications' });
+ * const response = await fetch(url, {
+ *   method: 'POST',
+ *   body: soapXml,
+ *   ...cacheOptions,
+ * });
+ * ```
  */
 export function createFetchCacheOptions(
-  options: CachedFetchOptions = {}
+  options: FetchCacheOptions = {}
 ): { next?: { revalidate?: number; tags?: string[] }; cache?: RequestCache } {
   const { cacheType, revalidate, tags, noCache } = options;
 
@@ -37,47 +50,17 @@ export function createFetchCacheOptions(
 
   const nextOptions: { revalidate?: number; tags?: string[] } = {};
 
-  // Determine revalidate time
+  // Determine revalidate time from custom value or cache config
   if (revalidate !== undefined) {
     nextOptions.revalidate = revalidate;
   } else if (cacheType) {
-    nextOptions.revalidate = CACHE_CONFIG[cacheType].revalidate;
+    nextOptions.revalidate = CACHE_CONFIG[cacheType].serverCache;
   }
 
-  // Add cache tags
+  // Add cache tags for targeted invalidation
   if (tags && tags.length > 0) {
     nextOptions.tags = tags;
   }
 
   return { next: nextOptions };
-}
-
-/**
- * Wrapper around fetch that applies Next.js caching options
- *
- * @example
- * ```ts
- * // Use predefined cache config
- * const response = await cachedFetch(url, {
- *   cacheType: 'medications',
- * });
- *
- * // Use custom revalidate time
- * const response = await cachedFetch(url, {
- *   revalidate: 3600,
- *   tags: ['medication-123'],
- * });
- * ```
- */
-export async function cachedFetch(
-  url: string | URL,
-  options: CachedFetchOptions = {}
-): Promise<Response> {
-  const { cacheType, revalidate, tags, noCache, ...fetchOptions } = options;
-  const cacheOptions = createFetchCacheOptions({ cacheType, revalidate, tags, noCache });
-
-  return fetch(url, {
-    ...fetchOptions,
-    ...cacheOptions,
-  });
 }
