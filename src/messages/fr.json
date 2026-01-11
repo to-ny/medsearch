@@ -7,10 +7,6 @@
     "toggleMenu": "Basculer le menu",
     "selectLanguage": "Sélectionner la langue"
   },
-  "footer": {
-    "dataSource": "Données de la base SAM v2 de Belgique. À titre informatif uniquement.",
-    "disclaimer": "Consultez toujours un professionnel de santé pour des conseils médicaux."
-  },
   "common": {
     "loading": "Chargement...",
     "search": "Rechercher",

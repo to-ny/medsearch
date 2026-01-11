@@ -7,10 +7,6 @@
     "toggleMenu": "Menü umschalten",
     "selectLanguage": "Sprache auswählen"
   },
-  "footer": {
-    "dataSource": "Daten aus der belgischen SAM v2-Datenbank. Nur zu Informationszwecken.",
-    "disclaimer": "Konsultieren Sie immer einen Arzt für medizinische Beratung."
-  },
   "common": {
     "loading": "Laden...",
     "search": "Suchen",

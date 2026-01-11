@@ -7,10 +7,6 @@
     "toggleMenu": "Menu wisselen",
     "selectLanguage": "Taal selecteren"
   },
-  "footer": {
-    "dataSource": "Gegevens van de Belgische SAM v2 databank. Alleen ter informatie.",
-    "disclaimer": "Raadpleeg altijd een zorgverlener voor medisch advies."
-  },
   "common": {
     "loading": "Laden...",
     "search": "Zoeken",
