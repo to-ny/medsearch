@@ -3,8 +3,8 @@ import { searchAtc } from '@/lib/services/atc';
 import { createCacheHeaders } from '@/lib/cache';
 import type { AtcSearchResponse, ErrorResponse } from '@/lib/types';
 
-// ATC classifications: 24 hour revalidation (see CACHE_CONFIG.atc)
-export const revalidate = 86400;
+// ATC classifications: 7 day revalidation (see CACHE_CONFIG.atc)
+export const revalidate = 604800;
 
 /**
  * GET /api/atc

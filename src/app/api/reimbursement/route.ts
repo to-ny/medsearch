@@ -3,8 +3,8 @@ import { getReimbursementByCnk, getReimbursementByAmpp, calculatePatientCost } f
 import { createCacheHeaders } from '@/lib/cache';
 import type { Reimbursement, ErrorResponse } from '@/lib/types';
 
-// Reimbursement data: 24 hour revalidation (see CACHE_CONFIG.reimbursement)
-export const revalidate = 86400;
+// Reimbursement data: 7 day revalidation (see CACHE_CONFIG.reimbursement)
+export const revalidate = 604800;
 
 interface ReimbursementResponse {
   reimbursements: Reimbursement[];

@@ -3,8 +3,8 @@ import { searchCompany, getCompanyByActorNr } from '@/lib/services/company';
 import { createCacheHeaders } from '@/lib/cache';
 import type { CompanySearchResponse, Company, ErrorResponse } from '@/lib/types';
 
-// Company data: 24 hour revalidation (see CACHE_CONFIG.companies)
-export const revalidate = 86400;
+// Company data: 7 day revalidation (see CACHE_CONFIG.companies)
+export const revalidate = 604800;
 
 /**
  * GET /api/companies

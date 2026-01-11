@@ -3,8 +3,8 @@ import { searchAmp } from '@/lib/services/amp';
 import { createCacheHeaders } from '@/lib/cache';
 import type { MedicationSearchParams, MedicationSearchResponse, ErrorResponse } from '@/lib/types';
 
-// Medication data: 6 hour revalidation (see CACHE_CONFIG.medications)
-export const revalidate = 21600;
+// Medication data: 24 hour revalidation (see CACHE_CONFIG.medications)
+export const revalidate = 86400;
 
 /**
  * GET /api/medications

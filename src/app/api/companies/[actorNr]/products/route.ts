@@ -3,8 +3,8 @@ import { getCompanyProducts } from '@/lib/services/company';
 import { createCacheHeaders } from '@/lib/cache';
 import type { MedicationSearchResponse, ErrorResponse } from '@/lib/types';
 
-// Company products: 6 hour revalidation (see CACHE_CONFIG.companyProducts)
-export const revalidate = 21600;
+// Company products: 24 hour revalidation (see CACHE_CONFIG.companyProducts)
+export const revalidate = 86400;
 
 /**
  * GET /api/companies/[actorNr]/products
