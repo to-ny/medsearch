@@ -58,6 +58,10 @@ ${body}
 
 /**
  * Builds a FindAmp SOAP request
+ *
+ * FindByCompany can be combined with certain search methods (must appear LAST per XSD):
+ * - Supported: FindByProduct (AnyNamePart, AmpCode), FindByDmpp (CNK)
+ * - Not supported: FindByIngredient, FindByVirtualProduct (causes server errors)
  */
 export function buildFindAmpRequest(params: {
   anyNamePart?: string;
@@ -69,43 +73,57 @@ export function buildFindAmpRequest(params: {
   language?: string;
   searchDate?: string;
 }): string {
-  let body = '';
+  const bodyParts: string[] = [];
+  let canCombineWithCompany = false;
 
+  // Build primary search element
   if (params.anyNamePart) {
-    body = `      <FindByProduct>
+    bodyParts.push(`      <FindByProduct>
         <AnyNamePart>${escapeXml(params.anyNamePart)}</AnyNamePart>
-      </FindByProduct>`;
+      </FindByProduct>`);
+    canCombineWithCompany = true;
   } else if (params.cnk) {
     // FindByDmpp: DeliveryEnvironment, Code, CodeType (order matters per XSD)
-    body = `      <FindByDmpp>
+    bodyParts.push(`      <FindByDmpp>
         <DeliveryEnvironment>P</DeliveryEnvironment>
         <Code>${escapeXml(params.cnk)}</Code>
         <CodeType>CNK</CodeType>
-      </FindByDmpp>`;
+      </FindByDmpp>`);
+    canCombineWithCompany = true;
   } else if (params.ampCode) {
-    body = `      <FindByProduct>
+    bodyParts.push(`      <FindByProduct>
         <AmpCode>${escapeXml(params.ampCode)}</AmpCode>
-      </FindByProduct>`;
+      </FindByProduct>`);
+    canCombineWithCompany = true;
   } else if (params.ingredient) {
-    // FindByIngredient uses SubstanceName, not AnyNamePart
-    body = `      <FindByIngredient>
+    // FindByIngredient cannot be combined with FindByCompany (causes server error)
+    bodyParts.push(`      <FindByIngredient>
         <SubstanceName>${escapeXml(params.ingredient)}</SubstanceName>
-      </FindByIngredient>`;
+      </FindByIngredient>`);
+    canCombineWithCompany = false;
   } else if (params.vmpCode) {
-    // VmpCode is an integer in the schema
-    body = `      <FindByVirtualProduct>
+    // FindByVirtualProduct cannot be combined with FindByCompany (causes business error)
+    bodyParts.push(`      <FindByVirtualProduct>
         <VmpCode>${escapeXml(params.vmpCode)}</VmpCode>
-      </FindByVirtualProduct>`;
-  } else if (params.companyActorNr) {
-    body = `      <FindByCompany>
+      </FindByVirtualProduct>`);
+    canCombineWithCompany = false;
+  }
+
+  // Add FindByCompany as additional filter (must be LAST per XSD)
+  // Only add if: 1) we have a company filter AND 2) either no primary search OR it's combinable
+  if (params.companyActorNr) {
+    if (bodyParts.length === 0 || canCombineWithCompany) {
+      bodyParts.push(`      <FindByCompany>
         <CompanyActorNr>${escapeXml(params.companyActorNr)}</CompanyActorNr>
-      </FindByCompany>`;
+      </FindByCompany>`);
+    }
+    // If not combinable (ingredient/vmpCode), company filter is silently ignored
   }
 
   return buildSoapRequest({
     operation: 'FindAmp',
     searchDate: params.searchDate,
-    body,
+    body: bodyParts.join('\n'),
   });
 }
 

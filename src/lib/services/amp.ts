@@ -197,8 +197,14 @@ export async function searchAmp(params: SearchAmpParams): Promise<ApiResponse<Me
       language,
     });
 
+    // Company-only searches can return very large responses (16MB+) causing timeouts
+    // Use a shorter timeout to fail fast and prompt user to add filters
+    const isCompanyOnlySearch = paddedCompanyActorNr &&
+      !params.query && !params.cnk && !params.ampCode && !params.ingredient && !params.vmpCode;
+
     const response = await soapRequest('dics', soapXml, {
       cacheType: 'medications',
+      ...(isCompanyOnlySearch && { timeout: 6000 }), // 6s for company-only, default (30s) otherwise
     });
     const parsed = parseFindAmpResponse(response);
 
@@ -222,11 +228,27 @@ export async function searchAmp(params: SearchAmpParams): Promise<ApiResponse<Me
       },
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Request failed';
+    const isTimeout = errorMessage.toLowerCase().includes('timeout');
+    const isCompanyOnlySearch = params.companyActorNr &&
+      !params.query && !params.cnk && !params.ampCode && !params.ingredient && !params.vmpCode;
+
+    // Company-only searches can timeout due to large response sizes (16MB+ for some companies)
+    if (isTimeout && isCompanyOnlySearch) {
+      return {
+        success: false,
+        error: {
+          code: 'COMPANY_TOO_LARGE',
+          message: 'This company has too many products to load at once. Please add a search term to narrow the results.',
+        },
+      };
+    }
+
     return {
       success: false,
       error: {
         code: 'REQUEST_FAILED',
-        message: error instanceof Error ? error.message : 'Request failed',
+        message: errorMessage,
       },
     };
   }

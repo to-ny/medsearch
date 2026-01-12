@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -8,7 +8,11 @@ import { Badge } from '@/components/ui/Badge';
 import { ChapterIVBadge } from '@/components/medication/ChapterIVBadge';
 import { SkeletonList } from '@/components/ui/Skeleton';
 import { formatPrice } from '@/lib/utils/price';
+import { ApiError } from '@/hooks';
 import type { MedicationSearchResult } from '@/lib/types';
+
+/** Time before showing "taking longer than expected" message */
+const SLOW_LOADING_THRESHOLD_MS = 3000;
 
 interface SearchResultsProps {
   results: MedicationSearchResult[] | undefined;
@@ -30,6 +34,21 @@ export function SearchResults({
   const t = useTranslations();
   const announcementRef = useRef<HTMLDivElement>(null);
   const previousCountRef = useRef<number | undefined>(undefined);
+  const [isSlowLoading, setIsSlowLoading] = useState(false);
+
+  // Track slow loading state
+  useEffect(() => {
+    if (!loading) {
+      setIsSlowLoading(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsSlowLoading(true);
+    }, SLOW_LOADING_THRESHOLD_MS);
+
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   // Announce search results to screen readers
   useEffect(() => {
@@ -57,12 +76,66 @@ export function SearchResults({
           aria-atomic="true"
           className="sr-only"
         />
+        {isSlowLoading && (
+          <Card variant="outline" className="mb-4 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+            <CardContent className="py-3">
+              <div className="flex items-center gap-3">
+                <svg
+                  className="h-5 w-5 animate-spin text-amber-600 dark:text-amber-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  {t('search.takingLonger')}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         <SkeletonList count={5} />
       </>
     );
   }
 
   if (error) {
+    // Check if this is a guidance error (user can fix it) vs a server failure
+    const isGuidance = error instanceof ApiError && error.isGuidance();
+
+    if (isGuidance) {
+      // Amber/info styling for guidance messages
+      return (
+        <Card variant="outline" className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+          <CardContent>
+            <div className="flex items-start gap-3">
+              <svg
+                className="mt-0.5 h-6 w-6 flex-shrink-0 text-amber-600 dark:text-amber-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-200">{t('search.refinementNeeded')}</p>
+                <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{error.message}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Red styling for actual errors
     return (
       <Card variant="outline" className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
         <CardContent>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useMemo, Suspense } from 'react';
+import { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { SearchBar, SearchResults, type SearchType } from '@/components/search';
@@ -67,9 +68,14 @@ function SearchContent() {
 
   // Local UI state only for company filter input (before applying)
   const [companyFilterInput, setCompanyFilterInput] = useState(companyFromUrl || '');
+  // Company filter is expanded only when there's a company in URL or user explicitly expands it
+  const [isCompanyFilterExpanded, setIsCompanyFilterExpanded] = useState(Boolean(companyFromUrl));
 
   // Pagination offset resets when URL changes (intentional - new search = page 1)
   const [paginationOffset, setPaginationOffset] = useState(0);
+
+  // Company filter is disabled for ingredient search (SAM API limitation)
+  const isCompanyFilterDisabled = typeFromUrl === 'ingredient';
 
   // Reset pagination when URL params change
   const urlKey = `${queryFromUrl}-${typeFromUrl}-${companyFromUrl}`;
@@ -77,9 +83,21 @@ function SearchContent() {
   if (urlKey !== prevUrlKey) {
     setPrevUrlKey(urlKey);
     setPaginationOffset(0);
-    // Also sync company filter input when URL changes (e.g., back/forward)
+    // Also sync company filter input and expanded state when URL changes (e.g., back/forward)
     setCompanyFilterInput(companyFromUrl || '');
+    setIsCompanyFilterExpanded(Boolean(companyFromUrl));
   }
+
+  // Clear company filter when ingredient search has company in URL (unsupported combination)
+  // This handles direct navigation to URLs like /search?q=test&type=ingredient&company=01995
+  useEffect(() => {
+    if (typeFromUrl === 'ingredient' && companyFromUrl) {
+      const newParams = new URLSearchParams();
+      if (queryFromUrl) newParams.set('q', queryFromUrl);
+      newParams.set('type', 'ingredient');
+      router.replace(`/search?${newParams.toString()}`, { scroll: false });
+    }
+  }, [typeFromUrl, companyFromUrl, queryFromUrl, router]);
 
   // Derive search params from URL (single source of truth)
   const searchParams = useMemo(
@@ -124,8 +142,13 @@ function SearchContent() {
 
   const handleClearCompanyFilter = useCallback(() => {
     setCompanyFilterInput('');
+    setIsCompanyFilterExpanded(false);
     updateUrl({ q: queryFromUrl || undefined, type: typeFromUrl, company: undefined });
   }, [queryFromUrl, typeFromUrl, updateUrl]);
+
+  const handleToggleCompanyFilter = useCallback(() => {
+    setIsCompanyFilterExpanded((prev) => !prev);
+  }, []);
 
   const handleLoadMore = useCallback(() => {
     if (data?.hasMore) {
@@ -150,63 +173,105 @@ function SearchContent() {
           initialType={typeFromUrl}
         />
 
-        {/* Company filter */}
-        <div className="mt-4">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="min-w-[120px] justify-between"
-              disabled
-            >
-              {t('search.companyFilter')}
-              <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </Button>
-
-            {companyFromUrl ? (
-              <>
-                <div className="flex flex-1 items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 dark:border-blue-700 dark:bg-blue-900/30">
-                  <span className="truncate text-sm font-medium text-blue-800 dark:text-blue-200">
-                    {companyData?.name || `#${companyFromUrl}`}
-                  </span>
-                </div>
-                <Button variant="outline" onClick={handleClearCompanyFilter}>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  <span className="sr-only">{t('common.clearFilter')}</span>
-                </Button>
-              </>
+        {/* Company filter - collapsible, disabled for ingredient search */}
+        {!companyFromUrl && !isCompanyFilterExpanded ? (
+          <button
+            onClick={handleToggleCompanyFilter}
+            disabled={isCompanyFilterDisabled}
+            className={`mt-4 flex items-center gap-2 text-sm ${
+              isCompanyFilterDisabled
+                ? 'cursor-not-allowed text-gray-400 dark:text-gray-600'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+            title={isCompanyFilterDisabled ? t('search.companyFilterDisabledHint') : undefined}
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            {t('search.filterByCompany')}
+            {isCompanyFilterDisabled ? (
+              <span className="text-xs">({t('search.notAvailableForIngredient')})</span>
             ) : (
-              <>
-                <div className="flex-1">
-                  <Input
-                    type="text"
-                    value={companyFilterInput}
-                    onChange={(e) => setCompanyFilterInput(e.target.value)}
-                    placeholder={t('search.companyFilterPlaceholder')}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && companyFilterInput.trim()) {
-                        handleApplyCompanyFilter();
-                      }
-                    }}
-                  />
-                </div>
-                <Button onClick={handleApplyCompanyFilter} disabled={!companyFilterInput.trim()}>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            )}
+          </button>
+        ) : (
+          <div className="mt-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {t('search.companyFilter')}
+              </span>
+              {!companyFromUrl && (
+                <button
+                  onClick={handleToggleCompanyFilter}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  aria-label={t('search.collapseFilter')}
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                   </svg>
-                  <span className="sr-only">{t('search.applyFilter')}</span>
-                </Button>
-              </>
+                </button>
+              )}
+            </div>
+            <div className="mt-2 flex gap-2">
+              {companyFromUrl ? (
+                <>
+                  <div className="flex flex-1 items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 dark:border-blue-700 dark:bg-blue-900/30">
+                    <svg className="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <span className="truncate text-sm font-medium text-blue-800 dark:text-blue-200">
+                      {companyData?.name || `#${companyFromUrl}`}
+                    </span>
+                    {companyData && (
+                      <Link
+                        href={`/companies/${companyFromUrl}`}
+                        className="ml-auto flex-shrink-0 text-xs text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-200"
+                      >
+                        {t('search.viewCompany')}
+                      </Link>
+                    )}
+                  </div>
+                  <Button variant="outline" onClick={handleClearCompanyFilter}>
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span className="sr-only">{t('common.clearFilter')}</span>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="flex-1">
+                    <Input
+                      type="text"
+                      value={companyFilterInput}
+                      onChange={(e) => setCompanyFilterInput(e.target.value)}
+                      placeholder={t('search.companyFilterPlaceholder')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && companyFilterInput.trim()) {
+                          handleApplyCompanyFilter();
+                        }
+                      }}
+                    />
+                  </div>
+                  <Button onClick={handleApplyCompanyFilter} disabled={!companyFilterInput.trim()}>
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    <span className="sr-only">{t('search.applyFilter')}</span>
+                  </Button>
+                </>
+              )}
+            </div>
+            {!companyFromUrl && (
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                {t('search.companyFilterHint')}
+              </p>
             )}
           </div>
-
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {t('search.companyFilterHint')}
-          </p>
-        </div>
+        )}
       </div>
 
       {/* Results */}

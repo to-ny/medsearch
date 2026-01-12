@@ -4,6 +4,28 @@ import { useQuery } from '@tanstack/react-query';
 import { getClientStaleTime } from '@/lib/cache';
 import type { MedicationSearchResponse, MedicationSearchParams, ErrorResponse } from '@/lib/types';
 
+/**
+ * Custom error class that includes the error code from API responses.
+ * Used to distinguish between server errors and user guidance messages.
+ */
+export class ApiError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+    this.name = 'ApiError';
+  }
+
+  /**
+   * Check if this is a guidance error (user can fix it)
+   * rather than a server failure
+   */
+  isGuidance(): boolean {
+    return ['COMPANY_TOO_LARGE', 'UNSUPPORTED_COMBINATION'].includes(this.code);
+  }
+}
+
 async function fetchMedications(params: MedicationSearchParams): Promise<MedicationSearchResponse> {
   const searchParams = new URLSearchParams();
 
@@ -19,7 +41,7 @@ async function fetchMedications(params: MedicationSearchParams): Promise<Medicat
 
   if (!response.ok) {
     const error: ErrorResponse = await response.json();
-    throw new Error(error.message || 'Search failed');
+    throw new ApiError(error.code || 'UNKNOWN', error.message || 'Search failed');
   }
 
   return response.json();

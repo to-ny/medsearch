@@ -33,7 +33,7 @@ export interface SoapClientOptions {
 }
 
 const DEFAULT_OPTIONS = {
-  timeout: 30000,
+  timeout: 15000, // 15s - users won't wait longer than this
   retries: 3,
   retryDelay: 1000,
   cacheType: undefined as CacheConfigKey | undefined,
@@ -107,11 +107,22 @@ export async function soapRequest(
 
       clearTimeout(timeoutId);
 
+      const responseText = await response.text();
+
+      // SOAP APIs often return HTTP 500 for SOAP faults, including business errors
+      // like "no results found". We need to return the response so the parser can
+      // extract the business error code and handle it appropriately.
       if (!response.ok) {
+        // If response contains a SOAP Fault, return it for parsing
+        // The parser will extract the business error code and decide if it's
+        // a real error or just a "no results" response
+        if (isSoapFault(responseText)) {
+          return responseText;
+        }
+        // For non-SOAP responses (e.g., HTML error pages), throw
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const responseText = await response.text();
       return responseText;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));

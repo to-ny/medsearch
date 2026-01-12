@@ -54,9 +54,16 @@
     "companyFilter": "Entreprise",
     "companyFilterPlaceholder": "Entrez le numéro d'acteur...",
     "companyFilterHint": "Filtrer les résultats par numéro d'acteur",
+    "filterByCompany": "Filtrer par entreprise",
+    "collapseFilter": "Réduire le filtre",
+    "viewCompany": "Voir l'entreprise",
     "applyFilter": "Appliquer le filtre",
     "emptyStateTitle": "Commencez votre recherche",
-    "emptyStateDescription": "Entrez un nom de médicament, code CNK ou ingrédient ci-dessus"
+    "emptyStateDescription": "Entrez un nom de médicament, code CNK ou ingrédient ci-dessus",
+    "notAvailableForIngredient": "non disponible pour la recherche par ingrédient",
+    "companyFilterDisabledHint": "Le filtre par entreprise n'est pas disponible lors d'une recherche par ingrédient. Utilisez la recherche par nom.",
+    "refinementNeeded": "Affinez votre recherche",
+    "takingLonger": "Cela prend plus de temps que prévu. Les grands ensembles de résultats peuvent nécessiter des filtres supplémentaires."
   },
   "medication": {
     "notFound": "Médicament non trouvé",
@@ -176,18 +183,8 @@
     "address": "Adresse",
     "postbox": "Boîte postale : {value}",
     "productsTitle": "Produits",
-    "productsTitleWithCount": "Produits ({count} au total)",
-    "productsDesc": "Voir tous les produits de {name}",
-    "loadProducts": "Charger les produits",
-    "viewProducts": "Voir les produits",
-    "productCount": "{count, plural, =1 {# produit} other {# produits}}",
-    "productsLoading": "Récupération du catalogue de produits...",
-    "productsLoadingLong": "Chargement en cours... Les catalogues volumineux peuvent prendre plus de temps.",
-    "productsCancel": "Annuler",
-    "productsTryAgain": "Réessayer",
-    "productsCollapse": "Masquer les produits",
-    "productsError": "Impossible de charger les produits. Veuillez réessayer plus tard.",
-    "noProducts": "Aucun produit trouvé pour cette entreprise"
+    "searchProducts": "Rechercher des produits",
+    "searchTheirProducts": "Rechercher leurs produits"
   },
   "reimbursement": {
     "title": "Remboursement",

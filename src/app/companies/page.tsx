@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
@@ -24,16 +24,6 @@ export default function CompaniesPage() {
   const t = useTranslations();
   const [query, setQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Cleanup debounce on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, []);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['companies', searchQuery],
@@ -48,19 +38,7 @@ export default function CompaniesPage() {
   }, [query]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setQuery(value);
-
-    // Debounced auto-search
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
-    if (value.trim().length >= 3) {
-      debounceRef.current = setTimeout(() => {
-        setSearchQuery(value.trim());
-      }, 300);
-    }
+    setQuery(e.target.value);
   }, []);
 
   const handleKeyDown = useCallback(

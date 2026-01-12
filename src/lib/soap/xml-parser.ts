@@ -63,6 +63,59 @@ function extractSoapBody(xml: string): Record<string, unknown> | null {
 }
 
 /**
+ * Known SAM API business error codes that indicate "no results" (not actual errors)
+ * - 1003: No AMP found for given criteria
+ * - 1004: No company found for given criteria
+ * - 1008: No results found for given criteria
+ * - 1012: No classification found
+ */
+const NO_RESULTS_ERROR_CODES = [1003, 1004, 1008, 1012];
+
+/**
+ * Result of checking for SOAP fault
+ */
+interface SoapFaultResult {
+  isFault: boolean;
+  isNoResultsFault: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+}
+
+/**
+ * Checks if the SOAP body contains a fault and extracts business error info.
+ * This helper standardizes fault handling across all parsers.
+ *
+ * Known business error codes:
+ * - 1004: No company found for given criteria
+ * - 1008: No results found for given criteria
+ * - 1012: No classification found
+ */
+function checkSoapFault(body: Record<string, unknown>): SoapFaultResult {
+  const faultKey = Object.keys(body).find((k) => k.includes('Fault'));
+  if (!faultKey) {
+    return { isFault: false, isNoResultsFault: false };
+  }
+
+  const fault = body[faultKey] as Record<string, unknown>;
+  const detail = fault.detail as Record<string, unknown> | undefined;
+  const businessError = detail?.['ns2:BusinessError'] as Record<string, unknown> | undefined;
+  const errorCode = businessError?.Code;
+  const errorMessage = businessError?.Message as string | undefined;
+
+  // Check if this is a "no results" type error
+  const isNoResults = NO_RESULTS_ERROR_CODES.some(
+    (code) => errorCode === code || errorCode === String(code)
+  );
+
+  return {
+    isFault: true,
+    isNoResultsFault: isNoResults,
+    errorCode: errorCode ? String(errorCode) : undefined,
+    errorMessage: errorMessage || String(fault.faultstring || 'Unknown SOAP fault'),
+  };
+}
+
+/**
  * Extracts text content with language preference
  * Handles both xml:lang and lang attributes
  */
@@ -159,16 +212,15 @@ export function parseFindAmpResponse(xml: string): ParsedSoapResponse<RawAmpData
       return { success: false, error: { code: 'PARSE_ERROR', message: 'Invalid SOAP response' } };
     }
 
-    // Check for SOAP fault first
-    const faultKey = Object.keys(body).find((k) => k.includes('Fault'));
-    if (faultKey) {
-      const fault = body[faultKey] as Record<string, unknown>;
+    // Check for SOAP fault
+    const fault = checkSoapFault(body);
+    if (fault.isFault) {
+      if (fault.isNoResultsFault) {
+        return { success: true, data: [] };
+      }
       return {
         success: false,
-        error: {
-          code: 'SOAP_FAULT',
-          message: String(fault.faultstring || fault.detail || 'Unknown SOAP fault'),
-        },
+        error: { code: 'SOAP_FAULT', message: fault.errorMessage || 'Unknown SOAP fault' },
       };
     }
 
@@ -206,15 +258,14 @@ export function parseFindVmpResponse(xml: string): ParsedSoapResponse<RawVmpData
     }
 
     // Check for SOAP fault
-    const faultKey = Object.keys(body).find((k) => k.includes('Fault'));
-    if (faultKey) {
-      const fault = body[faultKey] as Record<string, unknown>;
+    const fault = checkSoapFault(body);
+    if (fault.isFault) {
+      if (fault.isNoResultsFault) {
+        return { success: true, data: [] };
+      }
       return {
         success: false,
-        error: {
-          code: 'SOAP_FAULT',
-          message: String(fault.faultstring || fault.detail || 'Unknown SOAP fault'),
-        },
+        error: { code: 'SOAP_FAULT', message: fault.errorMessage || 'Unknown SOAP fault' },
       };
     }
 
@@ -253,30 +304,14 @@ export function parseFindReimbursementResponse(xml: string): ParsedSoapResponse<
     }
 
     // Check for SOAP fault
-    const faultKey = Object.keys(body).find((k) => k.includes('Fault'));
-    if (faultKey) {
-      const fault = body[faultKey] as Record<string, unknown>;
-      const detail = fault.detail as Record<string, unknown> | undefined;
-
-      // Check if this is a "no results found" fault (code 1008)
-      // The SAM API returns this when the medication isn't reimbursed
-      const businessError = detail?.['ns2:BusinessError'] as Record<string, unknown> | undefined;
-      const errorCode = businessError?.Code;
-
-      if (errorCode === 1008 || errorCode === '1008') {
-        // Not an error - just no reimbursement data exists
-        return {
-          success: true,
-          data: [],
-        };
+    const fault = checkSoapFault(body);
+    if (fault.isFault) {
+      if (fault.isNoResultsFault) {
+        return { success: true, data: [] };
       }
-
       return {
         success: false,
-        error: {
-          code: 'SOAP_FAULT',
-          message: String(fault.faultstring || fault.detail || 'Unknown SOAP fault'),
-        },
+        error: { code: 'SOAP_FAULT', message: fault.errorMessage || 'Unknown SOAP fault' },
       };
     }
 
@@ -313,15 +348,14 @@ export function parseFindCompanyResponse(xml: string): ParsedSoapResponse<RawCom
     }
 
     // Check for SOAP fault
-    const faultKey = Object.keys(body).find((k) => k.includes('Fault'));
-    if (faultKey) {
-      const fault = body[faultKey] as Record<string, unknown>;
+    const fault = checkSoapFault(body);
+    if (fault.isFault) {
+      if (fault.isNoResultsFault) {
+        return { success: true, data: [] };
+      }
       return {
         success: false,
-        error: {
-          code: 'SOAP_FAULT',
-          message: String(fault.faultstring || fault.detail || 'Unknown SOAP fault'),
-        },
+        error: { code: 'SOAP_FAULT', message: fault.errorMessage || 'Unknown SOAP fault' },
       };
     }
 
@@ -606,28 +640,14 @@ export function parseFindAtcResponse(xml: string): ParsedSoapResponse<RawAtcClas
     }
 
     // Check for SOAP fault
-    const faultKey = Object.keys(body).find((k) => k.includes('Fault'));
-    if (faultKey) {
-      const fault = body[faultKey] as Record<string, unknown>;
-      const detail = fault.detail as Record<string, unknown> | undefined;
-
-      // Check for "no results found" fault (code 1008 or 1012)
-      const businessError = detail?.['ns2:BusinessError'] as Record<string, unknown> | undefined;
-      const errorCode = businessError?.Code;
-
-      if (errorCode === 1008 || errorCode === '1008' || errorCode === 1012 || errorCode === '1012') {
-        return {
-          success: true,
-          data: [],
-        };
+    const fault = checkSoapFault(body);
+    if (fault.isFault) {
+      if (fault.isNoResultsFault) {
+        return { success: true, data: [] };
       }
-
       return {
         success: false,
-        error: {
-          code: 'SOAP_FAULT',
-          message: String(fault.faultstring || fault.detail || 'Unknown SOAP fault'),
-        },
+        error: { code: 'SOAP_FAULT', message: fault.errorMessage || 'Unknown SOAP fault' },
       };
     }
 

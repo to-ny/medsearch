@@ -54,9 +54,16 @@
     "companyFilter": "Company",
     "companyFilterPlaceholder": "Enter company actor number...",
     "companyFilterHint": "Filter results by company actor number",
+    "filterByCompany": "Filter by company",
+    "collapseFilter": "Collapse filter",
+    "viewCompany": "View company",
     "applyFilter": "Apply filter",
     "emptyStateTitle": "Start your search",
-    "emptyStateDescription": "Enter a medication name, CNK code, or ingredient above"
+    "emptyStateDescription": "Enter a medication name, CNK code, or ingredient above",
+    "notAvailableForIngredient": "not available for ingredient search",
+    "companyFilterDisabledHint": "Company filter is not available when searching by ingredient. Use name search instead.",
+    "refinementNeeded": "Refine your search",
+    "takingLonger": "This is taking longer than expected. Large result sets may require additional filters."
   },
   "medication": {
     "notFound": "Medication not found",
@@ -176,18 +183,8 @@
     "address": "Address",
     "postbox": "Postbox: {value}",
     "productsTitle": "Products",
-    "productsTitleWithCount": "Products ({count} total)",
-    "productsDesc": "View all products from {name}",
-    "loadProducts": "Load Products",
-    "viewProducts": "View products",
-    "productCount": "{count, plural, =1 {# product} other {# products}}",
-    "productsLoading": "Fetching product catalog...",
-    "productsLoadingLong": "Still loading... Large catalogs may take longer.",
-    "productsCancel": "Cancel",
-    "productsTryAgain": "Try Again",
-    "productsCollapse": "Hide Products",
-    "productsError": "Failed to load products. Please try again later.",
-    "noProducts": "No products found for this company"
+    "searchProducts": "Search Products",
+    "searchTheirProducts": "Search their products"
   },
   "reimbursement": {
     "title": "Reimbursement",

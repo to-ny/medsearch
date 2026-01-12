@@ -61,6 +61,37 @@ From abstract to concrete:
 
 ---
 
+## Request Format
+
+### SOAP Envelope Structure
+
+All requests use the standard SOAP envelope with the DICS v5 namespace:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ns="urn:be:fgov:ehealth:dics:protocol:v5">
+  <soap:Header/>
+  <soap:Body>
+    <ns:{Operation}Request IssueInstant="{ISO-8601-timestamp}">
+      <!-- Search criteria -->
+    </ns:{Operation}Request>
+  </soap:Body>
+</soap:Envelope>
+```
+
+### XSD Element Ordering
+
+**Critical:** XML elements must appear in the exact order defined by the XSD schema. The API validates element order strictly and will reject requests with incorrectly ordered elements, even if all required data is present.
+
+For example, in `FindByDmpp`:
+- ✓ `DeliveryEnvironment` → `Code` → `CodeType`
+- ✗ `Code` → `CodeType` → `DeliveryEnvironment` (will fail)
+
+When combining multiple search methods (where supported), the order specified in each operation's documentation must be followed.
+
+---
+
 ## Implemented Operations
 
 All operations use the DICS v5 endpoint documented in Getting Started.
@@ -80,6 +111,42 @@ Search for branded medications (AMP).
 - **FindByIngredient** - Search by active ingredient using `SubstanceName`
 - **FindByVirtualProduct** - Find all brands of a generic using `VmpCode`
 - **FindByCompany** - Find products by company using `CompanyActorNr`
+
+**Combining Search Methods:**
+
+`FindByCompany` can be combined with other search methods to filter results by company:
+
+| Primary Method | + FindByCompany | Notes |
+|----------------|-----------------|-------|
+| FindByProduct (AnyNamePart) | ✓ Supported | |
+| FindByProduct (AmpCode) | ✓ Supported | |
+| FindByDmpp (CNK) | ✓ Supported | |
+| FindByIngredient | ✗ Not supported | Causes server error |
+| FindByVirtualProduct | ✗ Not supported | Causes business error 1002 |
+
+When combining, `FindByCompany` must appear AFTER the primary search method.
+
+**Example Request (name + company filter):**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ns="urn:be:fgov:ehealth:dics:protocol:v5">
+  <soap:Header/>
+  <soap:Body>
+    <ns:FindAmpRequest IssueInstant="2025-01-11T10:00:00.000Z">
+      <FindByProduct>
+        <AnyNamePart>duloxetine</AnyNamePart>
+      </FindByProduct>
+      <FindByCompany>
+        <CompanyActorNr>01995</CompanyActorNr>
+      </FindByCompany>
+    </ns:FindAmpRequest>
+  </soap:Body>
+</soap:Envelope>
+```
+
+**Large Company Warning:** Company-only searches (FindByCompany without other filters) can return very large responses (15MB+ for companies with 300+ products), causing timeouts. Consider requiring additional filters or implementing timeout handling with user-friendly messaging.
 
 **Example Request (by name):**
 
@@ -406,8 +473,15 @@ The following endpoints are listed in the SAM service catalog but have not been 
 </soap:Fault>
 ```
 
+### HTTP Status Codes
+
+**Important:** The SAM API returns HTTP 500 for all SOAP faults, including business errors like "no results found". The SOAP client must read the response body even on HTTP 500 to extract the SOAP fault and determine if it's a recoverable business error or a true server error.
+
 ### Known Error Codes
 
+- **1002** - No VMP linked with AMP found for criteria. May occur with unsupported filter combinations.
+- **1003** - No AMP found for given criteria. Treat as empty result set, not an error.
+- **1004** - No company found for given criteria. Treat as empty result set, not an error.
 - **1008** - No results found. Treat as empty result set, not an error.
 - **1012** - No classification found. Treat as empty result set, not an error.
 

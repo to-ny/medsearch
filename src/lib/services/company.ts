@@ -141,9 +141,3 @@ export async function getCompanyByActorNr(
     };
   }
 }
-
-/**
- * Gets all products (medications) manufactured by a company
- * Uses the FindAmp API with companyActorNr parameter
- */
-export { searchAmp as getCompanyProducts } from './amp';

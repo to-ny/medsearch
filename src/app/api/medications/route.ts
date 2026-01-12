@@ -42,6 +42,23 @@ export async function GET(request: NextRequest): Promise<NextResponse<Medication
     );
   }
 
+  // Validate company actor number format (1-5 digits)
+  if (params.companyActorNr && !/^\d{1,5}$/.test(params.companyActorNr)) {
+    return NextResponse.json(
+      { code: 'INVALID_COMPANY', message: 'Company actor number must be 1-5 digits' },
+      { status: 400 }
+    );
+  }
+
+  // Reject unsupported filter combination: ingredient + company
+  // SAM API does not support combining FindByIngredient with FindByCompany
+  if (params.ingredient && params.companyActorNr) {
+    return NextResponse.json(
+      { code: 'UNSUPPORTED_COMBINATION', message: 'Ingredient search cannot be combined with company filter. Please use name search to filter by company.' },
+      { status: 422 }
+    );
+  }
+
   try {
     const result = await searchAmp({
       query: params.query,
@@ -52,9 +69,12 @@ export async function GET(request: NextRequest): Promise<NextResponse<Medication
     });
 
     if (!result.success || !result.data) {
+      const errorCode = result.error?.code || 'UNKNOWN';
+      // COMPANY_TOO_LARGE is a user guidance issue, not a server error
+      const status = errorCode === 'COMPANY_TOO_LARGE' ? 422 : 500;
       return NextResponse.json(
-        { code: result.error?.code || 'UNKNOWN', message: result.error?.message || 'Search failed' },
-        { status: 500 }
+        { code: errorCode, message: result.error?.message || 'Search failed' },
+        { status }
       );
     }
 
