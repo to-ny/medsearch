@@ -12,6 +12,10 @@ test.describe('Compare Page', () => {
   test('should search by CNK and show comparison', async ({ page }) => {
     await page.goto('/compare');
 
+    // Select CNK search type (default is Name)
+    await page.getByRole('button', { name: 'Name' }).click();
+    await page.getByRole('option', { name: 'CNK Code' }).click();
+
     // Search by CNK code
     const searchInput = page.getByRole('searchbox');
     await searchInput.fill('1482223'); // Dafalgan Codeine CNK
@@ -23,6 +27,10 @@ test.describe('Compare Page', () => {
 
   test('should allow changing selection', async ({ page }) => {
     await page.goto('/compare');
+
+    // Select CNK search type (default is Name)
+    await page.getByRole('button', { name: 'Name' }).click();
+    await page.getByRole('option', { name: 'CNK Code' }).click();
 
     // Search and select
     const searchInput = page.getByRole('searchbox');
