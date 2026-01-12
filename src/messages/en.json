@@ -210,14 +210,11 @@
   "ingredients": {
     "pharmaceuticalForm": "Pharmaceutical Form",
     "routeOfAdmin": "Route of Administration",
-    "allergensDetected": "Common Allergens Detected",
     "activeIngredients": "Active Ingredients",
     "noActiveIngredients": "No active ingredients listed",
     "otherIngredients": "Other Ingredients",
     "fromSmPC": "from SmPC",
-    "excludedIngredient": "Excluded ingredient",
-    "excluded": "excluded",
-    "potentialAllergen": "Potential allergen"
+    "excipientDataUnavailable": "Excipient data not available for this medication"
   },
   "badge": {
     "reimbursed": "Reimbursed",
@@ -248,15 +245,6 @@
     "RCP": "Résumé des Caractéristiques du Produit - Product information document (French)",
     "SKP": "Samenvatting van de Productkenmerken - Product information document (Dutch)",
     "FI": "Fachinformation - Product information document (German)"
-  },
-  "allergenWarnings": {
-    "allergenTitle": "Allergen Notice",
-    "allergenMessage": "This medication contains {allergen}, which is a common allergen.",
-    "excludedIngredientTitle": "Excluded Ingredient Alert",
-    "excludedIngredientMessage": "This medication contains ingredients you have excluded: {ingredients}",
-    "dismiss": "Dismiss warning",
-    "expand": "Show details",
-    "collapse": "Hide details"
   },
   "enum": {
     "status": {

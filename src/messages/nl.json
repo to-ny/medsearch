@@ -210,14 +210,11 @@
   "ingredients": {
     "pharmaceuticalForm": "Farmaceutische vorm",
     "routeOfAdmin": "Toedieningsweg",
-    "allergensDetected": "Veelvoorkomende allergenen gedetecteerd",
     "activeIngredients": "Werkzame stoffen",
     "noActiveIngredients": "Geen werkzame stoffen vermeld",
     "otherIngredients": "Hulpstoffen",
     "fromSmPC": "uit de SKP",
-    "excludedIngredient": "Uitgesloten ingrediënt",
-    "excluded": "uitgesloten",
-    "potentialAllergen": "Potentieel allergeen"
+    "excipientDataUnavailable": "Hulpstofgegevens niet beschikbaar voor dit geneesmiddel"
   },
   "badge": {
     "reimbursed": "Terugbetaald",
@@ -248,15 +245,6 @@
     "RCP": "Résumé des Caractéristiques du Produit - Productinformatiedocument (Frans)",
     "SKP": "Samenvatting van de Productkenmerken - Gedetailleerde informatie voor zorgprofessionals",
     "FI": "Fachinformation - Productinformatiedocument (Duits)"
-  },
-  "allergenWarnings": {
-    "allergenTitle": "Allergenenmelding",
-    "allergenMessage": "Dit geneesmiddel bevat {allergen}, een veelvoorkomend allergeen.",
-    "excludedIngredientTitle": "Waarschuwing uitgesloten ingrediënt",
-    "excludedIngredientMessage": "Dit geneesmiddel bevat ingrediënten die u heeft uitgesloten: {ingredients}",
-    "dismiss": "Waarschuwing sluiten",
-    "expand": "Details tonen",
-    "collapse": "Details verbergen"
   },
   "enum": {
     "status": {

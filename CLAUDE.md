@@ -25,6 +25,17 @@ For full documentation, glossary, and SOAP API reference, see **soap-reference.m
 - **Chapter IV:** Restricted drugs requiring prior authorization
 - **Excipients/Allergens:** Inactive ingredients parsed from SmPC documents (not available in SOAP API)
 
+### Working with SOAP APIs
+
+SAM SOAP responses can be large and freeze the terminal. Always use safeguards:
+
+- Set Bash tool `timeout` parameter (max 15000ms)
+- Use `--max-time 10` on curl to abort slow requests
+- Limit output with `head -c 5000` (bytes) or `head -n 50` (lines)
+- Extract only relevant data with `grep -o 'pattern'`
+- Suppress errors with `2>/dev/null`
+- Test incrementally: one small query at a time
+
 ## Testing
 
 Run all tests: `bun run test` (required before committing)

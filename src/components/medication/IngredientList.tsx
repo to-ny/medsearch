@@ -132,6 +132,18 @@ export function IngredientList({
           </div>
         </details>
       )}
+
+      {/* Empty state when excipient data is unavailable */}
+      {showAllComponents && ampCode && !excipientResult && (
+        <div>
+          <h4 className="mb-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+            {t('ingredients.otherIngredients')}
+          </h4>
+          <p className="text-sm text-gray-400 dark:text-gray-500 italic">
+            {t('ingredients.excipientDataUnavailable')}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
