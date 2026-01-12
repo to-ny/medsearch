@@ -54,9 +54,16 @@
     "companyFilter": "Unternehmen",
     "companyFilterPlaceholder": "Akteur-Nummer eingeben...",
     "companyFilterHint": "Ergebnisse nach Akteur-Nummer filtern",
+    "filterByCompany": "Nach Unternehmen filtern",
+    "collapseFilter": "Filter einklappen",
+    "viewCompany": "Unternehmen anzeigen",
     "applyFilter": "Filter anwenden",
     "emptyStateTitle": "Starten Sie Ihre Suche",
-    "emptyStateDescription": "Geben Sie oben einen Arzneimittelnamen, CNK-Code oder Wirkstoff ein"
+    "emptyStateDescription": "Geben Sie oben einen Arzneimittelnamen, CNK-Code oder Wirkstoff ein",
+    "notAvailableForIngredient": "nicht für Wirkstoffsuche verfügbar",
+    "companyFilterDisabledHint": "Der Unternehmensfilter ist bei der Wirkstoffsuche nicht verfügbar. Verwenden Sie stattdessen die Namenssuche.",
+    "refinementNeeded": "Suche verfeinern",
+    "takingLonger": "Dies dauert länger als erwartet. Große Ergebnismengen erfordern möglicherweise zusätzliche Filter."
   },
   "medication": {
     "notFound": "Arzneimittel nicht gefunden",
@@ -176,18 +183,8 @@
     "address": "Adresse",
     "postbox": "Postfach: {value}",
     "productsTitle": "Produkte",
-    "productsTitleWithCount": "Produkte ({count} insgesamt)",
-    "productsDesc": "Alle Produkte von {name} anzeigen",
-    "loadProducts": "Produkte laden",
-    "viewProducts": "Produkte anzeigen",
-    "productCount": "{count, plural, =1 {# Produkt} other {# Produkte}}",
-    "productsLoading": "Produktkatalog wird abgerufen...",
-    "productsLoadingLong": "Lädt noch... Große Kataloge können länger dauern.",
-    "productsCancel": "Abbrechen",
-    "productsTryAgain": "Erneut versuchen",
-    "productsCollapse": "Produkte ausblenden",
-    "productsError": "Produkte konnten nicht geladen werden. Bitte versuchen Sie es später erneut.",
-    "noProducts": "Keine Produkte für dieses Unternehmen gefunden"
+    "searchProducts": "Produkte suchen",
+    "searchTheirProducts": "Deren Produkte suchen"
   },
   "reimbursement": {
     "title": "Erstattung",

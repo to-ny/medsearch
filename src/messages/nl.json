@@ -54,9 +54,16 @@
     "companyFilter": "Bedrijf",
     "companyFilterPlaceholder": "Voer actornummer in...",
     "companyFilterHint": "Filter resultaten op actornummer van bedrijf",
+    "filterByCompany": "Filteren op bedrijf",
+    "collapseFilter": "Filter inklappen",
+    "viewCompany": "Bedrijf bekijken",
     "applyFilter": "Filter toepassen",
     "emptyStateTitle": "Start uw zoekopdracht",
-    "emptyStateDescription": "Voer hierboven een geneesmiddelnaam, CNK-code of ingrediënt in"
+    "emptyStateDescription": "Voer hierboven een geneesmiddelnaam, CNK-code of ingrediënt in",
+    "notAvailableForIngredient": "niet beschikbaar voor ingrediëntzoeken",
+    "companyFilterDisabledHint": "Het bedrijfsfilter is niet beschikbaar bij het zoeken op ingrediënt. Gebruik in plaats daarvan zoeken op naam.",
+    "refinementNeeded": "Verfijn uw zoekopdracht",
+    "takingLonger": "Dit duurt langer dan verwacht. Grote resultatensets vereisen mogelijk extra filters."
   },
   "medication": {
     "notFound": "Geneesmiddel niet gevonden",
@@ -176,18 +183,8 @@
     "address": "Adres",
     "postbox": "Postbus: {value}",
     "productsTitle": "Producten",
-    "productsTitleWithCount": "Producten ({count} totaal)",
-    "productsDesc": "Bekijk alle producten van {name}",
-    "loadProducts": "Producten laden",
-    "viewProducts": "Producten bekijken",
-    "productCount": "{count, plural, =1 {# product} other {# producten}}",
-    "productsLoading": "Productcatalogus ophalen...",
-    "productsLoadingLong": "Nog bezig met laden... Grote catalogi kunnen langer duren.",
-    "productsCancel": "Annuleren",
-    "productsTryAgain": "Opnieuw proberen",
-    "productsCollapse": "Producten verbergen",
-    "productsError": "Producten konden niet worden geladen. Probeer het later opnieuw.",
-    "noProducts": "Geen producten gevonden voor dit bedrijf"
+    "searchProducts": "Producten zoeken",
+    "searchTheirProducts": "Hun producten zoeken"
   },
   "reimbursement": {
     "title": "Terugbetaling",

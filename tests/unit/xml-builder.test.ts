@@ -46,6 +46,66 @@ describe('XML Builder', () => {
       expect(xml).toContain('&amp;');
       expect(xml).toContain('&quot;');
     });
+
+    describe('company filter combinations', () => {
+      it('should combine name search with company filter', () => {
+        const xml = buildFindAmpRequest({ anyNamePart: 'dafalgan', companyActorNr: '01995' });
+
+        expect(xml).toContain('<FindByProduct>');
+        expect(xml).toContain('<AnyNamePart>dafalgan</AnyNamePart>');
+        expect(xml).toContain('<FindByCompany>');
+        expect(xml).toContain('<CompanyActorNr>01995</CompanyActorNr>');
+        // FindByCompany should come after FindByProduct
+        expect(xml.indexOf('FindByProduct')).toBeLessThan(xml.indexOf('FindByCompany'));
+      });
+
+      it('should combine CNK search with company filter', () => {
+        const xml = buildFindAmpRequest({ cnk: '2538657', companyActorNr: '01995' });
+
+        expect(xml).toContain('<FindByDmpp>');
+        expect(xml).toContain('<Code>2538657</Code>');
+        expect(xml).toContain('<FindByCompany>');
+        expect(xml).toContain('<CompanyActorNr>01995</CompanyActorNr>');
+      });
+
+      it('should combine AmpCode search with company filter', () => {
+        const xml = buildFindAmpRequest({ ampCode: 'SAM478337-00', companyActorNr: '01995' });
+
+        expect(xml).toContain('<FindByProduct>');
+        expect(xml).toContain('<AmpCode>SAM478337-00</AmpCode>');
+        expect(xml).toContain('<FindByCompany>');
+        expect(xml).toContain('<CompanyActorNr>01995</CompanyActorNr>');
+      });
+
+      it('should NOT combine ingredient search with company filter', () => {
+        const xml = buildFindAmpRequest({ ingredient: 'paracetamol', companyActorNr: '01995' });
+
+        expect(xml).toContain('<FindByIngredient>');
+        expect(xml).toContain('<SubstanceName>paracetamol</SubstanceName>');
+        // Company filter should be ignored
+        expect(xml).not.toContain('<FindByCompany>');
+        expect(xml).not.toContain('<CompanyActorNr>');
+      });
+
+      it('should NOT combine vmpCode search with company filter', () => {
+        const xml = buildFindAmpRequest({ vmpCode: '25747', companyActorNr: '01995' });
+
+        expect(xml).toContain('<FindByVirtualProduct>');
+        expect(xml).toContain('<VmpCode>25747</VmpCode>');
+        // Company filter should be ignored
+        expect(xml).not.toContain('<FindByCompany>');
+        expect(xml).not.toContain('<CompanyActorNr>');
+      });
+
+      it('should support company-only search', () => {
+        const xml = buildFindAmpRequest({ companyActorNr: '01995' });
+
+        expect(xml).toContain('<FindByCompany>');
+        expect(xml).toContain('<CompanyActorNr>01995</CompanyActorNr>');
+        expect(xml).not.toContain('<FindByProduct>');
+        expect(xml).not.toContain('<FindByDmpp>');
+      });
+    });
   });
 
   describe('buildFindVmpRequest', () => {

@@ -156,6 +156,36 @@ describe('AMP Service', () => {
       expect(result.meta!.totalResults).toBeGreaterThan(0);
       expect(result.meta!.searchDate).toBeDefined();
     });
+
+    describe('company filter timeout handling', () => {
+      it('should return COMPANY_TOO_LARGE for timeout on company-only search', async () => {
+        vi.spyOn(soapClient, 'soapRequest').mockRejectedValue(new Error('Request timeout after 30000ms'));
+
+        const result = await searchAmp({ companyActorNr: '01995', language: 'en' });
+
+        expect(result.success).toBe(false);
+        expect(result.error?.code).toBe('COMPANY_TOO_LARGE');
+        expect(result.error?.message).toContain('too many products');
+      });
+
+      it('should return normal timeout error when query is also provided', async () => {
+        vi.spyOn(soapClient, 'soapRequest').mockRejectedValue(new Error('Request timeout after 30000ms'));
+
+        const result = await searchAmp({ query: 'dafalgan', companyActorNr: '01995', language: 'en' });
+
+        expect(result.success).toBe(false);
+        expect(result.error?.code).toBe('REQUEST_FAILED');
+      });
+
+      it('should return normal error for non-timeout failures on company search', async () => {
+        vi.spyOn(soapClient, 'soapRequest').mockRejectedValue(new Error('Network connection refused'));
+
+        const result = await searchAmp({ companyActorNr: '01995', language: 'en' });
+
+        expect(result.success).toBe(false);
+        expect(result.error?.code).toBe('REQUEST_FAILED');
+      });
+    });
   });
 
   describe('getAmpsByVmp', () => {

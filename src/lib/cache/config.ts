@@ -111,15 +111,6 @@ export const CACHE_CONFIG = {
     staleWhileRevalidate: CACHE_DURATIONS.SWR_MEDIUM,
     clientStaleTime: 5 * 60 * 1000, // 5 minutes
   },
-
-  /**
-   * Company products - same as medications
-   */
-  companyProducts: {
-    serverCache: CACHE_DURATIONS.CORE_DATA,
-    staleWhileRevalidate: CACHE_DURATIONS.SWR_MEDIUM,
-    clientStaleTime: 5 * 60 * 1000, // 5 minutes
-  },
 } as const;
 
 export type CacheConfigKey = keyof typeof CACHE_CONFIG;

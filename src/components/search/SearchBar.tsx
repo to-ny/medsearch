@@ -27,7 +27,6 @@ export function SearchBar({
   const [searchType, setSearchType] = useState<SearchType>(initialType);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const searchTypeLabels: Record<SearchType, string> = {
     name: t('search.byName'),
@@ -71,19 +70,8 @@ export function SearchBar({
       if (/^\d{7}$/.test(value.trim())) {
         setSearchType('cnk');
       }
-
-      // Debounce search
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-
-      if (value.trim().length >= 3) {
-        debounceRef.current = setTimeout(() => {
-          onSearch(value.trim(), searchType);
-        }, 300);
-      }
     },
-    [searchType, onSearch]
+    []
   );
 
   const handleKeyDown = useCallback(

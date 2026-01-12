@@ -36,6 +36,27 @@ SAM SOAP responses can be large and freeze the terminal. Always use safeguards:
 - Suppress errors with `2>/dev/null`
 - Test incrementally: one small query at a time
 
+### Debugging SOAP Issues
+
+When debugging SOAP-related problems:
+
+1. **Test the actual API** - Don't rely only on unit tests. Use `curl` to hit the real endpoint:
+   ```bash
+   curl -s "http://localhost:3000/api/medications?company=5782" | head -c 500
+   ```
+
+2. **Test the SOAP endpoint directly** - To understand what the SAM API returns:
+   ```bash
+   curl -s "https://apps.samdb.ehealth.fgov.be/samv2/dics/v5" -X POST \
+     -H "Content-Type: text/xml" -d '<soap request>' | head -c 1000
+   ```
+
+3. **Remember HTTP 500 ≠ failure** - SAM returns HTTP 500 for all SOAP faults, including "no results" business errors. Always check the response body.
+
+4. **Trace the full chain** - Issues can occur at: SOAP client → XML parser → service → API route → frontend. Test each layer.
+
+5. **Check soap-reference.md** - Contains known error codes and their meanings.
+
 ## Testing
 
 Run all tests: `bun run test` (required before committing)

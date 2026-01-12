@@ -244,6 +244,52 @@ describe('XML Parser', () => {
       expect(result.error?.code).toBe('SOAP_FAULT');
     });
 
+    it('should handle business error 1004 (no company found) as empty results', () => {
+      const faultXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>Internal error</faultstring>
+              <detail>
+                <ns2:BusinessError xmlns:ns2="urn:be:fgov:ehealth:errors:soa:v1">
+                  <Code>1004</Code>
+                  <Message xml:lang="en">No company found for given criteria.</Message>
+                </ns2:BusinessError>
+              </detail>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindAmpResponse(faultXml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle business error 1008 (no results) as empty results', () => {
+      const faultXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>Internal error</faultstring>
+              <detail>
+                <ns2:BusinessError xmlns:ns2="urn:be:fgov:ehealth:errors:soa:v1">
+                  <Code>1008</Code>
+                  <Message xml:lang="en">No results found.</Message>
+                </ns2:BusinessError>
+              </detail>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindAmpResponse(faultXml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
     it('should handle invalid XML', () => {
       const result = parseFindAmpResponse('not xml at all');
 
@@ -315,6 +361,46 @@ describe('XML Parser', () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual([]);
     });
+
+    it('should handle business error 1008 (no results) as empty results', () => {
+      const faultXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>Internal error</faultstring>
+              <detail>
+                <ns2:BusinessError xmlns:ns2="urn:be:fgov:ehealth:errors:soa:v1">
+                  <Code>1008</Code>
+                  <Message xml:lang="en">No results found for given criteria.</Message>
+                </ns2:BusinessError>
+              </detail>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindVmpResponse(faultXml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle SOAP fault without business error as failure', () => {
+      const faultXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>Internal server error</faultstring>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindVmpResponse(faultXml);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('SOAP_FAULT');
+    });
   });
 
   describe('parseFindCompanyResponse', () => {
@@ -332,6 +418,69 @@ describe('XML Parser', () => {
       const result = parseFindCompanyResponse(xml);
 
       expect(result.data![0]['@_ActorNr']).toBeDefined();
+    });
+
+    it('should handle business error 1004 (no company found) as empty results', () => {
+      const faultXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>Internal error</faultstring>
+              <detail>
+                <ns2:BusinessError xmlns:ns2="urn:be:fgov:ehealth:errors:soa:v1">
+                  <Code>1004</Code>
+                  <Message xml:lang="en">No company found for given criteria.</Message>
+                </ns2:BusinessError>
+              </detail>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindCompanyResponse(faultXml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle business error 1008 (no results) as empty results', () => {
+      const faultXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>Internal error</faultstring>
+              <detail>
+                <ns2:BusinessError xmlns:ns2="urn:be:fgov:ehealth:errors:soa:v1">
+                  <Code>1008</Code>
+                  <Message xml:lang="en">No results found for given criteria.</Message>
+                </ns2:BusinessError>
+              </detail>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindCompanyResponse(faultXml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle SOAP fault without business error as failure', () => {
+      const faultXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>Internal server error</faultstring>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindCompanyResponse(faultXml);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('SOAP_FAULT');
     });
   });
 
