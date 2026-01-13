@@ -111,6 +111,17 @@ export const CACHE_CONFIG = {
     staleWhileRevalidate: CACHE_DURATIONS.SWR_MEDIUM,
     clientStaleTime: 5 * 60 * 1000, // 5 minutes
   },
+
+  /**
+   * Generic reference data - rarely changes
+   * - VMP Groups (therapeutic equivalence)
+   * - Other static reference data
+   */
+  referenceData: {
+    serverCache: CACHE_DURATIONS.REFERENCE_DATA,
+    staleWhileRevalidate: CACHE_DURATIONS.SWR_LONG,
+    clientStaleTime: 60 * 60 * 1000, // 1 hour
+  },
 } as const;
 
 export type CacheConfigKey = keyof typeof CACHE_CONFIG;

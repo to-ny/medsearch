@@ -135,12 +135,18 @@ export function buildFindVmpRequest(params: {
   vmpCode?: string;
   ingredient?: string;
   vtmCode?: string;
+  vmpGroupCode?: string;
   language?: string;
   searchDate?: string;
 }): string {
   let body = '';
 
-  if (params.anyNamePart) {
+  if (params.vmpGroupCode) {
+    // FindByGenericPrescriptionGroup uses GenericPrescriptionGroupCode (int)
+    body = `      <FindByGenericPrescriptionGroup>
+        <GenericPrescriptionGroupCode>${escapeXml(params.vmpGroupCode)}</GenericPrescriptionGroupCode>
+      </FindByGenericPrescriptionGroup>`;
+  } else if (params.anyNamePart) {
     body = `      <FindByProduct>
         <AnyNamePart>${escapeXml(params.anyNamePart)}</AnyNamePart>
       </FindByProduct>`;
@@ -164,6 +170,36 @@ export function buildFindVmpRequest(params: {
 
   return buildSoapRequest({
     operation: 'FindVmp',
+    searchDate: params.searchDate,
+    body,
+  });
+}
+
+/**
+ * Builds a FindVmpGroup SOAP request
+ */
+export function buildFindVmpGroupRequest(params: {
+  vmpGroupCode?: string;
+  anyNamePart?: string;
+  language?: string;
+  searchDate?: string;
+}): string {
+  let body = '';
+
+  if (params.vmpGroupCode) {
+    // Search by group code
+    body = `      <FindByGenericPrescriptionGroup>
+        <GenericPrescriptionGroupCode>${escapeXml(params.vmpGroupCode)}</GenericPrescriptionGroupCode>
+      </FindByGenericPrescriptionGroup>`;
+  } else if (params.anyNamePart) {
+    // Search by name
+    body = `      <FindByGenericPrescriptionGroup>
+        <AnyNamePart>${escapeXml(params.anyNamePart)}</AnyNamePart>
+      </FindByGenericPrescriptionGroup>`;
+  }
+
+  return buildSoapRequest({
+    operation: 'FindVmpGroup',
     searchDate: params.searchDate,
     body,
   });

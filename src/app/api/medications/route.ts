@@ -20,6 +20,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<Medication
     query: searchParams.get('query') || undefined,
     cnk: searchParams.get('cnk') || undefined,
     ingredient: searchParams.get('ingredient') || undefined,
+    vmpCode: searchParams.get('vmp') || undefined,
     companyActorNr: searchParams.get('company') || undefined,
     language: (searchParams.get('lang') as MedicationSearchParams['language']) || 'en',
     limit: rawLimit ? Math.min(Math.max(1, parseInt(rawLimit, 10) || 50), 100) : 50,
@@ -27,9 +28,9 @@ export async function GET(request: NextRequest): Promise<NextResponse<Medication
   };
 
   // Validate: at least one search criterion required
-  if (!params.query && !params.cnk && !params.ingredient && !params.companyActorNr) {
+  if (!params.query && !params.cnk && !params.ingredient && !params.vmpCode && !params.companyActorNr) {
     return NextResponse.json(
-      { code: 'MISSING_PARAMS', message: 'At least one search parameter required (query, cnk, ingredient, or company)' },
+      { code: 'MISSING_PARAMS', message: 'At least one search parameter required (query, cnk, ingredient, vmp, or company)' },
       { status: 400 }
     );
   }
@@ -64,6 +65,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<Medication
       query: params.query,
       cnk: params.cnk,
       ingredient: params.ingredient,
+      vmpCode: params.vmpCode,
       companyActorNr: params.companyActorNr,
       language: params.language,
     });

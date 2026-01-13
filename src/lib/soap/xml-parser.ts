@@ -13,6 +13,9 @@ const parser = new XMLParser({
   trimValues: true,
   isArray: (name) => {
     // Elements that should always be arrays
+    // Note: VmpGroup is NOT in this list because it appears as both:
+    // - A single nested element inside Vmp (should stay object)
+    // - Multiple root elements in FindVmpGroupResponse (handled with Array.isArray)
     const arrayElements = [
       'Amp',
       'Ampp',
@@ -607,6 +610,17 @@ export interface RawAtcClassificationData {
   CommentedClassification?: RawAtcClassificationData[];
 }
 
+export interface RawVmpGroupData {
+  '@_Code'?: string | number;
+  '@_ProductId'?: string;
+  '@_StartDate'?: string;
+  '@_EndDate'?: string;
+  Name?: RawTextElement[];
+  NoGenericPrescriptionReason?: string;
+  NoSwitchReason?: string;
+  PatientFrailtyIndicator?: boolean;
+}
+
 /**
  * Recursively flattens nested CommentedClassification elements into a flat array
  */
@@ -776,6 +790,50 @@ export function parseFindChapterIVResponse(xml: string): ParsedSoapResponse<RawC
     return {
       success: true,
       data: Array.isArray(paragraphs) ? paragraphs : [paragraphs],
+      searchDate: response['@_SearchDate'] as string,
+      samId: response['@_SamId'] as string,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: { code: 'PARSE_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+    };
+  }
+}
+
+/**
+ * Parses a FindVmpGroup SOAP response
+ */
+export function parseFindVmpGroupResponse(xml: string): ParsedSoapResponse<RawVmpGroupData[]> {
+  try {
+    const body = extractSoapBody(xml);
+    if (!body) {
+      return { success: false, error: { code: 'PARSE_ERROR', message: 'Invalid SOAP response' } };
+    }
+
+    // Check for SOAP fault
+    const fault = checkSoapFault(body);
+    if (fault.isFault) {
+      if (fault.isNoResultsFault) {
+        return { success: true, data: [] };
+      }
+      return {
+        success: false,
+        error: { code: 'SOAP_FAULT', message: fault.errorMessage || 'Unknown SOAP fault' },
+      };
+    }
+
+    const responseKey = Object.keys(body).find((k) => k.includes('FindVmpGroupResponse'));
+    if (!responseKey) {
+      return { success: false, error: { code: 'NO_RESPONSE', message: 'No FindVmpGroupResponse found' } };
+    }
+
+    const response = body[responseKey] as Record<string, unknown>;
+    const vmpGroups = (response.VmpGroup || []) as RawVmpGroupData[];
+
+    return {
+      success: true,
+      data: Array.isArray(vmpGroups) ? vmpGroups : [vmpGroups],
       searchDate: response['@_SearchDate'] as string,
       samId: response['@_SamId'] as string,
     };

@@ -8,6 +8,7 @@ import {
   parseFindReimbursementResponse,
   parseFindAtcResponse,
   parseFindChapterIVResponse,
+  parseFindVmpGroupResponse,
   extractText,
   extractTextWithLang,
   extractAllTextVersions,
@@ -782,6 +783,103 @@ describe('XML Parser', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual([]);
+    });
+  });
+
+  describe('parseFindVmpGroupResponse', () => {
+    it('should parse VmpGroup response from fixture', () => {
+      const xml = loadFixture('findvmpgroup-code-response.xml');
+      const result = parseFindVmpGroupResponse(xml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data!.length).toBe(1);
+    });
+
+    it('should extract VmpGroup Code attribute', () => {
+      const xml = loadFixture('findvmpgroup-code-response.xml');
+      const result = parseFindVmpGroupResponse(xml);
+
+      expect(result.data![0]['@_Code']).toBe(24877);
+    });
+
+    it('should extract VmpGroup Name with languages', () => {
+      const xml = loadFixture('findvmpgroup-code-response.xml');
+      const result = parseFindVmpGroupResponse(xml);
+
+      expect(result.data![0].Name).toBeDefined();
+      const textArray = getTextArray(result.data![0].Name);
+      expect(textArray).toBeDefined();
+      expect(textArray!.length).toBeGreaterThan(0);
+    });
+
+    it('should extract NoSwitchReason when present', () => {
+      const xml = loadFixture('findvmpgroup-code-response.xml');
+      const result = parseFindVmpGroupResponse(xml);
+
+      expect(result.data![0].NoSwitchReason).toBe('NARROW_THERAPEUTIC_INDEX');
+    });
+
+    it('should handle empty response', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <ns4:FindVmpGroupResponse xmlns:ns4="urn:be:fgov:ehealth:dics:protocol:v5">
+            </ns4:FindVmpGroupResponse>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindVmpGroupResponse(xml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle SOAP fault response', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>Internal server error</faultstring>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindVmpGroupResponse(xml);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('SOAP_FAULT');
+    });
+
+    it('should handle business error 1008 (no results) as empty array', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <soap:Fault>
+              <faultcode>soap:Server</faultcode>
+              <faultstring>Internal error</faultstring>
+              <detail>
+                <ns2:BusinessError xmlns:ns2="urn:be:fgov:ehealth:errors:soa:v1">
+                  <Code>1008</Code>
+                  <Message>No results found</Message>
+                </ns2:BusinessError>
+              </detail>
+            </soap:Fault>
+          </soap:Body>
+        </soap:Envelope>`;
+
+      const result = parseFindVmpGroupResponse(xml);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle invalid XML', () => {
+      const result = parseFindVmpGroupResponse('not xml at all');
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('PARSE_ERROR');
     });
   });
 });

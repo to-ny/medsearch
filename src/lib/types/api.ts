@@ -2,7 +2,7 @@
  * API request/response types
  */
 
-import type { MedicationSearchResult, Medication, Reimbursement, Company, GenericProduct } from './medication';
+import type { MedicationSearchResult, Medication, Reimbursement, Company, GenericProduct, EquivalentMedications } from './medication';
 
 /**
  * Search parameters for medications
@@ -14,6 +14,8 @@ export interface MedicationSearchParams {
   cnk?: string;
   /** Search by ingredient name */
   ingredient?: string;
+  /** Search by VMP code (finds all branded products for a generic) */
+  vmpCode?: string;
   /** Search by company actor number */
   companyActorNr?: string;
   /** Language for results */
@@ -53,8 +55,11 @@ export interface MedicationDetailParams {
 export interface MedicationDetailResponse {
   medication: Medication;
   reimbursement?: Reimbursement[];
+  /** Other brands of the same generic medication */
   equivalents?: MedicationSearchResult[];
   genericProduct?: GenericProduct;
+  /** Therapeutic alternatives from the same VMP Group (different forms/strengths) */
+  therapeuticAlternatives?: EquivalentMedications;
 }
 
 /**

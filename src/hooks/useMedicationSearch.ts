@@ -32,6 +32,7 @@ async function fetchMedications(params: MedicationSearchParams): Promise<Medicat
   if (params.query) searchParams.set('query', params.query);
   if (params.cnk) searchParams.set('cnk', params.cnk);
   if (params.ingredient) searchParams.set('ingredient', params.ingredient);
+  if (params.vmpCode) searchParams.set('vmp', params.vmpCode);
   if (params.companyActorNr) searchParams.set('company', params.companyActorNr);
   if (params.language) searchParams.set('lang', params.language);
   if (params.limit) searchParams.set('limit', String(params.limit));
@@ -49,7 +50,7 @@ async function fetchMedications(params: MedicationSearchParams): Promise<Medicat
 
 export function useMedicationSearch(params: MedicationSearchParams, enabled = true) {
   const hasSearchCriteria = Boolean(
-    params.query || params.cnk || params.ingredient || params.companyActorNr
+    params.query || params.cnk || params.ingredient || params.vmpCode || params.companyActorNr
   );
 
   return useQuery({

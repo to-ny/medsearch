@@ -228,6 +228,54 @@ export interface Copayment {
 }
 
 /**
+ * VMP Group - groups therapeutically equivalent VMPs
+ */
+export interface VmpGroup {
+  /** Group code (integer as string) */
+  code: string;
+  /** Localized group name */
+  name: string;
+  /** Actual language of the name */
+  nameLanguage?: string;
+  /** All available language versions */
+  allNames?: LocalizedText[];
+  /** Why generic prescription isn't allowed (e.g., "biological") */
+  noGenericPrescriptionReason?: string;
+  /** Why switching isn't allowed (e.g., "narrow therapeutic margin") */
+  noSwitchReason?: string;
+  /** Whether dosage should be adjusted for frail patients */
+  patientFrailtyIndicator?: boolean;
+}
+
+/**
+ * VMP Group member - a VMP within a group for equivalents display
+ */
+export interface VmpGroupMember {
+  /** VMP code */
+  vmpCode: string;
+  /** VMP name */
+  name: string;
+  /** Actual language of the name */
+  nameLanguage?: string;
+  /** All available language versions */
+  allNames?: LocalizedText[];
+  /** Abbreviated name */
+  abbreviatedName?: string;
+}
+
+/**
+ * Response for equivalent medications lookup
+ */
+export interface EquivalentMedications {
+  /** The VMP Group these belong to */
+  group: VmpGroup;
+  /** The current medication's VMP code */
+  currentVmpCode: string;
+  /** All equivalent VMPs in this group (including current) */
+  equivalents: VmpGroupMember[];
+}
+
+/**
  * Company/pharmaceutical manufacturer
  */
 export interface Company {

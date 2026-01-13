@@ -55,6 +55,11 @@
     "companyFilterPlaceholder": "Voer actornummer in...",
     "companyFilterHint": "Filter resultaten op actornummer van bedrijf",
     "filterByCompany": "Filteren op bedrijf",
+    "filterByGeneric": "Filteren op generiek product",
+    "genericFilter": "Generiek Product",
+    "genericCode": "VMP-code",
+    "genericFilterPlaceholder": "Voer VMP-code in...",
+    "genericFilterHint": "Filter resultaten op generieke productcode (VMP)",
     "collapseFilter": "Filter inklappen",
     "viewCompany": "Bedrijf bekijken",
     "applyFilter": "Filter toepassen",
@@ -110,7 +115,15 @@
     "price": "Prijs",
     "labels": "Labels",
     "compareEquivalents": "Equivalenten vergelijken",
-    "viewDetails": "Details bekijken"
+    "viewDetails": "Details bekijken",
+    "therapeuticAlternatives": "Therapeutische alternatieven",
+    "therapeuticAlternativesDesc": "Andere formuleringen in dezelfde therapeutische groep",
+    "sameFormulation": "Huidige formulering",
+    "otherFormulations": "Andere formuleringen",
+    "findBrands": "Merken zoeken",
+    "noSwitchWarning": "Let op: Wisselen tussen formuleringen in deze groep wordt mogelijk niet aanbevolen",
+    "noGenericWarning": "Let op: Generieke voorschrijving is niet beschikbaar voor deze groep",
+    "noOtherFormulations": "Geen andere formuleringen beschikbaar in deze therapeutische groep"
   },
   "compare": {
     "title": "Geneesmiddelen vergelijken",

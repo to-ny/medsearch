@@ -55,6 +55,11 @@
     "companyFilterPlaceholder": "Entrez le numéro d'acteur...",
     "companyFilterHint": "Filtrer les résultats par numéro d'acteur",
     "filterByCompany": "Filtrer par entreprise",
+    "filterByGeneric": "Filtrer par produit générique",
+    "genericFilter": "Produit Générique",
+    "genericCode": "Code VMP",
+    "genericFilterPlaceholder": "Entrez le code VMP...",
+    "genericFilterHint": "Filtrer les résultats par code de produit générique (VMP)",
     "collapseFilter": "Réduire le filtre",
     "viewCompany": "Voir l'entreprise",
     "applyFilter": "Appliquer le filtre",
@@ -110,7 +115,15 @@
     "price": "Prix",
     "labels": "Étiquettes",
     "compareEquivalents": "Comparer les équivalents",
-    "viewDetails": "Voir les détails"
+    "viewDetails": "Voir les détails",
+    "therapeuticAlternatives": "Alternatives thérapeutiques",
+    "therapeuticAlternativesDesc": "Autres formulations du même groupe thérapeutique",
+    "sameFormulation": "Formulation actuelle",
+    "otherFormulations": "Autres formulations",
+    "findBrands": "Trouver des marques",
+    "noSwitchWarning": "Remarque : Le passage d'une formulation à l'autre dans ce groupe peut ne pas être recommandé",
+    "noGenericWarning": "Remarque : La prescription générique n'est pas disponible pour ce groupe",
+    "noOtherFormulations": "Aucune autre formulation disponible dans ce groupe thérapeutique"
   },
   "compare": {
     "title": "Comparer les médicaments",

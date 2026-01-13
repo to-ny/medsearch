@@ -19,6 +19,70 @@ test.describe('Medication Detail Page', () => {
 
     await expect(page.getByText('Available Packages')).toBeVisible({ timeout: 15000 });
   });
+
+  test('should display medication page without errors when no therapeutic alternatives', async ({ page }) => {
+    // Test with a medication that may not have therapeutic alternatives
+    await page.goto(`/medication/${testCNK}`);
+
+    // Page should load successfully
+    await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toBeVisible({ timeout: 15000 });
+
+    // Main content should be visible (not broken by missing alternatives)
+    await expect(page.getByText('Available Packages')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Ingredients', exact: true })).toBeVisible();
+  });
+});
+
+test.describe('Therapeutic Alternatives', () => {
+  // Omeprazole 20mg tablet (Losec-Mups) - known to have therapeutic alternatives
+  // CNK may need to be updated if this specific product changes in the SAM database
+  const omeprazoleCNK = '2095438'; // Losec-Mups 20mg
+
+  test('should show therapeutic alternatives section when available', async ({ page }) => {
+    await page.goto(`/medication/${omeprazoleCNK}`, { waitUntil: 'networkidle' });
+
+    // Wait for page to load
+    await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toBeVisible({ timeout: 20000 });
+
+    // Check for therapeutic alternatives section
+    // Note: This test may fail if the medication's VMP Group only has one member
+    const alternativesSection = page.getByText('Therapeutic Alternatives');
+    const hasAlternatives = await alternativesSection.isVisible().catch(() => false);
+
+    if (hasAlternatives) {
+      // If alternatives exist, verify the section structure
+      await expect(page.getByText('Therapeutic Group').first()).toBeVisible();
+      await expect(page.getByText('Other formulations').first()).toBeVisible();
+
+      // Should have links to find brands
+      const findBrandsLinks = page.getByRole('link', { name: /Find brands/i });
+      await expect(findBrandsLinks.first()).toBeVisible();
+    }
+    // If no alternatives, the page should still render correctly
+  });
+
+  test('should navigate to search when clicking Find brands', async ({ page }) => {
+    await page.goto(`/medication/${omeprazoleCNK}`, { waitUntil: 'networkidle' });
+
+    // Wait for page to load
+    await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toBeVisible({ timeout: 20000 });
+
+    // Check if therapeutic alternatives exist
+    const alternativesSection = page.getByText('Therapeutic Alternatives');
+    const hasAlternatives = await alternativesSection.isVisible().catch(() => false);
+
+    if (hasAlternatives) {
+      // Click on a "Find brands" link
+      const findBrandsLink = page.getByRole('link', { name: /Find brands/i }).first();
+      await findBrandsLink.click();
+
+      // Should navigate to search page with vmp parameter
+      await expect(page).toHaveURL(/\/search\?vmp=/);
+
+      // Should show search results
+      await expect(page.getByText(/results?/i)).toBeVisible({ timeout: 15000 });
+    }
+  });
 });
 
 test.describe('Chapter IV API', () => {

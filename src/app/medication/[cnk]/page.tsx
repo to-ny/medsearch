@@ -9,6 +9,7 @@ import { MedicationCard } from '@/components/medication/MedicationCard';
 import { IngredientList } from '@/components/medication/IngredientList';
 import { ReimbursementInfo } from '@/components/medication/ReimbursementInfo';
 import { PriceComparison } from '@/components/medication/PriceComparison';
+import { TherapeuticAlternatives } from '@/components/medication/TherapeuticAlternatives';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { SkeletonCard, Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
@@ -84,7 +85,7 @@ export default function MedicationPage({ params }: MedicationPageProps) {
     );
   }
 
-  const { medication, reimbursement, equivalents, genericProduct } = data;
+  const { medication, reimbursement, equivalents, genericProduct, therapeuticAlternatives } = data;
   const price = getPrimaryPrice(medication);
 
   // Create search result format for comparison
@@ -179,6 +180,11 @@ export default function MedicationPage({ params }: MedicationPageProps) {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Therapeutic alternatives (VMP Group equivalents) */}
+          {therapeuticAlternatives && (
+            <TherapeuticAlternatives data={therapeuticAlternatives} />
           )}
 
           {/* Price comparison */}

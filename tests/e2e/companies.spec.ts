@@ -44,13 +44,14 @@ test.describe('Search Page', () => {
     await page.goto('/search');
 
     // Company filter should be collapsed - only the expand button visible
-    await expect(page.getByText('Filter by company')).toBeVisible();
+    const filterButton = page.getByRole('button', { name: 'Filter by company' });
+    await expect(filterButton).toBeVisible();
 
     // The input field should not be visible initially
     await expect(page.getByPlaceholder(/actor number/i)).not.toBeVisible();
 
     // Click to expand
-    await page.getByText('Filter by company').click();
+    await filterButton.click();
 
     // Now the input should be visible
     await expect(page.getByPlaceholder(/actor number/i)).toBeVisible();
@@ -82,7 +83,7 @@ test.describe('Search Page', () => {
     await page.goto('/search?type=ingredient');
 
     // Company filter button should be disabled
-    const filterButton = page.getByText('Filter by company');
+    const filterButton = page.getByRole('button', { name: 'Filter by company' });
     await expect(filterButton).toBeVisible();
     await expect(filterButton).toBeDisabled();
     await expect(page.getByText(/not available for ingredient/i)).toBeVisible();

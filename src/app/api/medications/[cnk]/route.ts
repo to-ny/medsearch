@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAmpDetail, getAmpsByVmp } from '@/lib/services/amp';
-import { getVmpDetail } from '@/lib/services/vmp';
+import { getVmpDetail, getEquivalentMedications } from '@/lib/services/vmp';
 import { getReimbursementByCnk } from '@/lib/services/reimbursement';
 import { createCacheHeaders } from '@/lib/cache';
 import { normalizeCnk } from '@/lib/utils/format';
@@ -73,19 +73,29 @@ export async function GET(
 
     // Get equivalents if requested and medication has a VMP code
     if (includeEquivalents && medication.vmpCode) {
-      // First get the VMP details
-      const vmpResult = await getVmpDetail(String(medication.vmpCode), language);
+      const vmpCode = String(medication.vmpCode);
+
+      // Fetch VMP details and therapeutic alternatives in parallel
+      const [vmpResult, equivalentsResult, therapeuticResult] = await Promise.all([
+        getVmpDetail(vmpCode, language),
+        getAmpsByVmp(vmpCode, language),
+        getEquivalentMedications(vmpCode, language),
+      ]);
+
       if (vmpResult.success && vmpResult.data) {
         response.genericProduct = vmpResult.data;
       }
 
-      // Then get all AMPs with this VMP code
-      const equivalentsResult = await getAmpsByVmp(String(medication.vmpCode), language);
       if (equivalentsResult.success && equivalentsResult.data) {
         // Filter out the current medication and sort by price
         response.equivalents = equivalentsResult.data
           .filter((eq) => eq.ampCode !== medication.ampCode)
           .sort((a, b) => (a.price || Infinity) - (b.price || Infinity));
+      }
+
+      // Add therapeutic alternatives (VMP Group equivalents)
+      if (therapeuticResult.success && therapeuticResult.data) {
+        response.therapeuticAlternatives = therapeuticResult.data;
       }
     }
 

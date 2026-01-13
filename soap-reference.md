@@ -481,6 +481,115 @@ Get Chapter IV (prior authorization) paragraph details for restricted medication
 
 ---
 
+### FindVmpGroup
+
+Search for VMP Groups (Generic Prescription Groups) which contain therapeutically equivalent medications.
+
+**Search Methods:**
+
+- **FindByGenericPrescriptionGroup**
+  - `GenericPrescriptionGroupCode` - Search by group code (integer)
+  - `AnyNamePart` - Search by name substring
+- **FindByProduct** - Search by VMP code or name to find its containing group
+
+**Response Structure:**
+
+VmpGroup responses contain group metadata but NOT the list of member VMPs. To get VMPs in a group, use FindVmp with `FindByGenericPrescriptionGroup`.
+
+**Example Request (by code):**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ns="urn:be:fgov:ehealth:dics:protocol:v5">
+  <soap:Header/>
+  <soap:Body>
+    <ns:FindVmpGroupRequest IssueInstant="2025-01-11T10:00:00.000Z">
+      <FindByGenericPrescriptionGroup>
+        <GenericPrescriptionGroupCode>23861</GenericPrescriptionGroupCode>
+      </FindByGenericPrescriptionGroup>
+    </ns:FindVmpGroupRequest>
+  </soap:Body>
+</soap:Envelope>
+```
+
+**Example Request (by name):**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ns="urn:be:fgov:ehealth:dics:protocol:v5">
+  <soap:Header/>
+  <soap:Body>
+    <ns:FindVmpGroupRequest IssueInstant="2025-01-11T10:00:00.000Z">
+      <FindByGenericPrescriptionGroup>
+        <AnyNamePart>omeprazol</AnyNamePart>
+      </FindByGenericPrescriptionGroup>
+    </ns:FindVmpGroupRequest>
+  </soap:Body>
+</soap:Envelope>
+```
+
+**Response Structure:**
+
+```xml
+<FindVmpGroupResponse SearchDate="2025-01-11" SamId="...">
+  <VmpGroup Code="23861" ProductId="..." StartDate="2025-02-06">
+    <Name xml:lang="nl">omeprazol oraal 20 mg [CAVE vast/vloeib.]</Name>
+    <Name xml:lang="fr">oméprazole oral 20 mg [CAVE solide/liq.]</Name>
+    <NoGenericPrescriptionReason>...</NoGenericPrescriptionReason>
+    <NoSwitchReason>...</NoSwitchReason>
+    <PatientFrailtyIndicator>false</PatientFrailtyIndicator>
+    <SingleAdministrationDose>...</SingleAdministrationDose>
+  </VmpGroup>
+</FindVmpGroupResponse>
+```
+
+**Key Response Fields:**
+
+- `Code` - The VMP Group code (integer)
+- `ProductId` - Unique product identifier for audit
+- `Name` - Localized group name (nl, fr, de, en)
+- `NoGenericPrescriptionReason` - Why generic prescription isn't allowed (e.g., "biological")
+- `NoSwitchReason` - Why switching isn't allowed (e.g., "narrow therapeutic margin")
+- `PatientFrailtyIndicator` - Whether dosage should be adjusted for frail patients
+- `SingleAdministrationDose` - Standard single dose quantity
+
+---
+
+### FindVmp with VMP Group
+
+To get all VMPs in a group, use FindVmp with `FindByGenericPrescriptionGroup`:
+
+**Example Request:**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ns="urn:be:fgov:ehealth:dics:protocol:v5">
+  <soap:Header/>
+  <soap:Body>
+    <ns:FindVmpRequest IssueInstant="2025-01-11T10:00:00.000Z">
+      <FindByGenericPrescriptionGroup>
+        <GenericPrescriptionGroupCode>23861</GenericPrescriptionGroupCode>
+      </FindByGenericPrescriptionGroup>
+    </ns:FindVmpRequest>
+  </soap:Body>
+</soap:Envelope>
+```
+
+This returns all VMPs that belong to the specified group, each with full VMP details including components and ingredients.
+
+**Workflow: Finding Equivalent Medications**
+
+1. Get the AMP (branded medication) - has `VmpCode`
+2. Get the VMP detail - has `VmpGroup.Code`
+3. Query FindVmp with `FindByGenericPrescriptionGroup` using that code
+4. Returns all equivalent VMPs in the same group
+5. For each equivalent VMP, query FindAmp with `FindByVirtualProduct` to get branded versions
+
+---
+
 ### FindCommentedClassification
 
 Search for BCFI therapeutic classifications.
