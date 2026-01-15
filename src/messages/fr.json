@@ -288,6 +288,42 @@
     "SKP": "Samenvatting van de Productkenmerken - Document d'information produit (néerlandais)",
     "FI": "Fachinformation - Document d'information produit (allemand)"
   },
+  "dosage": {
+    "title": "Posologie standard",
+    "noInfo": "Aucune information de posologie standard disponible pour ce médicament.",
+    "consultSmPC": "Consultez le RCP pour les recommandations de dosage.",
+    "viewSmPC": "Voir le RCP",
+    "disclaimer": "Information de référence uniquement. Vérifiez avec la documentation officielle du produit et le jugement clinique.",
+    "generalUse": "Usage général",
+    "dose": "Dose",
+    "posology": "Posologie",
+    "frequency": "Fréquence",
+    "durationLabel": "Durée",
+    "route": "Voie d'administration",
+    "timesPerDay": "{count, plural, =1 {une fois par jour} =2 {deux fois par jour} =3 {trois fois par jour} other {# fois par jour}}",
+    "maxTimesPerDay": "{count, plural, =1 {max une fois par jour} other {max # fois par jour}}",
+    "targetGroup": {
+      "adult": "Adultes",
+      "paediatrics": "Enfants",
+      "adolescent": "Adolescents",
+      "neonate": "Nouveau-nés"
+    },
+    "duration": {
+      "oneOff": "Dose unique",
+      "chronic": "Traitement continu",
+      "ifNecessary": "Si nécessaire",
+      "temporary": "{value} {unit}",
+      "temporaryUnspecified": "Durée limitée"
+    },
+    "timeUnits": {
+      "day": "{count, plural, =1 {jour} other {jours}}",
+      "week": "{count, plural, =1 {semaine} other {semaines}}",
+      "month": "{count, plural, =1 {mois} other {mois}}",
+      "unit": "{count, plural, =1 {unité} other {unités}}"
+    },
+    "renalImpairment": "Insuffisance rénale (classe {level})",
+    "hepaticImpairment": "Insuffisance hépatique (classe {level})"
+  },
   "enum": {
     "status": {
       "AUTHORIZED": "Autorisé",

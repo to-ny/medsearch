@@ -288,6 +288,42 @@
     "SKP": "Samenvatting van de Productkenmerken - Produktinformationsdokument (Niederländisch)",
     "FI": "Fachinformation - Detaillierte Informationen für medizinisches Fachpersonal"
   },
+  "dosage": {
+    "title": "Standarddosierung",
+    "noInfo": "Keine Standarddosierungsinformationen für dieses Arzneimittel verfügbar.",
+    "consultSmPC": "Konsultieren Sie die FI für Dosierungsempfehlungen.",
+    "viewSmPC": "FI anzeigen",
+    "disclaimer": "Nur Referenzinformation. Überprüfen Sie mit offizieller Produktdokumentation und klinischem Urteil.",
+    "generalUse": "Allgemeine Anwendung",
+    "dose": "Dosis",
+    "posology": "Dosierung",
+    "frequency": "Häufigkeit",
+    "durationLabel": "Dauer",
+    "route": "Verabreichungsweg",
+    "timesPerDay": "{count, plural, =1 {einmal täglich} =2 {zweimal täglich} =3 {dreimal täglich} other {#-mal täglich}}",
+    "maxTimesPerDay": "{count, plural, =1 {max einmal täglich} other {max #-mal täglich}}",
+    "targetGroup": {
+      "adult": "Erwachsene",
+      "paediatrics": "Kinder",
+      "adolescent": "Jugendliche",
+      "neonate": "Neugeborene"
+    },
+    "duration": {
+      "oneOff": "Einzeldosis",
+      "chronic": "Dauerbehandlung",
+      "ifNecessary": "Bei Bedarf",
+      "temporary": "{value} {unit}",
+      "temporaryUnspecified": "Begrenzte Dauer"
+    },
+    "timeUnits": {
+      "day": "{count, plural, =1 {Tag} other {Tage}}",
+      "week": "{count, plural, =1 {Woche} other {Wochen}}",
+      "month": "{count, plural, =1 {Monat} other {Monate}}",
+      "unit": "{count, plural, =1 {Einheit} other {Einheiten}}"
+    },
+    "renalImpairment": "Niereninsuffizienz (Klasse {level})",
+    "hepaticImpairment": "Leberinsuffizienz (Klasse {level})"
+  },
   "enum": {
     "status": {
       "AUTHORIZED": "Zugelassen",

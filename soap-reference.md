@@ -638,6 +638,158 @@ Search for BCFI therapeutic classifications.
 
 ---
 
+### FindStandardDosage
+
+Get standard dosage recommendations for a medication product group.
+
+**Important:** Standard dosages are defined at the **VmpGroup level** (Generic Prescription Group), not at the VMP or AMP level. This means dosages apply to all products within a therapeutic group (e.g., all paracetamol 500mg oral products share the same dosage recommendations).
+
+**Search Methods:**
+
+- **FindByGenericPrescriptionGroup**
+  - `GenericPrescriptionGroupCode` - Search by VmpGroup code (integer)
+  - `AnyNamePart` - Search by name substring
+
+**How to Get VmpGroup Codes:**
+
+To find dosages for a medication, you first need the VmpGroup code. This can be obtained from:
+1. A `FindVmp` response (the `VmpGroup/@_Code` attribute)
+2. The medication's VMP data which includes VmpGroup information
+
+**Special Handling:** When no standard dosage exists for the given criteria, the API returns a SOAP Fault with code `1017`. This should be treated as an empty result set, not an error.
+
+**Example Request:**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ns="urn:be:fgov:ehealth:dics:protocol:v5">
+  <soap:Header/>
+  <soap:Body>
+    <ns:FindStandardDosageRequest IssueInstant="2025-01-11T10:00:00.000Z">
+      <FindByGenericPrescriptionGroup>
+        <GenericPrescriptionGroupCode>24901</GenericPrescriptionGroupCode>
+      </FindByGenericPrescriptionGroup>
+    </ns:FindStandardDosageRequest>
+  </soap:Body>
+</soap:Envelope>
+```
+
+**Response Structure:**
+
+```xml
+<FindStandardDosageResponse SearchDate="2025-01-11" SamId="...">
+  <StandardDosage Code="12">
+    <TargetGroup>ADULT</TargetGroup>
+    <KidneyFailureClass>2</KidneyFailureClass>
+    <LiverFailureClass>1</LiverFailureClass>
+    <TreatmentDurationType>IF_NECESSARY</TreatmentDurationType>
+    <TemporalityUserProvided>false</TemporalityUserProvided>
+    <TemporalityNote>
+      <Text xml:lang="nl"/>
+      <Text xml:lang="fr"/>
+    </TemporalityNote>
+    <Quantity>1.0000</Quantity>
+    <AdministrationFrequencyQuantity>1</AdministrationFrequencyQuantity>
+    <AdministrationFrequencyIsMax>false</AdministrationFrequencyIsMax>
+    <AdministrationFrequencyTimeframe Unit="d">1.0000</AdministrationFrequencyTimeframe>
+    <TextualDosage>
+      <Text xml:lang="nl"/>
+      <Text xml:lang="fr"/>
+    </TextualDosage>
+    <SupplementaryInfo>
+      <Text xml:lang="nl">Maximum 6 keer per dag</Text>
+      <Text xml:lang="fr">Maximum 6 fois par jour</Text>
+    </SupplementaryInfo>
+    <Indication code="149">
+      <Name>
+        <Text xml:lang="nl">pijn en/of koorts</Text>
+        <Text xml:lang="fr">douleur et/ou fièvre</Text>
+      </Name>
+    </Indication>
+    <ParameterBounds>
+      <DosageParameter code="weight">
+        <Name>
+          <Text xml:lang="nl">weight [kg]</Text>
+          <Text xml:lang="fr">poids [kg]</Text>
+        </Name>
+        <Definition>
+          <Text xml:lang="en">weight</Text>
+        </Definition>
+        <StandardUnit>kg</StandardUnit>
+      </DosageParameter>
+      <LowerBound Unit="kg">50.0000</LowerBound>
+    </ParameterBounds>
+    <RouteOfAdministration Code="57">
+      <Name>
+        <Text xml:lang="nl">Oraal gebruik</Text>
+        <Text xml:lang="en">Oral use</Text>
+        <Text xml:lang="fr">Voie orale</Text>
+      </Name>
+      <StandardRoute Standard="SNOMED_CT" Code="26643006">
+        <Name><Text xml:lang="en"/></Name>
+      </StandardRoute>
+    </RouteOfAdministration>
+    <AdditionalFields>
+      <Key>posology_nl</Key>
+      <Value>Maximum 6 keer per dag</Value>
+    </AdditionalFields>
+    <AdditionalFields>
+      <Key>dosage_string_nl</Key>
+      <Value>1 eenheid</Value>
+    </AdditionalFields>
+  </StandardDosage>
+</FindStandardDosageResponse>
+```
+
+**Key Response Fields:**
+
+- `StandardDosage/@_Code` - Unique identifier for this dosage recommendation
+- `TargetGroup` - Patient population: `NEONATE`, `PAEDIATRICS`, `ADOLESCENT`, `ADULT`
+- `KidneyFailureClass` - Renal impairment level (0-3):
+  - 0: Normal kidney function
+  - 1: Creatinine clearance 30-60 mL/min
+  - 2: Creatinine clearance 10-30 mL/min
+  - 3: Creatinine clearance < 10 mL/min
+- `LiverFailureClass` - Hepatic impairment level (0-3) based on Child-Pugh score:
+  - 0: Normal liver function
+  - 1: Child-Pugh A (score 5-6)
+  - 2: Child-Pugh B (score 7-9)
+  - 3: Child-Pugh C (score 10+)
+- `TreatmentDurationType` - Duration category: `ONE_OFF`, `TEMPORARY`, `CHRONIC`, `IF_NECESSARY`
+- `TemporalityDuration` - Specific duration for TEMPORARY treatments (with Unit attribute: d/w/m/y)
+- `TemporalityUserProvided` - If true, prescriber should specify duration
+- `Quantity` - Number of dosage units per administration
+- `QuantityDenominator` - Denominator for fractional doses (e.g., "1/2 tablet")
+- `QuantityRangeLower/QuantityRangeUpper` - Range for flexible dosing
+- `AdministrationFrequencyQuantity` - Number of administrations per timeframe
+- `AdministrationFrequencyTimeframe` - The timeframe (Unit: d=day, w=week, etc.)
+- `AdministrationFrequencyIsMax` - If true, frequency is a maximum limit
+- `MaximumDailyQuantity` - Maximum daily dose (important for safety)
+- `TextualDosage` - Free text when dosage cannot be modeled structurally
+- `SupplementaryInfo` - Additional clinical notes (e.g., "Maximum 4 times per day")
+- `Indication` - The clinical indication with code and localized Name
+- `ParameterBounds` - Patient parameter constraints (weight, age ranges):
+  - `DosageParameter` - Reference parameter (code, name, unit)
+  - `LowerBound/UpperBound` - Range bounds with Unit
+- `RouteOfAdministration` - Administration route with code, name, and SNOMED CT reference
+- `AdditionalFields` - Key-value pairs including:
+  - `posology_nl/fr` - Human-readable posology in Dutch/French
+  - `dosage_string_nl/fr` - Dosage amount description
+  - `selection_string_nl/fr` - Full selection criteria description
+
+**Notes:**
+
+- Multiple `StandardDosage` elements may be returned for different populations, indications, or organ impairment levels
+- Weight-based dosing uses `ParameterBounds` to specify applicable weight ranges
+- The `AdditionalFields` contain pre-formatted strings useful for display
+- Dosages for organ impairment (kidney/liver) may have different values or restrictions
+- Not all medications have standard dosage data - consult the SmPC for complete dosing information
+
+**Clinical Disclaimer:** Standard dosage information is reference data derived from official sources. Always verify dosing with the full Summary of Product Characteristics (SmPC) and apply clinical judgment for individual patients.
+
+---
+
 ## Unexplored Endpoints
 
 The following endpoints are listed in the SAM service catalog but have not been explored or implemented:
@@ -685,6 +837,7 @@ The following endpoints are listed in the SAM service catalog but have not been 
 - **1008** - No results found. Treat as empty result set, not an error.
 - **1012** - No classification found. Treat as empty result set, not an error.
 - **1016** - No Chapter IV paragraph found. Treat as empty result set, not an error.
+- **1017** - No standard dosage found for given criteria. Treat as empty result set, not an error.
 
 ### Retry Logic
 

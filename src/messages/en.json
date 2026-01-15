@@ -288,6 +288,42 @@
     "SKP": "Samenvatting van de Productkenmerken - Product information document (Dutch)",
     "FI": "Fachinformation - Product information document (German)"
   },
+  "dosage": {
+    "title": "Standard Dosage",
+    "noInfo": "Standard dosage information not available for this medication.",
+    "consultSmPC": "Consult the SmPC for dosing guidance.",
+    "viewSmPC": "View SmPC",
+    "disclaimer": "Reference information only. Verify with official product documentation and clinical judgment.",
+    "generalUse": "General use",
+    "dose": "Dose",
+    "posology": "Posology",
+    "frequency": "Frequency",
+    "durationLabel": "Duration",
+    "route": "Route",
+    "timesPerDay": "{count, plural, =1 {once daily} =2 {twice daily} =3 {3 times daily} other {# times daily}}",
+    "maxTimesPerDay": "{count, plural, =1 {max once daily} other {max # times daily}}",
+    "targetGroup": {
+      "adult": "Adults",
+      "paediatrics": "Children",
+      "adolescent": "Adolescents",
+      "neonate": "Neonates"
+    },
+    "duration": {
+      "oneOff": "Single dose",
+      "chronic": "Ongoing treatment",
+      "ifNecessary": "As needed",
+      "temporary": "{value} {unit}",
+      "temporaryUnspecified": "Limited duration"
+    },
+    "timeUnits": {
+      "day": "{count, plural, =1 {day} other {days}}",
+      "week": "{count, plural, =1 {week} other {weeks}}",
+      "month": "{count, plural, =1 {month} other {months}}",
+      "unit": "{count, plural, =1 {unit} other {units}}"
+    },
+    "renalImpairment": "Renal impairment (class {level})",
+    "hepaticImpairment": "Hepatic impairment (class {level})"
+  },
   "enum": {
     "status": {
       "AUTHORIZED": "Authorized",

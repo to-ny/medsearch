@@ -10,6 +10,7 @@ import { IngredientList } from '@/components/medication/IngredientList';
 import { ReimbursementInfo } from '@/components/medication/ReimbursementInfo';
 import { PriceComparison } from '@/components/medication/PriceComparison';
 import { TherapeuticAlternatives } from '@/components/medication/TherapeuticAlternatives';
+import { DosageInfo } from '@/components/medication/DosageInfo';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { SkeletonCard, Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
@@ -144,6 +145,14 @@ export default function MedicationPage({ params }: MedicationPageProps) {
               <IngredientList components={medication.components} showAllComponents={true} ampCode={medication.ampCode} />
             </CardContent>
           </Card>
+
+          {/* Standard Dosage - only show if we have VmpGroup info */}
+          {genericProduct?.vmpGroup?.code && (
+            <DosageInfo
+              vmpGroupCode={String(genericProduct.vmpGroup.code)}
+              spcUrl={medication.packages[0]?.spc?.url}
+            />
+          )}
 
           {/* Generic info if available */}
           {genericProduct && (

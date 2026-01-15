@@ -36,6 +36,10 @@ const parser = new XMLParser({
       'Paragraph',
       'Verse',
       'Exclusion',
+      'StandardDosage',
+      'ParameterBounds',
+      'RouteOfAdministration',
+      'AdditionalFields',
     ];
     return arrayElements.includes(name);
   },
@@ -75,7 +79,7 @@ function extractSoapBody(xml: string): Record<string, unknown> | null {
  * - 1008: No results found for given criteria
  * - 1012: No classification found
  */
-const NO_RESULTS_ERROR_CODES = [1003, 1004, 1008, 1012];
+const NO_RESULTS_ERROR_CODES = [1003, 1004, 1008, 1012, 1016, 1017];
 
 /**
  * Result of checking for SOAP fault
@@ -834,6 +838,136 @@ export function parseFindVmpGroupResponse(xml: string): ParsedSoapResponse<RawVm
     return {
       success: true,
       data: Array.isArray(vmpGroups) ? vmpGroups : [vmpGroups],
+      searchDate: response['@_SearchDate'] as string,
+      samId: response['@_SamId'] as string,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: { code: 'PARSE_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+    };
+  }
+}
+
+// Standard Dosage Types
+
+export interface RawStandardDosageData {
+  '@_Code'?: string;
+  TargetGroup?: string;
+  KidneyFailureClass?: number;
+  LiverFailureClass?: number;
+  TreatmentDurationType?: string;
+  TemporalityDuration?: RawQuantityData;
+  TemporalityUserProvided?: boolean;
+  TemporalityNote?: RawLocalizedText;
+  Quantity?: number;
+  QuantityDenominator?: number;
+  QuantityRangeLower?: number;
+  QuantityRangeLowerDenominator?: number;
+  QuantityRangeUpper?: number;
+  QuantityRangeUpperDenominator?: number;
+  QuantityMultiplicator?: RawDosageParameterV2Data;
+  AdministrationFrequencyQuantity?: number;
+  AdministrationFrequencyIsMax?: boolean;
+  AdministrationFrequencyTimeframe?: RawQuantityData;
+  MaximumAdministrationQuantity?: number;
+  MaximumDailyQuantity?: RawParameterizedQuantityData;
+  TextualDosage?: RawLocalizedText;
+  SupplementaryInfo?: RawLocalizedText;
+  RouteSpecification?: RawLocalizedText;
+  Indication?: RawIndicationData;
+  ParameterBounds?: RawParameterBoundsData[];
+  RouteOfAdministration?: RawRouteOfAdministrationData[];
+  AdditionalFields?: RawAdditionalFieldData[];
+}
+
+export interface RawQuantityData {
+  '@_Unit'?: string;
+  '#text'?: number;
+}
+
+export interface RawParameterizedQuantityData {
+  Quantity?: RawQuantityData;
+  Multiplier?: number;
+  Parameter?: RawDosageParameterData;
+}
+
+export interface RawDosageParameterData {
+  '@_code'?: string;
+  Name?: RawLocalizedText;
+  Definition?: RawLocalizedText;
+  StandardUnit?: string;
+}
+
+export interface RawDosageParameterV2Data {
+  '@_code'?: string;
+  Name?: RawLocalizedText;
+  Definition?: RawLocalizedText;
+  StandardUnit?: string;
+  SnomedCT?: string;
+}
+
+export interface RawIndicationData {
+  '@_code'?: string;
+  Name?: RawLocalizedText;
+}
+
+export interface RawParameterBoundsData {
+  DosageParameter?: RawDosageParameterData;
+  LowerBound?: RawQuantityData;
+  UpperBound?: RawQuantityData;
+}
+
+export interface RawRouteOfAdministrationData {
+  '@_Code'?: string;
+  Name?: RawLocalizedText;
+  StandardRoute?: {
+    '@_Standard'?: string;
+    '@_Code'?: string;
+  };
+}
+
+export interface RawAdditionalFieldData {
+  Key?: string;
+  Value?: string;
+}
+
+/**
+ * Parses a FindStandardDosage SOAP response
+ * Returns standard dosage recommendations for a medication group.
+ * Note: The SAM API returns a SOAP Fault with code 1017 when no dosages are found.
+ * We treat this as an empty result set rather than an error.
+ */
+export function parseFindStandardDosageResponse(xml: string): ParsedSoapResponse<RawStandardDosageData[]> {
+  try {
+    const body = extractSoapBody(xml);
+    if (!body) {
+      return { success: false, error: { code: 'PARSE_ERROR', message: 'Invalid SOAP response' } };
+    }
+
+    // Check for SOAP fault
+    const fault = checkSoapFault(body);
+    if (fault.isFault) {
+      if (fault.isNoResultsFault) {
+        return { success: true, data: [] };
+      }
+      return {
+        success: false,
+        error: { code: 'SOAP_FAULT', message: fault.errorMessage || 'Unknown SOAP fault' },
+      };
+    }
+
+    const responseKey = Object.keys(body).find((k) => k.includes('FindStandardDosageResponse'));
+    if (!responseKey) {
+      return { success: false, error: { code: 'NO_RESPONSE', message: 'No FindStandardDosageResponse found' } };
+    }
+
+    const response = body[responseKey] as Record<string, unknown>;
+    const dosages = (response.StandardDosage || []) as RawStandardDosageData[];
+
+    return {
+      success: true,
+      data: Array.isArray(dosages) ? dosages : [dosages],
       searchDate: response['@_SearchDate'] as string,
       samId: response['@_SamId'] as string,
     };

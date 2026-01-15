@@ -288,6 +288,42 @@
     "SKP": "Samenvatting van de Productkenmerken - Gedetailleerde informatie voor zorgprofessionals",
     "FI": "Fachinformation - Productinformatiedocument (Duits)"
   },
+  "dosage": {
+    "title": "Standaard dosering",
+    "noInfo": "Geen standaard doseringsinformatie beschikbaar voor dit geneesmiddel.",
+    "consultSmPC": "Raadpleeg de SKP voor doseringsadvies.",
+    "viewSmPC": "SKP bekijken",
+    "disclaimer": "Alleen ter referentie. Controleer met officiële productdocumentatie en klinisch oordeel.",
+    "generalUse": "Algemeen gebruik",
+    "dose": "Dosis",
+    "posology": "Posologie",
+    "frequency": "Frequentie",
+    "durationLabel": "Duur",
+    "route": "Toedieningsweg",
+    "timesPerDay": "{count, plural, =1 {eenmaal daags} =2 {tweemaal daags} =3 {driemaal daags} other {# keer per dag}}",
+    "maxTimesPerDay": "{count, plural, =1 {max eenmaal daags} other {max # keer per dag}}",
+    "targetGroup": {
+      "adult": "Volwassenen",
+      "paediatrics": "Kinderen",
+      "adolescent": "Adolescenten",
+      "neonate": "Neonaten"
+    },
+    "duration": {
+      "oneOff": "Eenmalige dosis",
+      "chronic": "Langdurige behandeling",
+      "ifNecessary": "Indien nodig",
+      "temporary": "{value} {unit}",
+      "temporaryUnspecified": "Beperkte duur"
+    },
+    "timeUnits": {
+      "day": "{count, plural, =1 {dag} other {dagen}}",
+      "week": "{count, plural, =1 {week} other {weken}}",
+      "month": "{count, plural, =1 {maand} other {maanden}}",
+      "unit": "{count, plural, =1 {eenheid} other {eenheden}}"
+    },
+    "renalImpairment": "Nierinsufficiëntie (klasse {level})",
+    "hepaticImpairment": "Leverinsufficiëntie (klasse {level})"
+  },
   "enum": {
     "status": {
       "AUTHORIZED": "Geautoriseerd",

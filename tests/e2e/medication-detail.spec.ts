@@ -129,6 +129,48 @@ test.describe('Chapter IV API', () => {
   });
 });
 
+test.describe('Standard Dosage API', () => {
+  test('should return dosage data for valid VmpGroup code', async ({ request }) => {
+    // Test the Dosage API with paracetamol 500mg oral (VmpGroup 24901)
+    const response = await request.get('/api/dosages/24901');
+
+    expect(response.ok()).toBe(true);
+
+    const data = await response.json();
+    expect(data).toHaveProperty('dosages');
+    expect(data).toHaveProperty('totalCount');
+
+    // Paracetamol should have dosages
+    expect(data.dosages.length).toBeGreaterThan(0);
+
+    // Each dosage should have expected structure
+    if (data.dosages.length > 0) {
+      const dosage = data.dosages[0];
+      expect(dosage).toHaveProperty('code');
+      expect(dosage).toHaveProperty('targetGroup');
+      expect(dosage).toHaveProperty('treatmentDurationType');
+    }
+  });
+
+  test('should return empty array for VmpGroup without dosage data', async ({ request }) => {
+    // Test with a VmpGroup that likely has no standard dosage
+    const response = await request.get('/api/dosages/99999');
+
+    // Should return 404 or empty result
+    const data = await response.json();
+    if (response.ok()) {
+      expect(Array.isArray(data.dosages)).toBe(true);
+    }
+  });
+
+  test('should validate VmpGroup code format', async ({ request }) => {
+    // Test with invalid format
+    const response = await request.get('/api/dosages/invalid');
+
+    expect(response.status()).toBe(400);
+  });
+});
+
 test.describe('Medication Page Reimbursement', () => {
   test('should display reimbursement section', async ({ page }) => {
     // Test with a known reimbursed medication

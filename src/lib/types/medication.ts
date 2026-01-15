@@ -398,3 +398,142 @@ export interface ChapterIVVerse {
   /** Start date of validity */
   startDate?: string;
 }
+
+/**
+ * Standard dosage recommendation for a medication
+ */
+export interface StandardDosage {
+  /** Unique dosage identifier */
+  code: string;
+  /** Target patient group */
+  targetGroup: 'NEONATE' | 'PAEDIATRICS' | 'ADOLESCENT' | 'ADULT';
+  /** Kidney failure class (0=normal, 1-3=impairment levels) */
+  kidneyFailureClass?: number;
+  /** Liver failure class (0=normal, 1-3=Child-Pugh grades) */
+  liverFailureClass?: number;
+  /** Treatment duration type */
+  treatmentDurationType: 'ONE_OFF' | 'TEMPORARY' | 'CHRONIC' | 'IF_NECESSARY';
+  /** Specific duration for TEMPORARY treatments */
+  temporalityDuration?: DosageQuantity;
+  /** If true, prescriber should specify duration */
+  temporalityUserProvided?: boolean;
+  /** Free text duration notes */
+  temporalityNote?: LocalizedText[];
+  /** Dosage quantity per administration */
+  quantity?: number;
+  /** Denominator for fractional doses */
+  quantityDenominator?: number;
+  /** Lower bound of quantity range */
+  quantityRangeLower?: number;
+  /** Upper bound of quantity range */
+  quantityRangeUpper?: number;
+  /** Number of administrations per timeframe */
+  administrationFrequencyQuantity?: number;
+  /** If true, frequency is a maximum limit */
+  administrationFrequencyIsMax?: boolean;
+  /** Timeframe for frequency (e.g., 1 day) */
+  administrationFrequencyTimeframe?: DosageQuantity;
+  /** Maximum quantity per single administration */
+  maximumAdministrationQuantity?: number;
+  /** Maximum daily quantity */
+  maximumDailyQuantity?: ParameterizedQuantity;
+  /** Free text dosage description */
+  textualDosage?: LocalizedText[];
+  /** Additional clinical notes */
+  supplementaryInfo?: LocalizedText[];
+  /** Additional route specification */
+  routeSpecification?: LocalizedText[];
+  /** Clinical indication */
+  indication?: DosageIndication;
+  /** Patient parameter constraints (weight, age) */
+  parameterBounds?: DosageParameterBounds[];
+  /** Route of administration */
+  routeOfAdministration?: DosageRoute;
+  /** Pre-formatted display strings */
+  additionalFields?: DosageAdditionalFields;
+}
+
+/**
+ * Quantity with unit (for durations, frequencies)
+ */
+export interface DosageQuantity {
+  /** The numeric value */
+  value: number;
+  /** The unit (e.g., 'd' for days, 'w' for weeks) */
+  unit: string;
+}
+
+/**
+ * Quantity that may be parameterized (e.g., mg/kg)
+ */
+export interface ParameterizedQuantity {
+  /** The quantity */
+  quantity: DosageQuantity;
+  /** Multiplier */
+  multiplier?: number;
+  /** Reference parameter (e.g., weight) */
+  parameter?: DosageParameter;
+}
+
+/**
+ * Clinical indication for a dosage
+ */
+export interface DosageIndication {
+  /** Indication code */
+  code: string;
+  /** Indication name */
+  name: LocalizedText[];
+}
+
+/**
+ * Parameter definition (weight, age, etc.)
+ */
+export interface DosageParameter {
+  /** Parameter code */
+  code: string;
+  /** Parameter name */
+  name?: LocalizedText[];
+  /** Parameter definition */
+  definition?: LocalizedText[];
+  /** Standard unit */
+  standardUnit?: string;
+}
+
+/**
+ * Bounds for a dosage parameter (e.g., weight range)
+ */
+export interface DosageParameterBounds {
+  /** The parameter */
+  parameter: DosageParameter;
+  /** Lower bound */
+  lowerBound?: DosageQuantity;
+  /** Upper bound */
+  upperBound?: DosageQuantity;
+}
+
+/**
+ * Route of administration
+ */
+export interface DosageRoute {
+  /** Route code */
+  code: string;
+  /** Route name */
+  name: LocalizedText[];
+  /** Standard route reference (e.g., SNOMED CT) */
+  standardRoute?: {
+    standard: string;
+    code: string;
+  };
+}
+
+/**
+ * Pre-formatted display strings from API
+ */
+export interface DosageAdditionalFields {
+  /** Human-readable posology */
+  posology?: LocalizedText[];
+  /** Dosage amount description */
+  dosageString?: LocalizedText[];
+  /** Full selection criteria description */
+  selectionString?: LocalizedText[];
+}

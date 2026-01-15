@@ -345,3 +345,31 @@ export function buildFindChapterIVRequest(params: {
     body,
   });
 }
+
+/**
+ * Builds a FindStandardDosage SOAP request
+ * For querying standard dosage recommendations by VmpGroup
+ */
+export function buildFindStandardDosageRequest(params: {
+  vmpGroupCode?: string;
+  anyNamePart?: string;
+  searchDate?: string;
+}): string {
+  let body = '';
+
+  if (params.vmpGroupCode) {
+    body = `      <FindByGenericPrescriptionGroup>
+        <GenericPrescriptionGroupCode>${escapeXml(params.vmpGroupCode)}</GenericPrescriptionGroupCode>
+      </FindByGenericPrescriptionGroup>`;
+  } else if (params.anyNamePart) {
+    body = `      <FindByGenericPrescriptionGroup>
+        <AnyNamePart>${escapeXml(params.anyNamePart)}</AnyNamePart>
+      </FindByGenericPrescriptionGroup>`;
+  }
+
+  return buildSoapRequest({
+    operation: 'FindStandardDosage',
+    searchDate: params.searchDate,
+    body,
+  });
+}
