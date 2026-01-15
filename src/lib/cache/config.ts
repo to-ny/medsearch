@@ -122,6 +122,17 @@ export const CACHE_CONFIG = {
     staleWhileRevalidate: CACHE_DURATIONS.SWR_LONG,
     clientStaleTime: 60 * 60 * 1000, // 1 hour
   },
+
+  /**
+   * Legislation data - very stable (legal texts)
+   * - Royal Decrees defining reimbursement rules
+   * - Chapter IV paragraph regulations
+   */
+  legislation: {
+    serverCache: CACHE_DURATIONS.REFERENCE_DATA,
+    staleWhileRevalidate: CACHE_DURATIONS.SWR_LONG,
+    clientStaleTime: 60 * 60 * 1000, // 1 hour
+  },
 } as const;
 
 export type CacheConfigKey = keyof typeof CACHE_CONFIG;

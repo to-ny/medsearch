@@ -40,6 +40,10 @@ const parser = new XMLParser({
       'ParameterBounds',
       'RouteOfAdministration',
       'AdditionalFields',
+      'LegalBasis',
+      'LegalReference',
+      'LegalText',
+      'FormalInterpretation',
     ];
     return arrayElements.includes(name);
   },
@@ -79,7 +83,7 @@ function extractSoapBody(xml: string): Record<string, unknown> | null {
  * - 1008: No results found for given criteria
  * - 1012: No classification found
  */
-const NO_RESULTS_ERROR_CODES = [1003, 1004, 1008, 1012, 1016, 1017];
+const NO_RESULTS_ERROR_CODES = [1003, 1004, 1007, 1008, 1012, 1016, 1017];
 
 /**
  * Result of checking for SOAP fault
@@ -968,6 +972,91 @@ export function parseFindStandardDosageResponse(xml: string): ParsedSoapResponse
     return {
       success: true,
       data: Array.isArray(dosages) ? dosages : [dosages],
+      searchDate: response['@_SearchDate'] as string,
+      samId: response['@_SamId'] as string,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: { code: 'PARSE_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+    };
+  }
+}
+
+// Legislation Types
+
+export interface RawLegalTextData {
+  '@_Key'?: string;
+  '@_StartDate'?: string;
+  '@_EndDate'?: string;
+  Content?: { Text?: RawTextElement[] };
+  Type?: string;
+  SequenceNr?: number;
+  LastModifiedOn?: string;
+  LegalText?: RawLegalTextData[];
+}
+
+export interface RawLegalReferenceData {
+  '@_Key'?: string;
+  '@_StartDate'?: string;
+  '@_EndDate'?: string;
+  Title?: { Text?: RawTextElement[] };
+  Type?: string;
+  FirstPublishedOn?: string;
+  LastModifiedOn?: string;
+  LegalReferenceTrace?: Array<{ '@_Key'?: string }>;
+  // Can have either nested LegalReference OR LegalText/FormalInterpretation
+  LegalReference?: RawLegalReferenceData[];
+  LegalText?: RawLegalTextData[];
+  FormalInterpretation?: Array<Record<string, unknown>>;
+}
+
+export interface RawLegalBasisData {
+  '@_Key'?: string;
+  '@_StartDate'?: string;
+  '@_EndDate'?: string;
+  Title?: { Text?: RawTextElement[] };
+  Type?: string;
+  EffectiveOn?: string;
+  LegalReference?: RawLegalReferenceData[];
+}
+
+/**
+ * Parses a FindLegislationText SOAP response
+ * Returns legal basis documents with hierarchical legal references and text.
+ * Note: The SAM API returns a SOAP Fault with code 1007 when no legislation is found.
+ * We treat this as an empty result set rather than an error.
+ */
+export function parseFindLegislationTextResponse(xml: string): ParsedSoapResponse<RawLegalBasisData[]> {
+  try {
+    const body = extractSoapBody(xml);
+    if (!body) {
+      return { success: false, error: { code: 'PARSE_ERROR', message: 'Invalid SOAP response' } };
+    }
+
+    // Check for SOAP fault
+    const fault = checkSoapFault(body);
+    if (fault.isFault) {
+      if (fault.isNoResultsFault) {
+        return { success: true, data: [] };
+      }
+      return {
+        success: false,
+        error: { code: 'SOAP_FAULT', message: fault.errorMessage || 'Unknown SOAP fault' },
+      };
+    }
+
+    const responseKey = Object.keys(body).find((k) => k.includes('FindLegislationTextResponse'));
+    if (!responseKey) {
+      return { success: false, error: { code: 'NO_RESPONSE', message: 'No FindLegislationTextResponse found' } };
+    }
+
+    const response = body[responseKey] as Record<string, unknown>;
+    const legalBases = (response.LegalBasis || []) as RawLegalBasisData[];
+
+    return {
+      success: true,
+      data: Array.isArray(legalBases) ? legalBases : [legalBases],
       searchDate: response['@_SearchDate'] as string,
       samId: response['@_SamId'] as string,
     };

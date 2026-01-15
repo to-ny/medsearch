@@ -373,3 +373,38 @@ export function buildFindStandardDosageRequest(params: {
     body,
   });
 }
+
+/**
+ * Builds a FindLegislationText SOAP request
+ * For querying legal text (Royal Decrees, chapters, paragraphs) that defines reimbursement rules
+ */
+export function buildFindLegislationTextRequest(params: {
+  cnk?: string;
+  legalReferencePath?: string;
+  findAllLegalBases?: boolean;
+  language?: string;
+  searchDate?: string;
+}): string {
+  let body = '';
+
+  if (params.findAllLegalBases) {
+    // FindLegalBases: Returns all legal bases (Royal Decrees) with their chapters
+    body = `      <FindLegalBases/>`;
+  } else if (params.cnk) {
+    // FindByDmpp: Returns all legislation for a medication by CNK code
+    body = `      <FindByDmpp>
+        <DeliveryEnvironment>P</DeliveryEnvironment>
+        <Code>${escapeXml(params.cnk)}</Code>
+        <CodeType>CNK</CodeType>
+      </FindByDmpp>`;
+  } else if (params.legalReferencePath) {
+    // FindByLegalReferencePath: Returns children of a legal reference path
+    body = `      <FindByLegalReferencePath>${escapeXml(params.legalReferencePath)}</FindByLegalReferencePath>`;
+  }
+
+  return buildSoapRequest({
+    operation: 'FindLegislationText',
+    searchDate: params.searchDate,
+    body,
+  });
+}

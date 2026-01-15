@@ -270,6 +270,14 @@
       "Y": "{quantity, plural, =1 {year} other {years}}"
     }
   },
+  "legislation": {
+    "viewLegalBasis": "View legal basis",
+    "hideDetails": "Hide legal details",
+    "loading": "Loading legal text...",
+    "errorLoading": "Unable to load legal text",
+    "noLegalBasis": "No legal basis available for this medication",
+    "languageNote": "Legal texts are shown in their official language (FR/NL/DE) to preserve legal accuracy."
+  },
   "acronym": {
     "CNK": "Code National Kode - Belgian national product code (7 digits)",
     "VMP": "Virtual Medicinal Product - Generic product grouping",

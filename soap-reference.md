@@ -790,6 +790,148 @@ To find dosages for a medication, you first need the VmpGroup code. This can be 
 
 ---
 
+### FindLegislationText
+
+Get legislative text (legal basis) for reimbursement rules and Chapter IV restrictions.
+
+**Search Methods:**
+
+- **FindLegalBases** - Returns all legal bases (Royal Decrees) with their top-level chapters
+- **FindByLegalReferencePath** - Returns children of a legal reference path (e.g., `RD20180201-IV-10680000`)
+- **FindByDmpp** - Returns all legislation for a medication by CNK code
+
+**Relationship to Other Operations:**
+
+- The `LegalReferencePath` from `FindReimbursement` (e.g., `RD20180201-IV-8870000`) can be used to query specific legislation
+- Chapter IV medications have related data in both `FindChapterIVParagraph` and `FindLegislationText`
+- For Chapter IV medications, `FindLegislationText` returns the full legal text while `FindChapterIVParagraph` returns structured authorization details
+
+**Special Handling:** When no legislation exists for the medication, the API returns a SOAP Fault with code `1007`. This should be treated as an empty result, not an error.
+
+**Legal Reference Path Format:** `{LegalBasisKey}-{ChapterKey}-{ParagraphKey}`
+- Example: `RD20180201-IV-10680000` means Royal Decree 01.02.2018, Chapter IV, Paragraph 10680000
+
+**Example Request (get all legal bases):**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ns="urn:be:fgov:ehealth:dics:protocol:v5">
+  <soap:Header/>
+  <soap:Body>
+    <ns:FindLegislationTextRequest IssueInstant="2025-01-11T10:00:00.000Z">
+      <FindLegalBases/>
+    </ns:FindLegislationTextRequest>
+  </soap:Body>
+</soap:Envelope>
+```
+
+**Example Request (by CNK code):**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ns="urn:be:fgov:ehealth:dics:protocol:v5">
+  <soap:Header/>
+  <soap:Body>
+    <ns:FindLegislationTextRequest IssueInstant="2025-01-11T10:00:00.000Z">
+      <FindByDmpp>
+        <DeliveryEnvironment>P</DeliveryEnvironment>
+        <Code>3621109</Code>
+        <CodeType>CNK</CodeType>
+      </FindByDmpp>
+    </ns:FindLegislationTextRequest>
+  </soap:Body>
+</soap:Envelope>
+```
+
+**Example Request (by legal reference path):**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ns="urn:be:fgov:ehealth:dics:protocol:v5">
+  <soap:Header/>
+  <soap:Body>
+    <ns:FindLegislationTextRequest IssueInstant="2025-01-11T10:00:00.000Z">
+      <FindByLegalReferencePath>RD20180201-IV-10680000</FindByLegalReferencePath>
+    </ns:FindLegislationTextRequest>
+  </soap:Body>
+</soap:Envelope>
+```
+
+**Response Structure:**
+
+```xml
+<FindLegislationTextResponse SearchDate="2025-01-11" SamId="...">
+  <LegalBasis Key="RD20180201" StartDate="2018-04-01">
+    <Title>
+      <Text xml:lang="fr">A.R. 01.02.2018</Text>
+      <Text xml:lang="nl">K.B. 01.02.2018</Text>
+    </Title>
+    <Type>ROYAL_DECREE</Type>
+    <EffectiveOn>2018-04-01</EffectiveOn>
+    <LegalReference Key="IV" StartDate="2018-04-01">
+      <Title>
+        <Text xml:lang="fr">IV</Text>
+        <Text xml:lang="nl">IV</Text>
+      </Title>
+      <Type>CHAPTER</Type>
+      <FirstPublishedOn>2018-04-01</FirstPublishedOn>
+      <LegalReference Key="10680000" StartDate="2021-06-01">
+        <Title>
+          <Text xml:lang="fr">10680000</Text>
+          <Text xml:lang="nl">10680000</Text>
+        </Title>
+        <Type>PARAGRAPH</Type>
+        <LegalText Key="103264" StartDate="2025-01-01">
+          <Content>
+            <Text xml:lang="fr">Paragraphe 10680000</Text>
+            <Text xml:lang="nl">Paragraaf 10680000</Text>
+          </Content>
+          <Type>ALINEA</Type>
+          <SequenceNr>1</SequenceNr>
+          <LegalText Key="103265" StartDate="2025-01-01">
+            <Content>
+              <Text xml:lang="fr">a) La spécialité pharmaceutique fait l'objet d'un remboursement...</Text>
+              <Text xml:lang="nl">a) De farmaceutische specialiteit komt in aanmerking voor vergoeding...</Text>
+            </Content>
+            <Type>ALINEA</Type>
+            <SequenceNr>2</SequenceNr>
+            <!-- Nested legal text continues... -->
+          </LegalText>
+        </LegalText>
+      </LegalReference>
+    </LegalReference>
+  </LegalBasis>
+</FindLegislationTextResponse>
+```
+
+**Key Response Fields:**
+
+- `LegalBasis` - Top-level legal document (usually a Royal Decree)
+  - `Key` - Unique identifier (e.g., "RD20180201")
+  - `Type` - Document type: `ROYAL_DECREE`
+  - `EffectiveOn` - Date the law became effective
+  - `Title` - Multilingual title (usually FR/NL only)
+
+- `LegalReference` - Hierarchical reference within the legal document
+  - `Key` - Identifier (chapter number, paragraph code)
+  - `Type` - `CHAPTER`, `PARAGRAPH`, `ARTICLE`, or `SECTION`
+  - `FirstPublishedOn` / `LastModifiedOn` - Publication dates
+  - Can contain either nested `LegalReference` elements OR `LegalText`/`FormalInterpretation` elements
+
+- `LegalText` - Actual legal text content (recursive structure)
+  - `Key` - Unique text identifier
+  - `Content` - Multilingual text content
+  - `Type` - `ALINEA` (paragraph) or `POINT` (numbered point)
+  - `SequenceNr` - Order within parent
+  - Can contain nested `LegalText` for hierarchical structure
+
+**Language Note:** Legal texts are official only in French (fr), Dutch (nl), and sometimes German (de). English translations are generally not available. The UI should display texts in the official languages without machine translation, as legal accuracy is critical.
+
+---
+
 ## Unexplored Endpoints
 
 The following endpoints are listed in the SAM service catalog but have not been explored or implemented:
@@ -834,6 +976,7 @@ The following endpoints are listed in the SAM service catalog but have not been 
 - **1002** - No VMP linked with AMP found for criteria. May occur with unsupported filter combinations.
 - **1003** - No AMP found for given criteria. Treat as empty result set, not an error.
 - **1004** - No company found for given criteria. Treat as empty result set, not an error.
+- **1007** - No legislation text found. Treat as empty result set, not an error.
 - **1008** - No results found. Treat as empty result set, not an error.
 - **1012** - No classification found. Treat as empty result set, not an error.
 - **1016** - No Chapter IV paragraph found. Treat as empty result set, not an error.

@@ -537,3 +537,69 @@ export interface DosageAdditionalFields {
   /** Full selection criteria description */
   selectionString?: LocalizedText[];
 }
+
+/**
+ * Legal basis document (Royal Decree)
+ */
+export interface LegalBasis {
+  /** Unique key (e.g., "RD20180201") */
+  key: string;
+  /** Document title (e.g., "A.R. 01.02.2018") */
+  title: LocalizedText[];
+  /** Document type (usually "ROYAL_DECREE") */
+  type: string;
+  /** Date the law became effective */
+  effectiveOn?: string;
+  /** Start date of validity period */
+  startDate?: string;
+  /** End date of validity period */
+  endDate?: string;
+  /** Legal references within this document */
+  legalReferences: LegalReference[];
+}
+
+/**
+ * A reference within legislation (chapter, paragraph, article, section)
+ */
+export interface LegalReference {
+  /** Unique key within legal basis (e.g., "IV", "10680000") */
+  key: string;
+  /** Title (e.g., chapter number, paragraph name) */
+  title: LocalizedText[];
+  /** Type: CHAPTER, PARAGRAPH, ARTICLE, or SECTION */
+  type: 'CHAPTER' | 'PARAGRAPH' | 'ARTICLE' | 'SECTION' | string;
+  /** Date first published */
+  firstPublishedOn?: string;
+  /** Date last modified */
+  lastModifiedOn?: string;
+  /** Start date of validity period */
+  startDate?: string;
+  /** End date of validity period */
+  endDate?: string;
+  /** Child legal references (hierarchical structure) */
+  legalReferences?: LegalReference[];
+  /** Legal text content (leaf nodes only) */
+  legalTexts?: LegalText[];
+}
+
+/**
+ * Actual legal text content
+ */
+export interface LegalText {
+  /** Unique text key */
+  key: string;
+  /** The text content */
+  content: LocalizedText[];
+  /** Type: ALINEA (paragraph) or POINT (numbered point) */
+  type: 'ALINEA' | 'POINT' | string;
+  /** Sequence number within parent */
+  sequenceNr: number;
+  /** Date last modified */
+  lastModifiedOn?: string;
+  /** Start date of validity period */
+  startDate?: string;
+  /** End date of validity period */
+  endDate?: string;
+  /** Nested legal text (hierarchical) */
+  children?: LegalText[];
+}

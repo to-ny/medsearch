@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { ChapterIVBadge, ChapterIVInfoBox, ChapterIVDetails } from '@/components/medication/ChapterIVBadge';
+import { LegalBasisDetails } from '@/components/medication/LegalBasisDetails';
 import { formatPrice } from '@/lib/utils/price';
 import { hasChapterIVReimbursement } from '@/lib/utils/chapterIV';
 import type { Reimbursement } from '@/lib/types';
@@ -166,6 +167,9 @@ export function ReimbursementInfo({ reimbursements, medicationPrice, cnk }: Reim
             </div>
           </details>
         )}
+
+        {/* Legal basis - progressive disclosure */}
+        {cnk && <LegalBasisDetails cnk={cnk} />}
       </CardContent>
     </Card>
   );

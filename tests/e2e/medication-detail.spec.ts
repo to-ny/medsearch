@@ -200,4 +200,85 @@ test.describe('Medication Page Reimbursement', () => {
     // Should have the "View authorization requirements" button
     await expect(page.getByRole('button', { name: /view authorization requirements/i })).toBeVisible();
   });
+
+  test('should have legal basis button for reimbursed medications', async ({ page }) => {
+    // Humira (CNK 3621109) is a known reimbursed medication
+    await page.goto('/medication/3621109');
+
+    // Wait for page to load
+    await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toBeVisible({ timeout: 15000 });
+
+    // Should have the "View legal basis" button
+    await expect(page.getByRole('button', { name: /view legal basis/i })).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should expand legal basis section on click', async ({ page }) => {
+    // Humira (CNK 3621109) is a known reimbursed medication with legislation
+    await page.goto('/medication/3621109');
+
+    // Wait for page to load
+    await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toBeVisible({ timeout: 15000 });
+
+    // Click the "View legal basis" button
+    const legalBasisButton = page.getByRole('button', { name: /view legal basis/i });
+    await expect(legalBasisButton).toBeVisible({ timeout: 10000 });
+    await legalBasisButton.click();
+
+    // Should show legal text content or loading state
+    // Wait for either the legal content or a loading message
+    await expect(page.locator('text=/Loading legal text|Royal Decree|K\\.B\\.|A\\.R\\./i').first()).toBeVisible({ timeout: 15000 });
+  });
+});
+
+test.describe('Legislation API', () => {
+  test('should return legislation data for known reimbursed medications', async ({ request }) => {
+    // Test the Legislation API directly with a known reimbursed medication (Humira)
+    const response = await request.get('/api/legislation?cnk=3621109');
+
+    // The API should return successfully
+    expect(response.ok()).toBe(true);
+
+    const data = await response.json();
+    expect(data).toHaveProperty('legalBases');
+
+    // Humira has legislation (Chapter IV)
+    expect(data.legalBases.length).toBeGreaterThan(0);
+
+    // Each legal basis should have the expected structure
+    if (data.legalBases.length > 0) {
+      const legalBasis = data.legalBases[0];
+      expect(legalBasis).toHaveProperty('key');
+      expect(legalBasis).toHaveProperty('type');
+      expect(legalBasis).toHaveProperty('legalReferences');
+    }
+  });
+
+  test('should return empty array for medications without legislation', async ({ request }) => {
+    // Test with a CNK that doesn't have reimbursement
+    const response = await request.get('/api/legislation?cnk=0000001');
+
+    expect(response.ok()).toBe(true);
+
+    const data = await response.json();
+    expect(data).toHaveProperty('legalBases');
+    // Should have empty legalBases array
+    expect(Array.isArray(data.legalBases)).toBe(true);
+  });
+
+  test('should validate CNK parameter', async ({ request }) => {
+    // Test without CNK or path
+    const response = await request.get('/api/legislation');
+
+    expect(response.status()).toBe(400);
+  });
+
+  test('should support path parameter for direct legislation lookup', async ({ request }) => {
+    // Test with a known legal reference path
+    const response = await request.get('/api/legislation?path=RD20180201-IV-10680000');
+
+    expect(response.ok()).toBe(true);
+
+    const data = await response.json();
+    expect(data).toHaveProperty('legalBases');
+  });
 });

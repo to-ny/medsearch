@@ -270,6 +270,14 @@
       "Y": "{quantity, plural, =1 {Jahr} other {Jahre}}"
     }
   },
+  "legislation": {
+    "viewLegalBasis": "Rechtsgrundlage anzeigen",
+    "hideDetails": "Rechtliche Details ausblenden",
+    "loading": "Gesetzestext wird geladen...",
+    "errorLoading": "Gesetzestext konnte nicht geladen werden",
+    "noLegalBasis": "Keine Rechtsgrundlage für dieses Arzneimittel verfügbar",
+    "languageNote": "Gesetzestexte werden in ihrer offiziellen Sprache (FR/NL/DE) angezeigt, um die rechtliche Genauigkeit zu gewährleisten."
+  },
   "acronym": {
     "CNK": "Code National Kode - Belgischer nationaler Produktcode (7 Ziffern)",
     "VMP": "Virtual Medicinal Product - Generische Produktgruppierung",
