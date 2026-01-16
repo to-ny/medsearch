@@ -6,6 +6,8 @@
  * external API calls.
  */
 
+import 'server-only';
+
 import { createFetchCacheOptions, type CacheConfigKey } from '@/lib/cache';
 
 const ENDPOINTS = {

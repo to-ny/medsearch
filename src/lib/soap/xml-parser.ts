@@ -2,6 +2,8 @@
  * XML parser for SAM v2 SOAP responses
  */
 
+import 'server-only';
+
 import { XMLParser } from 'fast-xml-parser';
 
 const parser = new XMLParser({

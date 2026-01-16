@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useLanguage } from '@/components/LanguageSwitcher';
-import { getExcipients } from '@/lib/services/excipients';
+import { useExcipients } from '@/hooks';
 import { formatLanguage } from '@/lib/utils/format';
 import type { MedicationComponent } from '@/lib/types';
 
@@ -24,10 +24,12 @@ export function IngredientList({
   const allIngredients = components.flatMap((c) => c.ingredients);
   const activeIngredients = allIngredients.filter((i) => i.type === 'ACTIVE_SUBSTANCE');
 
-  // Get excipients from database with language preference
-  const excipientResult = ampCode
-    ? getExcipients(ampCode, language as 'fr' | 'nl' | 'de' | 'en')
-    : null;
+  // Fetch excipients from API with language preference
+  const { data: excipientResult } = useExcipients({
+    ampCode,
+    language,
+    enabled: showAllComponents,
+  });
 
   // Get form and route info from first component
   const primaryComponent = components[0];

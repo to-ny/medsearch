@@ -3,8 +3,55 @@
  */
 
 import type { Medication, MedicationSearchResult, Reimbursement, PriceComparisonItem } from '@/lib/types';
-import { calculatePatientCost } from '@/lib/services/reimbursement';
 import { parsePackSize } from '@/lib/utils/format';
+
+/**
+ * Calculates patient out-of-pocket cost based on price and reimbursement
+ *
+ * This is a pure calculation function that can be used on both server and client.
+ */
+export function calculatePatientCost(
+  price: number | undefined,
+  reimbursement: Reimbursement | undefined,
+  regimen: string = 'AMBULATORY'
+): number | undefined {
+  if (price === undefined) return undefined;
+  if (!reimbursement) return price; // No reimbursement = patient pays full price
+
+  const copayment = reimbursement.copayments.find(
+    (c) => c.regimen === regimen || c.regimen === 'AMBULATORY'
+  );
+
+  if (copayment?.feeAmount !== undefined) {
+    return copayment.feeAmount;
+  }
+
+  if (copayment?.reimbursementAmount !== undefined) {
+    return Math.max(0, price - copayment.reimbursementAmount);
+  }
+
+  return price;
+}
+
+/**
+ * Gets reimbursement category description
+ *
+ * This is a pure function that maps category codes to descriptions.
+ */
+export function getReimbursementCategoryDescription(category: string | undefined): string {
+  if (!category) return 'Unknown';
+
+  const categories: Record<string, string> = {
+    A: 'Category A - Essential medications',
+    B: 'Category B - Useful medications',
+    C: 'Category C - Comfort medications',
+    Cs: 'Category Cs - Comfort (special)',
+    Cx: 'Category Cx - Exception category',
+    D: 'Category D - Not reimbursed',
+  };
+
+  return categories[category] || `Category ${category}`;
+}
 
 /**
  * Formats a price in euros

@@ -5,6 +5,8 @@
  * The database is loaded once and cached in memory.
  */
 
+import 'server-only';
+
 import excipientData from '@/data/excipients.json';
 
 type Language = 'fr' | 'nl' | 'de' | 'en';

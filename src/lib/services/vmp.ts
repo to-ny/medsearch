@@ -3,6 +3,8 @@
  * Handles searching and retrieving generic product data
  */
 
+import 'server-only';
+
 import { soapRequest } from '@/lib/soap/client';
 import { buildFindVmpRequest, buildFindVmpGroupRequest } from '@/lib/soap/xml-builder';
 import {

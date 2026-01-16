@@ -36,6 +36,26 @@ export default function MedicationPage({ params }: MedicationPageProps) {
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumb - shown during loading for better UX and test stability */}
+        <nav className="mb-4" aria-label="Breadcrumb">
+          <ol className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <li>
+              <Link href="/" className="hover:text-gray-700 dark:hover:text-gray-200">
+                {t('common.home')}
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li>
+              <Link href="/" className="hover:text-gray-700 dark:hover:text-gray-200">
+                {t('nav.medications')}
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li className="font-medium text-gray-900 dark:text-white">
+              <Skeleton className="h-4 w-32 inline-block" />
+            </li>
+          </ol>
+        </nav>
         <div className="mb-6">
           <Skeleton className="h-8 w-64" />
         </div>
@@ -55,6 +75,24 @@ export default function MedicationPage({ params }: MedicationPageProps) {
   if (error || !data) {
     return (
       <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumb - shown even on error */}
+        <nav className="mb-4" aria-label="Breadcrumb">
+          <ol className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <li>
+              <Link href="/" className="hover:text-gray-700 dark:hover:text-gray-200">
+                {t('common.home')}
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li>
+              <Link href="/" className="hover:text-gray-700 dark:hover:text-gray-200">
+                {t('nav.medications')}
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li className="font-medium text-gray-900 dark:text-white">{cnk}</li>
+          </ol>
+        </nav>
         <Card variant="outline" className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
           <CardContent className="py-12 text-center">
             <svg

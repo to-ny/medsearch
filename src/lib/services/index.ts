@@ -1,3 +1,5 @@
+import 'server-only';
+
 export * from './amp';
 export * from './vmp';
 export * from './reimbursement';

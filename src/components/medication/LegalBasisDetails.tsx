@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useLegislation } from '@/hooks';
-import { getLegalText, getLegalBasisTitle } from '@/lib/services/legislation';
+import { getLegalText, getLegalBasisTitle } from '@/lib/utils/legislation';
 import type { LegalBasis, LegalReference, LegalText, LocalizedText } from '@/lib/types';
 
 /**

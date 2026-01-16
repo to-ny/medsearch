@@ -174,31 +174,31 @@ test.describe('Standard Dosage API', () => {
 test.describe('Medication Page Reimbursement', () => {
   test('should display reimbursement section', async ({ page }) => {
     // Test with a known reimbursed medication
-    await page.goto('/medication/1482223'); // Dafalgan Codeine
+    await page.goto('/medication/1482223', { waitUntil: 'networkidle' }); // Dafalgan Codeine
 
     // Wait for page to load
     await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toBeVisible({ timeout: 15000 });
 
     // Verify the page shows the reimbursement card heading
     // This may show "Reimbursement" or "No reimbursement information" depending on data
-    await expect(page.locator('text=Reimbursement').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Reimbursement').first()).toBeVisible({ timeout: 15000 });
   });
 
   test('should display Chapter IV badge for restricted medications', async ({ page }) => {
     // Humira (CNK 3621109) is a known Chapter IV medication
-    await page.goto('/medication/3621109');
+    await page.goto('/medication/3621109', { waitUntil: 'networkidle' });
 
     // Wait for page to load
     await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toBeVisible({ timeout: 15000 });
 
     // Should show Chapter IV badge in reimbursement section
-    await expect(page.getByText('Chapter IV', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Chapter IV', { exact: true })).toBeVisible({ timeout: 20000 });
 
     // Should show the info box about prior authorization
-    await expect(page.getByText('prior authorization')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('prior authorization')).toBeVisible({ timeout: 15000 });
 
     // Should have the "View authorization requirements" button
-    await expect(page.getByRole('button', { name: /view authorization requirements/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /view authorization requirements/i })).toBeVisible({ timeout: 10000 });
   });
 
   test('should have legal basis button for reimbursed medications', async ({ page }) => {

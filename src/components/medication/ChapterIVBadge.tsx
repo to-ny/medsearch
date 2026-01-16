@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { Badge } from '@/components/ui/Badge';
 import { useChapterIV } from '@/hooks';
 import { getChapterIVInfoUrl } from '@/lib/utils/chapterIV';
-import { getLocalizedText, hasTextInLanguage } from '@/lib/services/chapterIV';
+import { getLocalizedText, hasTextInLanguage } from '@/lib/utils/localization';
 import type { ChapterIVParagraph, ChapterIVVerse, LocalizedText } from '@/lib/types';
 
 interface ChapterIVBadgeProps {

@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { NextRequest, NextResponse } from 'next/server';
 
 // Simple in-memory rate limiter using sliding window
@@ -15,6 +17,11 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 60; // 60 requests per minute per IP
+
+// Skip rate limiting for localhost (for E2E tests and local development)
+function shouldSkipRateLimit(ip: string): boolean {
+  return ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' || ip === 'unknown';
+}
 
 function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -110,6 +117,12 @@ export function proxy(request: NextRequest) {
   // Handle API routes - rate limiting (except CSP report endpoint)
   if (pathname.startsWith('/api/') && pathname !== '/api/csp-report') {
     const ip = getClientIP(request);
+
+    // Skip rate limiting for localhost (E2E tests and local development)
+    if (shouldSkipRateLimit(ip)) {
+      return NextResponse.next();
+    }
+
     const { limited, remaining, resetIn } = isRateLimited(ip);
 
     if (limited) {

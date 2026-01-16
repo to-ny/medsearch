@@ -5,3 +5,4 @@ export * from './useChapterIV';
 export * from './useLegislation';
 export * from './useTranslatedEnum';
 export * from './useDosage';
+export * from './useExcipients';

@@ -3,6 +3,8 @@
  * Handles searching and retrieving branded medication data
  */
 
+import 'server-only';
+
 import { soapRequest } from '@/lib/soap/client';
 import { buildFindAmpRequest } from '@/lib/soap/xml-builder';
 import {

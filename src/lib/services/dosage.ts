@@ -3,6 +3,8 @@
  * Handles fetching dosage recommendations from the SAM v2 API
  */
 
+import 'server-only';
+
 import { soapRequest } from '@/lib/soap/client';
 import { buildFindStandardDosageRequest } from '@/lib/soap/xml-builder';
 import {

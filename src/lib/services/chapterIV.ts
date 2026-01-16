@@ -3,6 +3,8 @@
  * Handles Chapter IV (prior authorization) paragraph details for restricted medications
  */
 
+import 'server-only';
+
 import { soapRequest } from '@/lib/soap/client';
 import { buildFindChapterIVRequest } from '@/lib/soap/xml-builder';
 import {
@@ -11,7 +13,8 @@ import {
   type RawChapterIVParagraphData,
   type RawChapterIVVerseData,
 } from '@/lib/soap/xml-parser';
-import type { ChapterIVParagraph, ChapterIVVerse, LocalizedText, ApiResponse } from '@/lib/types';
+import type { ChapterIVParagraph, ChapterIVVerse, ApiResponse } from '@/lib/types';
+import { getLocalizedText } from '@/lib/utils/localization';
 
 /**
  * Transforms raw verse data to our typed format
@@ -164,47 +167,8 @@ export async function getChapterIVByLegalReference(
   }
 }
 
-/**
- * Extracts the best text for a given language from localized text array
- *
- * @param texts - Array of localized text objects
- * @param preferredLang - Preferred language code
- * @returns The best matching text, or empty string if none found
- */
-export function getLocalizedText(
-  texts: LocalizedText[] | undefined,
-  preferredLang = 'en'
-): string {
-  if (!texts || texts.length === 0) return '';
-
-  // Try preferred language first
-  const preferred = texts.find((t) => t.language === preferredLang);
-  if (preferred?.text) return preferred.text;
-
-  // Fall back to English if different from preferred
-  if (preferredLang !== 'en') {
-    const english = texts.find((t) => t.language === 'en');
-    if (english?.text) return english.text;
-  }
-
-  // Fall back to first available
-  return texts[0]?.text || '';
-}
-
-/**
- * Checks if text is available in the selected language
- *
- * @param texts - Array of localized text objects
- * @param language - Language code to check
- * @returns true if text exists in the specified language
- */
-export function hasTextInLanguage(
-  texts: LocalizedText[] | undefined,
-  language: string
-): boolean {
-  if (!texts || texts.length === 0) return false;
-  return texts.some((t) => t.language === language && t.text);
-}
+// Re-export pure localization functions from utils for backward compatibility
+export { getLocalizedText, hasTextInLanguage } from '@/lib/utils/localization';
 
 /**
  * Builds a flat list of verse texts for display

@@ -2,6 +2,8 @@
  * XML builder for SAM v2 SOAP requests
  */
 
+import 'server-only';
+
 const SOAP_ENVELOPE = 'http://schemas.xmlsoap.org/soap/envelope/';
 const DICS_NS = 'urn:be:fgov:ehealth:dics:protocol:v5';
 

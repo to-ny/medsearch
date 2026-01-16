@@ -84,3 +84,7 @@ This app supports 4 languages: English, Dutch (nl), French (fr), German (de).
    - If NOT available → show all available translations with language badges
 
    This ensures users always see the information, regardless of which languages the API returned.
+
+## Server/Client Boundaries
+
+Server-only code (`src/lib/soap/`, `src/lib/services/`) uses `import 'server-only'` - build fails if imported from client components. Shared code (`src/lib/types/`, `src/lib/utils/`) can be imported anywhere. When adding server code, add `import 'server-only';` as first line.

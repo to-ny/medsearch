@@ -3,6 +3,8 @@
  * Handles reimbursement information and pricing
  */
 
+import 'server-only';
+
 import { soapRequest } from '@/lib/soap/client';
 import { buildFindReimbursementRequest } from '@/lib/soap/xml-builder';
 import { parseFindReimbursementResponse, type RawReimbursementData } from '@/lib/soap/xml-parser';
@@ -151,46 +153,5 @@ export async function getReimbursementByAmpp(
   }
 }
 
-/**
- * Calculates patient out-of-pocket cost
- */
-export function calculatePatientCost(
-  price: number | undefined,
-  reimbursement: Reimbursement | undefined,
-  regimen: string = 'AMBULATORY'
-): number | undefined {
-  if (price === undefined) return undefined;
-  if (!reimbursement) return price; // No reimbursement = patient pays full price
-
-  const copayment = reimbursement.copayments.find(
-    (c) => c.regimen === regimen || c.regimen === 'AMBULATORY'
-  );
-
-  if (copayment?.feeAmount !== undefined) {
-    return copayment.feeAmount;
-  }
-
-  if (copayment?.reimbursementAmount !== undefined) {
-    return Math.max(0, price - copayment.reimbursementAmount);
-  }
-
-  return price;
-}
-
-/**
- * Gets reimbursement category description
- */
-export function getReimbursementCategoryDescription(category: string | undefined): string {
-  if (!category) return 'Unknown';
-
-  const categories: Record<string, string> = {
-    A: 'Category A - Essential medications',
-    B: 'Category B - Useful medications',
-    C: 'Category C - Comfort medications',
-    Cs: 'Category Cs - Comfort (special)',
-    Cx: 'Category Cx - Exception category',
-    D: 'Category D - Not reimbursed',
-  };
-
-  return categories[category] || `Category ${category}`;
-}
+// Re-export pure calculation functions from utils for backward compatibility
+export { calculatePatientCost, getReimbursementCategoryDescription } from '@/lib/utils/price';

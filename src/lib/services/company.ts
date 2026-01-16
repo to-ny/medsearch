@@ -3,6 +3,8 @@
  * Handles pharmaceutical company data
  */
 
+import 'server-only';
+
 import { soapRequest } from '@/lib/soap/client';
 import { buildFindCompanyRequest } from '@/lib/soap/xml-builder';
 import { parseFindCompanyResponse, type RawCompanyData } from '@/lib/soap/xml-parser';
