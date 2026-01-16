@@ -7,44 +7,27 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run && playwright test",
-    "test:unit": "vitest run --coverage",
-    "test:watch": "vitest",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.2.2",
-    "@tanstack/react-query": "^5.90.16",
+    "@vercel/postgres": "^0.10.0",
     "fast-xml-parser": "^5.3.3",
     "next": "16.1.1",
-    "next-intl": "^4.7.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-hook-form": "^7.70.0",
-    "server-only": "^0.0.1",
-    "zod": "^4.3.5"
+    "sax": "^1.4.1",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.11.0",
-    "geist": "^1.5.1",
-    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.1",
-    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/coverage-v8": "^4.0.16",
-    "axe-core": "^4.11.1",
+    "@types/sax": "^1.2.7",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
-    "jsdom": "^27.4.0",
+    "geist": "^1.5.1",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "vitest": "^4.0.16"
+    "typescript": "^5"
   }
 }
