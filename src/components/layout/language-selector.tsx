@@ -1,6 +1,7 @@
 'use client';
 
-import { useRouter, usePathname } from 'next/navigation';
+import { Suspense } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useCurrentLanguage } from '@/lib/hooks/use-language';
 import type { Language } from '@/server/types/domain';
 import { LANGUAGES } from '@/server/types/domain';
@@ -17,9 +18,10 @@ interface LanguageSelectorProps {
   className?: string;
 }
 
-export function LanguageSelector({ className }: LanguageSelectorProps) {
+function LanguageSelectorInner({ className }: LanguageSelectorProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const currentLanguage = useCurrentLanguage();
 
   const handleLanguageChange = (newLang: Language) => {
@@ -36,7 +38,13 @@ export function LanguageSelector({ className }: LanguageSelectorProps) {
       pathSegments.splice(1, 0, newLang);
     }
 
-    const newPath = pathSegments.join('/') || `/${newLang}`;
+    let newPath = pathSegments.join('/') || `/${newLang}`;
+
+    // Preserve query parameters (like search term)
+    const queryString = searchParams.toString();
+    if (queryString) {
+      newPath += `?${queryString}`;
+    }
 
     // Set cookie for middleware to remember preference
     document.cookie = `medsearch-language=${newLang}; path=/; max-age=31536000; SameSite=Lax`;
@@ -65,5 +73,28 @@ export function LanguageSelector({ className }: LanguageSelectorProps) {
         </option>
       ))}
     </select>
+  );
+}
+
+// Fallback for Suspense - a simple placeholder that matches the select dimensions
+function LanguageSelectorFallback({ className }: LanguageSelectorProps) {
+  return (
+    <div
+      className={cn(
+        'block rounded-lg border border-gray-300 dark:border-gray-600',
+        'bg-white dark:bg-gray-800',
+        'px-3 py-1.5 text-sm',
+        'h-[34px] w-[120px] animate-pulse',
+        className
+      )}
+    />
+  );
+}
+
+export function LanguageSelector({ className }: LanguageSelectorProps) {
+  return (
+    <Suspense fallback={<LanguageSelectorFallback className={className} />}>
+      <LanguageSelectorInner className={className} />
+    </Suspense>
   );
 }
