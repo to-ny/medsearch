@@ -93,7 +93,7 @@ const TYPE_PRIORITY: Record<EntityType, number> = {
  * Relationship filters for search
  */
 export interface SearchFilters {
-  vtmCode?: string;       // Filter VMPs by VTM code
+  vtmCode?: string;       // Filter VMPs by VTM code, or AMPs by VTM code (via VMP)
   vmpCode?: string;       // Filter AMPs by VMP code
   ampCode?: string;       // Filter AMPPs by AMP code
   atcCode?: string;       // Filter AMPPs by ATC code
@@ -129,7 +129,10 @@ export async function executeSearch(
     if (hasTextQuery) return null; // All types are relevant when there's a text query
 
     const relevantTypes = new Set<EntityType>();
-    if (filters?.vtmCode) relevantTypes.add('vmp');
+    if (filters?.vtmCode) {
+      relevantTypes.add('vmp');  // VMPs directly related to VTM
+      relevantTypes.add('amp');  // AMPs related to VTM via VMP
+    }
     if (filters?.vmpCode) relevantTypes.add('amp');
     if (filters?.ampCode) relevantTypes.add('ampp');
     if (filters?.atcCode) relevantTypes.add('ampp');
@@ -141,6 +144,18 @@ export async function executeSearch(
 
   const relevantTypes = getRelevantTypes();
   const isTypeRelevant = (type: EntityType) => !relevantTypes || relevantTypes.has(type);
+
+  // Determine if we should use DB-level pagination for relationship filters
+  // Only use DB pagination when a single entity type is selected
+  // For multiple types, pagination at DB level doesn't work because each query applies
+  // offset independently (e.g., VMP offset 80 = 0, AMP offset 80 = 0 even though total > 80)
+  const hasRelationshipFilter = filters && (
+    filters.vtmCode || filters.vmpCode || filters.ampCode ||
+    filters.atcCode || filters.companyCode || filters.vmpGroupCode
+  );
+  const useDbPagination = hasRelationshipFilter && types && types.length === 1;
+  // When not using DB pagination, fetch up to this many results per type
+  const maxResultsPerType = useDbPagination ? limit : Math.max(SEARCH_LIMIT_PER_TABLE, limit + offset);
 
   const allResults: RawSearchResult[] = [];
   const facetCounts: Record<EntityType, number> = {
@@ -213,7 +228,20 @@ export async function executeSearch(
         const vmpGroupFilter = filters?.vmpGroupCode;
 
         let result;
+        let totalCount: number | null = null;
+
         if (vtmFilter) {
+        // Get accurate count first
+        const countResult = await sql`
+          SELECT COUNT(DISTINCT v.code)::int as count
+          FROM vmp v
+          WHERE v.vtm_code = ${vtmFilter}
+            AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
+        `;
+        totalCount = countResult.rows[0]?.count || 0;
+
+        // Only apply offset when single type is selected (DB-level pagination)
+        const queryOffset = useDbPagination ? offset : 0;
         result = await sql`
           SELECT DISTINCT ON (v.code)
             'vmp' as entity_type,
@@ -233,9 +261,20 @@ export async function executeSearch(
           WHERE v.vtm_code = ${vtmFilter}
             AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
           ORDER BY v.code
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
         `;
       } else if (vmpGroupFilter) {
+        // Get accurate count first
+        const countResult = await sql`
+          SELECT COUNT(DISTINCT v.code)::int as count
+          FROM vmp v
+          WHERE v.vmp_group_code = ${vmpGroupFilter}
+            AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
+        `;
+        totalCount = countResult.rows[0]?.count || 0;
+
+        // Only apply offset when single type is selected (DB-level pagination)
+        const queryOffset = useDbPagination ? offset : 0;
         result = await sql`
           SELECT DISTINCT ON (v.code)
             'vmp' as entity_type,
@@ -255,7 +294,7 @@ export async function executeSearch(
           WHERE v.vmp_group_code = ${vmpGroupFilter}
             AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
           ORDER BY v.code
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
         `;
       } else {
         result = await sql`
@@ -288,7 +327,8 @@ export async function executeSearch(
           LIMIT ${SEARCH_LIMIT_PER_TABLE}
         `;
       }
-        facetCounts.vmp = result.rows.length;
+        // Use accurate count from COUNT query if available, otherwise use rows.length
+        facetCounts.vmp = totalCount !== null ? totalCount : result.rows.length;
         if (shouldFetchResults('vmp')) {
           result.rows.forEach((r) => {
             allResults.push({
@@ -308,12 +348,62 @@ export async function executeSearch(
   if (isTypeRelevant('amp')) {
     searchPromises.push(
       (async () => {
-        // Support filtering by VMP code or company code
+        // Support filtering by VMP code, company code, or VTM code (via VMP)
         const vmpFilter = filters?.vmpCode;
         const companyFilter = filters?.companyCode;
+        const vtmFilter = filters?.vtmCode;
 
       let result;
-      if (vmpFilter) {
+      let totalCount: number | null = null;
+
+      if (vtmFilter) {
+        // Get accurate count first
+        const countResult = await sql`
+          SELECT COUNT(DISTINCT a.code)::int as count
+          FROM amp a
+          JOIN vmp v ON v.code = a.vmp_code
+          WHERE v.vtm_code = ${vtmFilter}
+            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
+        `;
+        totalCount = countResult.rows[0]?.count || 0;
+
+        // Only apply offset when single type is selected (DB-level pagination)
+        const queryOffset = useDbPagination ? offset : 0;
+        // Filter AMPs by VTM code (through VMP relationship) with pagination
+        result = await sql`
+          SELECT DISTINCT ON (a.code)
+            'amp' as entity_type,
+            a.code,
+            a.name,
+            v.name as parent_name,
+            a.vmp_code as parent_code,
+            c.denomination as company_name,
+            NULL as pack_info,
+            NULL as price,
+            NULL as reimbursable,
+            NULL as cnk_code,
+            NULL as product_count,
+            a.black_triangle
+          FROM amp a
+          JOIN vmp v ON v.code = a.vmp_code
+          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
+          WHERE v.vtm_code = ${vtmFilter}
+            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
+          ORDER BY a.code
+          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
+        `;
+      } else if (vmpFilter) {
+        // Get accurate count first
+        const countResult = await sql`
+          SELECT COUNT(DISTINCT a.code)::int as count
+          FROM amp a
+          WHERE a.vmp_code = ${vmpFilter}
+            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
+        `;
+        totalCount = countResult.rows[0]?.count || 0;
+
+        // Only apply offset when single type is selected (DB-level pagination)
+        const queryOffset = useDbPagination ? offset : 0;
         result = await sql`
           SELECT DISTINCT ON (a.code)
             'amp' as entity_type,
@@ -334,9 +424,20 @@ export async function executeSearch(
           WHERE a.vmp_code = ${vmpFilter}
             AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
           ORDER BY a.code
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
         `;
       } else if (companyFilter) {
+        // Get accurate count first
+        const countResult = await sql`
+          SELECT COUNT(DISTINCT a.code)::int as count
+          FROM amp a
+          WHERE a.company_actor_nr = ${companyFilter}
+            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
+        `;
+        totalCount = countResult.rows[0]?.count || 0;
+
+        // Only apply offset when single type is selected (DB-level pagination)
+        const queryOffset = useDbPagination ? offset : 0;
         result = await sql`
           SELECT DISTINCT ON (a.code)
             'amp' as entity_type,
@@ -357,7 +458,7 @@ export async function executeSearch(
           WHERE a.company_actor_nr = ${companyFilter}
             AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
           ORDER BY a.code
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
         `;
       } else {
         result = await sql`
@@ -391,7 +492,8 @@ export async function executeSearch(
           LIMIT ${SEARCH_LIMIT_PER_TABLE}
         `;
       }
-        facetCounts.amp = result.rows.length;
+        // Use accurate count from COUNT query if available, otherwise use rows.length
+        facetCounts.amp = totalCount !== null ? totalCount : result.rows.length;
         if (shouldFetchResults('amp')) {
           result.rows.forEach((r) => {
             allResults.push({
@@ -418,8 +520,21 @@ export async function executeSearch(
         const atcFilter = filters?.atcCode;
 
       let amppQuery;
+      let totalCount: number | null = null;
+
       if (ampFilter) {
-        // Filter by AMP code
+        // Get accurate count first
+        const countResult = await sql`
+          SELECT COUNT(DISTINCT ampp.cti_extended)::int as count
+          FROM ampp
+          WHERE ampp.amp_code = ${ampFilter}
+            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+        `;
+        totalCount = countResult.rows[0]?.count || 0;
+
+        // Only apply offset when single type is selected (DB-level pagination)
+        const queryOffset = useDbPagination ? offset : 0;
+        // Filter by AMP code with pagination
         amppQuery = sql`
           SELECT DISTINCT ON (ampp.cti_extended)
             'ampp' as entity_type,
@@ -450,10 +565,24 @@ export async function executeSearch(
           WHERE ampp.amp_code = ${ampFilter}
             AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
           ORDER BY ampp.cti_extended
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
         `;
       } else if (atcFilter) {
-        // Filter by ATC code - need to join with amp_atc_classification
+        // Get accurate count first
+        const countResult = await sql`
+          SELECT COUNT(DISTINCT ampp.cti_extended)::int as count
+          FROM ampp
+          JOIN amp ON amp.code = ampp.amp_code
+          JOIN amp_atc_classification aac ON aac.amp_code = amp.code
+          WHERE aac.atc_code = ${atcFilter}
+            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+            AND (aac.end_date IS NULL OR aac.end_date > CURRENT_DATE)
+        `;
+        totalCount = countResult.rows[0]?.count || 0;
+
+        // Only apply offset when single type is selected (DB-level pagination)
+        const queryOffset = useDbPagination ? offset : 0;
+        // Filter by ATC code with pagination
         amppQuery = sql`
           SELECT DISTINCT ON (ampp.cti_extended)
             'ampp' as entity_type,
@@ -486,7 +615,7 @@ export async function executeSearch(
             AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
             AND (aac.end_date IS NULL OR aac.end_date > CURRENT_DATE)
           ORDER BY ampp.cti_extended
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
         `;
       } else if (isCnkQuery) {
         // CNK exact match
@@ -552,7 +681,8 @@ export async function executeSearch(
         `;
       }
         const result = await amppQuery;
-        facetCounts.ampp = result.rows.length;
+        // Use accurate count from COUNT query if available, otherwise use rows.length
+        facetCounts.ampp = totalCount !== null ? totalCount : result.rows.length;
         if (shouldFetchResults('ampp')) {
           result.rows.forEach((r) => {
             allResults.push({
@@ -793,8 +923,19 @@ export async function executeSearch(
     return nameA.localeCompare(nameB);
   });
 
-  const totalCount = scoredResults.length;
-  const paginatedResults = scoredResults.slice(offset, offset + limit);
+  // Calculate total count from facet counts (more accurate than result array length
+  // when pagination is applied with relationship filters)
+  const totalCount = types
+    ? types.reduce((sum, type) => sum + (facetCounts[type] || 0), 0)
+    : Object.values(facetCounts).reduce((sum, count) => sum + count, 0);
+
+  // Check if we applied DB-level pagination (only for single type with relationship filters)
+  // DB-level pagination only works correctly when querying a single entity type.
+  // For multiple types, each query applies offset independently which causes page N to be empty
+  // when offset exceeds individual type counts (e.g., VMP has 10, AMP has 68, offset 80 = 0 results from both)
+  const paginatedResults = useDbPagination
+    ? scoredResults  // Already paginated at DB level for single type
+    : scoredResults.slice(offset, offset + limit);  // In-memory pagination for text search or multi-type
 
   const results: SearchResultItem[] = paginatedResults.map((r) => ({
     entityType: r.entityType,
