@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { SearchBar } from '@/components/search/search-bar';
 import { EntityTypeFilter } from '@/components/search/entity-type-filter';
 import { Pagination } from '@/components/search/pagination';
@@ -24,6 +24,19 @@ function SearchContent() {
   const queryParam = searchParams.get('q') || '';
   const typesParam = searchParams.get('types');
   const pageParam = searchParams.get('page');
+
+  // Parse relationship filter parameters
+  const vtmCode = searchParams.get('vtm') || undefined;
+  const vmpCode = searchParams.get('vmp') || undefined;
+  const ampCode = searchParams.get('amp') || undefined;
+  const atcCode = searchParams.get('atc') || undefined;
+  const companyCode = searchParams.get('company') || undefined;
+  const vmpGroupCode = searchParams.get('vmpGroup') || undefined;
+
+  const filters = useMemo(() => {
+    const hasFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode;
+    return hasFilters ? { vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode } : undefined;
+  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode]);
 
   const [query, setQuery] = useState(queryParam);
   const [selectedTypes, setSelectedTypes] = useState<EntityType[]>(() => {
@@ -61,7 +74,8 @@ function SearchContent() {
     types: selectedTypes.length > 0 ? selectedTypes : undefined,
     limit: RESULTS_PER_PAGE,
     offset: (currentPage - 1) * RESULTS_PER_PAGE,
-    enabled: query.length >= 2,
+    enabled: query.length >= 2 || !!filters,
+    filters,
   });
 
   const updateUrl = (newQuery: string, newTypes: EntityType[], newPage: number) => {
@@ -69,6 +83,13 @@ function SearchContent() {
     if (newQuery) params.set('q', newQuery);
     if (newTypes.length > 0) params.set('types', newTypes.join(','));
     if (newPage > 1) params.set('page', newPage.toString());
+    // Preserve filters in URL
+    if (vtmCode) params.set('vtm', vtmCode);
+    if (vmpCode) params.set('vmp', vmpCode);
+    if (ampCode) params.set('amp', ampCode);
+    if (atcCode) params.set('atc', atcCode);
+    if (companyCode) params.set('company', companyCode);
+    if (vmpGroupCode) params.set('vmpGroup', vmpGroupCode);
     router.push(`/${language}/search?${params.toString()}`);
   };
 
@@ -101,7 +122,7 @@ function SearchContent() {
       </div>
 
       {/* Results area */}
-      {query.length < 2 ? (
+      {query.length < 2 && !filters ? (
         <EmptyState variant="no-query" />
       ) : isLoading ? (
         <div className="space-y-6">
@@ -124,7 +145,10 @@ function SearchContent() {
           {/* Results header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-              {data.totalCount} {data.totalCount !== 1 ? t('common.results') : t('common.result')} {t('search.resultsFor').toLowerCase()} &quot;{data.query}&quot;
+              {data.totalCount} {data.totalCount !== 1 ? t('common.results') : t('common.result')}
+              {data.query ? (
+                <> {t('search.resultsFor').toLowerCase()} &quot;{data.query}&quot;</>
+              ) : null}
             </h2>
           </div>
 

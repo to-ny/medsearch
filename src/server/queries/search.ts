@@ -90,6 +90,18 @@ const TYPE_PRIORITY: Record<EntityType, number> = {
 };
 
 /**
+ * Relationship filters for search
+ */
+export interface SearchFilters {
+  vtmCode?: string;       // Filter VMPs by VTM code
+  vmpCode?: string;       // Filter AMPs by VMP code
+  ampCode?: string;       // Filter AMPPs by AMP code
+  atcCode?: string;       // Filter AMPPs by ATC code
+  companyCode?: string;   // Filter AMPs by company actor_nr
+  vmpGroupCode?: string;  // Filter VMPs by VMP Group code
+}
+
+/**
  * Execute search across all entity types
  */
 export async function executeSearch(
@@ -97,7 +109,8 @@ export async function executeSearch(
   lang: Language = 'en',
   types?: EntityType[],
   limit = 20,
-  offset = 0
+  offset = 0,
+  filters?: SearchFilters
 ): Promise<SearchResponse> {
   const normalizedQuery = query.trim().toLowerCase();
   const searchPattern = `%${normalizedQuery}%`;
@@ -170,35 +183,86 @@ export async function executeSearch(
   // VMP search
   searchPromises.push(
     (async () => {
-      const result = await sql`
-        SELECT DISTINCT ON (v.code)
-          'vmp' as entity_type,
-          v.code,
-          v.name,
-          vtm.name as parent_name,
-          v.vtm_code as parent_code,
-          NULL as company_name,
-          NULL as pack_info,
-          NULL as price,
-          NULL as reimbursable,
-          NULL as cnk_code,
-          NULL as product_count,
-          NULL as black_triangle
-        FROM vmp v
-        LEFT JOIN vtm ON vtm.code = v.vtm_code
-        WHERE (
-          v.name->>'en' ILIKE ${searchPattern}
-          OR v.name->>'nl' ILIKE ${searchPattern}
-          OR v.name->>'fr' ILIKE ${searchPattern}
-          OR v.name->>'de' ILIKE ${searchPattern}
-          OR v.abbreviated_name->>'en' ILIKE ${searchPattern}
-          OR v.abbreviated_name->>'nl' ILIKE ${searchPattern}
-          OR v.code ILIKE ${prefixPattern}
-        )
-        AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
-        ORDER BY v.code
-        LIMIT ${SEARCH_LIMIT_PER_TABLE}
-      `;
+      // Support filtering by VTM code or VMP Group code
+      const vtmFilter = filters?.vtmCode;
+      const vmpGroupFilter = filters?.vmpGroupCode;
+
+      let result;
+      if (vtmFilter) {
+        result = await sql`
+          SELECT DISTINCT ON (v.code)
+            'vmp' as entity_type,
+            v.code,
+            v.name,
+            vtm.name as parent_name,
+            v.vtm_code as parent_code,
+            NULL as company_name,
+            NULL as pack_info,
+            NULL as price,
+            NULL as reimbursable,
+            NULL as cnk_code,
+            NULL as product_count,
+            NULL as black_triangle
+          FROM vmp v
+          LEFT JOIN vtm ON vtm.code = v.vtm_code
+          WHERE v.vtm_code = ${vtmFilter}
+            AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
+          ORDER BY v.code
+          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+        `;
+      } else if (vmpGroupFilter) {
+        result = await sql`
+          SELECT DISTINCT ON (v.code)
+            'vmp' as entity_type,
+            v.code,
+            v.name,
+            vtm.name as parent_name,
+            v.vtm_code as parent_code,
+            NULL as company_name,
+            NULL as pack_info,
+            NULL as price,
+            NULL as reimbursable,
+            NULL as cnk_code,
+            NULL as product_count,
+            NULL as black_triangle
+          FROM vmp v
+          LEFT JOIN vtm ON vtm.code = v.vtm_code
+          WHERE v.vmp_group_code = ${vmpGroupFilter}
+            AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
+          ORDER BY v.code
+          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+        `;
+      } else {
+        result = await sql`
+          SELECT DISTINCT ON (v.code)
+            'vmp' as entity_type,
+            v.code,
+            v.name,
+            vtm.name as parent_name,
+            v.vtm_code as parent_code,
+            NULL as company_name,
+            NULL as pack_info,
+            NULL as price,
+            NULL as reimbursable,
+            NULL as cnk_code,
+            NULL as product_count,
+            NULL as black_triangle
+          FROM vmp v
+          LEFT JOIN vtm ON vtm.code = v.vtm_code
+          WHERE (
+            v.name->>'en' ILIKE ${searchPattern}
+            OR v.name->>'nl' ILIKE ${searchPattern}
+            OR v.name->>'fr' ILIKE ${searchPattern}
+            OR v.name->>'de' ILIKE ${searchPattern}
+            OR v.abbreviated_name->>'en' ILIKE ${searchPattern}
+            OR v.abbreviated_name->>'nl' ILIKE ${searchPattern}
+            OR v.code ILIKE ${prefixPattern}
+          )
+          AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
+          ORDER BY v.code
+          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+        `;
+      }
       facetCounts.vmp = result.rows.length;
       if (shouldFetchResults('vmp')) {
         result.rows.forEach((r) => {
@@ -217,36 +281,89 @@ export async function executeSearch(
   // AMP search
   searchPromises.push(
     (async () => {
-      const result = await sql`
-        SELECT DISTINCT ON (a.code)
-          'amp' as entity_type,
-          a.code,
-          a.name,
-          v.name as parent_name,
-          a.vmp_code as parent_code,
-          c.denomination as company_name,
-          NULL as pack_info,
-          NULL as price,
-          NULL as reimbursable,
-          NULL as cnk_code,
-          NULL as product_count,
-          a.black_triangle
-        FROM amp a
-        LEFT JOIN vmp v ON v.code = a.vmp_code
-        LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
-        WHERE (
-          a.name->>'en' ILIKE ${searchPattern}
-          OR a.name->>'nl' ILIKE ${searchPattern}
-          OR a.name->>'fr' ILIKE ${searchPattern}
-          OR a.name->>'de' ILIKE ${searchPattern}
-          OR a.abbreviated_name->>'en' ILIKE ${searchPattern}
-          OR a.official_name ILIKE ${searchPattern}
-          OR a.code ILIKE ${prefixPattern}
-        )
-        AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
-        ORDER BY a.code
-        LIMIT ${SEARCH_LIMIT_PER_TABLE}
-      `;
+      // Support filtering by VMP code or company code
+      const vmpFilter = filters?.vmpCode;
+      const companyFilter = filters?.companyCode;
+
+      let result;
+      if (vmpFilter) {
+        result = await sql`
+          SELECT DISTINCT ON (a.code)
+            'amp' as entity_type,
+            a.code,
+            a.name,
+            v.name as parent_name,
+            a.vmp_code as parent_code,
+            c.denomination as company_name,
+            NULL as pack_info,
+            NULL as price,
+            NULL as reimbursable,
+            NULL as cnk_code,
+            NULL as product_count,
+            a.black_triangle
+          FROM amp a
+          LEFT JOIN vmp v ON v.code = a.vmp_code
+          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
+          WHERE a.vmp_code = ${vmpFilter}
+            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
+          ORDER BY a.code
+          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+        `;
+      } else if (companyFilter) {
+        result = await sql`
+          SELECT DISTINCT ON (a.code)
+            'amp' as entity_type,
+            a.code,
+            a.name,
+            v.name as parent_name,
+            a.vmp_code as parent_code,
+            c.denomination as company_name,
+            NULL as pack_info,
+            NULL as price,
+            NULL as reimbursable,
+            NULL as cnk_code,
+            NULL as product_count,
+            a.black_triangle
+          FROM amp a
+          LEFT JOIN vmp v ON v.code = a.vmp_code
+          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
+          WHERE a.company_actor_nr = ${companyFilter}
+            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
+          ORDER BY a.code
+          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+        `;
+      } else {
+        result = await sql`
+          SELECT DISTINCT ON (a.code)
+            'amp' as entity_type,
+            a.code,
+            a.name,
+            v.name as parent_name,
+            a.vmp_code as parent_code,
+            c.denomination as company_name,
+            NULL as pack_info,
+            NULL as price,
+            NULL as reimbursable,
+            NULL as cnk_code,
+            NULL as product_count,
+            a.black_triangle
+          FROM amp a
+          LEFT JOIN vmp v ON v.code = a.vmp_code
+          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
+          WHERE (
+            a.name->>'en' ILIKE ${searchPattern}
+            OR a.name->>'nl' ILIKE ${searchPattern}
+            OR a.name->>'fr' ILIKE ${searchPattern}
+            OR a.name->>'de' ILIKE ${searchPattern}
+            OR a.abbreviated_name->>'en' ILIKE ${searchPattern}
+            OR a.official_name ILIKE ${searchPattern}
+            OR a.code ILIKE ${prefixPattern}
+          )
+          AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
+          ORDER BY a.code
+          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+        `;
+      }
       facetCounts.amp = result.rows.length;
       if (shouldFetchResults('amp')) {
         result.rows.forEach((r) => {
@@ -267,8 +384,82 @@ export async function executeSearch(
   // AMPP search (including CNK codes)
   searchPromises.push(
     (async () => {
+      // Support filtering by AMP code or ATC code
+      const ampFilter = filters?.ampCode;
+      const atcFilter = filters?.atcCode;
+
       let amppQuery;
-      if (isCnkQuery) {
+      if (ampFilter) {
+        // Filter by AMP code
+        amppQuery = sql`
+          SELECT DISTINCT ON (ampp.cti_extended)
+            'ampp' as entity_type,
+            ampp.cti_extended as code,
+            COALESCE(ampp.prescription_name, amp.name) as name,
+            amp.name as parent_name,
+            ampp.amp_code as parent_code,
+            NULL as company_name,
+            ampp.pack_display_value as pack_info,
+            ampp.ex_factory_price as price,
+            EXISTS(
+              SELECT 1 FROM dmpp d
+              WHERE d.ampp_cti_extended = ampp.cti_extended
+              AND d.reimbursable = true
+              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+            ) as reimbursable,
+            (
+              SELECT d.code FROM dmpp d
+              WHERE d.ampp_cti_extended = ampp.cti_extended
+              AND d.delivery_environment = 'P'
+              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+              LIMIT 1
+            ) as cnk_code,
+            NULL as product_count,
+            NULL as black_triangle
+          FROM ampp
+          JOIN amp ON amp.code = ampp.amp_code
+          WHERE ampp.amp_code = ${ampFilter}
+            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+          ORDER BY ampp.cti_extended
+          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+        `;
+      } else if (atcFilter) {
+        // Filter by ATC code - need to join with amp_atc_classification
+        amppQuery = sql`
+          SELECT DISTINCT ON (ampp.cti_extended)
+            'ampp' as entity_type,
+            ampp.cti_extended as code,
+            COALESCE(ampp.prescription_name, amp.name) as name,
+            amp.name as parent_name,
+            ampp.amp_code as parent_code,
+            NULL as company_name,
+            ampp.pack_display_value as pack_info,
+            ampp.ex_factory_price as price,
+            EXISTS(
+              SELECT 1 FROM dmpp d
+              WHERE d.ampp_cti_extended = ampp.cti_extended
+              AND d.reimbursable = true
+              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+            ) as reimbursable,
+            (
+              SELECT d.code FROM dmpp d
+              WHERE d.ampp_cti_extended = ampp.cti_extended
+              AND d.delivery_environment = 'P'
+              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+              LIMIT 1
+            ) as cnk_code,
+            NULL as product_count,
+            NULL as black_triangle
+          FROM ampp
+          JOIN amp ON amp.code = ampp.amp_code
+          JOIN amp_atc_classification aac ON aac.amp_code = amp.code
+          WHERE aac.atc_code = ${atcFilter}
+            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+            AND (aac.end_date IS NULL OR aac.end_date > CURRENT_DATE)
+          ORDER BY ampp.cti_extended
+          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+        `;
+      } else if (isCnkQuery) {
         // CNK exact match
         amppQuery = sql`
           SELECT DISTINCT ON (ampp.cti_extended)

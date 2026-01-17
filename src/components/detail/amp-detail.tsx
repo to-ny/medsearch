@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { EntityHeader } from '@/components/entities/entity-header';
 import { EntityTypeBadge } from '@/components/entities/entity-type-badge';
@@ -32,9 +32,6 @@ export function AMPDetail({ amp }: AMPDetailProps) {
   // Generate slugs for links
   const vmpSlug = amp.vmp ? generateEntitySlug(amp.vmp.name, amp.vmp.code, language) : null;
   const companySlug = amp.company ? generateCompanySlug(amp.company.denomination, amp.company.actorNr) : null;
-
-  // Search URL for packages
-  const searchUrl = `/${language}/search?q=${encodeURIComponent(name)}&types=ampp`;
 
   const breadcrumbs = [
     ...(amp.vmp && vmpSlug ? [{ label: vmpName!, href: `/${language}/generics/${vmpSlug}` }] : []),
@@ -213,25 +210,22 @@ export function AMPDetail({ amp }: AMPDetailProps) {
           )}
 
           {/* Packages */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                {t('detail.availablePackages')}
-                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                  ({amp.packages.length})
-                </span>
-              </h3>
-              {amp.packages.length > 0 && (
+          <Section
+            title={t('detail.availablePackages')}
+            count={amp.packages.length}
+            headerAction={
+              amp.packages.length > 0 ? (
                 <Link
-                  href={searchUrl}
+                  href={`/${language}/search?amp=${amp.code}&types=ampp`}
                   className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                   title={t('common.searchAll')}
                 >
                   <MagnifyingGlassIcon className="h-4 w-4" />
                   <span className="hidden sm:inline">{t('common.searchAll')}</span>
                 </Link>
-              )}
-            </div>
+              ) : undefined
+            }
+          >
             <div className="space-y-2">
               {amp.packages.map((pkg) => {
                 const pkgSlug = generateEntitySlug(pkg.name, pkg.code, language);
@@ -268,7 +262,7 @@ export function AMPDetail({ amp }: AMPDetailProps) {
                 );
               })}
             </div>
-          </div>
+          </Section>
         </div>
 
         {/* Sidebar */}

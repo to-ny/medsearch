@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeSearch } from '@/server/queries/search';
+import { executeSearch, type SearchFilters } from '@/server/queries/search';
 import { createAPIError } from '@/server/types/api';
 import { isValidEntityType, isValidLanguage, type EntityType, type Language } from '@/server/types/domain';
 
@@ -10,9 +10,22 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
 
-    // Parse query parameter
-    const query = searchParams.get('q');
-    if (!query || query.trim().length < 2) {
+    // Parse relationship filter parameters
+    const vtmCode = searchParams.get('vtm') || undefined;
+    const vmpCode = searchParams.get('vmp') || undefined;
+    const ampCode = searchParams.get('amp') || undefined;
+    const atcCode = searchParams.get('atc') || undefined;
+    const companyCode = searchParams.get('company') || undefined;
+    const vmpGroupCode = searchParams.get('vmpGroup') || undefined;
+
+    const hasFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode;
+    const filters: SearchFilters | undefined = hasFilters
+      ? { vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode }
+      : undefined;
+
+    // Parse query parameter - allow empty if filters are present
+    const query = searchParams.get('q') || '';
+    if (!hasFilters && query.trim().length < 2) {
       return NextResponse.json(
         createAPIError('QUERY_TOO_SHORT', 'Search query must be at least 2 characters'),
         { status: 400 }
@@ -49,7 +62,7 @@ export async function GET(request: NextRequest) {
     const offset = offsetParam ? Math.max(0, parseInt(offsetParam, 10) || 0) : 0;
 
     // Execute search
-    const results = await executeSearch(query.trim(), lang, types, limit, offset);
+    const results = await executeSearch(query.trim(), lang, types, limit, offset, filters);
 
     return NextResponse.json(results);
   } catch (error) {

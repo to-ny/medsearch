@@ -111,7 +111,7 @@ export function VMPGroupDetail({ vmpGroup }: VMPGroupDetailProps) {
           <RelationshipList
             title={t('detail.memberProducts')}
             items={vmpItems}
-            searchQuery={name}
+            searchFilter={{ type: 'vmpGroup', code: vmpGroup.code }}
             searchType="vmp"
           />
 

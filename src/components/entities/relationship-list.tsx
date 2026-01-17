@@ -19,13 +19,23 @@ interface RelationshipItem {
   subtitle?: string;
 }
 
+type SearchFilter =
+  | { type: 'vtm'; code: string }
+  | { type: 'vmp'; code: string }
+  | { type: 'amp'; code: string }
+  | { type: 'atc'; code: string }
+  | { type: 'company'; code: string }
+  | { type: 'vmpGroup'; code: string };
+
 interface RelationshipListProps {
   title: string;
   items: RelationshipItem[];
   maxInitialDisplay?: number;
   className?: string;
   getHref?: (item: RelationshipItem, lang: Language) => string;
-  searchQuery?: string;
+  /** Filter for search link - uses proper relationship filtering instead of text search */
+  searchFilter?: SearchFilter;
+  /** Entity type to filter results by in search */
   searchType?: EntityType;
 }
 
@@ -72,7 +82,7 @@ export function RelationshipList({
   maxInitialDisplay = 5,
   className,
   getHref = getDefaultHref,
-  searchQuery,
+  searchFilter,
   searchType,
 }: RelationshipListProps) {
   const [showAll, setShowAll] = useState(false);
@@ -86,9 +96,14 @@ export function RelationshipList({
   const displayedItems = showAll ? items : items.slice(0, maxInitialDisplay);
   const hasMore = items.length > maxInitialDisplay;
 
-  const searchUrl = searchQuery && searchType
-    ? `/${language}/search?q=${encodeURIComponent(searchQuery)}&types=${searchType}`
-    : null;
+  // Build search URL with proper filter parameter
+  let searchUrl: string | null = null;
+  if (searchFilter && searchType) {
+    const params = new URLSearchParams();
+    params.set(searchFilter.type, searchFilter.code);
+    params.set('types', searchType);
+    searchUrl = `/${language}/search?${params.toString()}`;
+  }
 
   return (
     <div className={cn('space-y-3', className)}>
