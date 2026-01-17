@@ -1,12 +1,11 @@
 'use client';
 
 import { SearchBar } from '@/components/search/search-bar';
-import { useTranslation } from '@/lib/hooks/use-translation';
-import { useCurrentLanguage } from '@/lib/hooks/use-language';
+import { useLinks, useTranslation } from '@/lib/hooks';
 
 export default function HomePage() {
   const { t } = useTranslation();
-  const lang = useCurrentLanguage();
+  const links = useLinks();
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-12rem)] px-4">
@@ -48,10 +47,10 @@ export default function HomePage() {
         <div className="text-sm text-gray-500 dark:text-gray-400">
           <p className="mb-2">{t('home.examples')}:</p>
           <div className="flex flex-wrap justify-center gap-2">
-            <ExampleChip query="paracetamol" lang={lang} />
-            <ExampleChip query="ibuprofen 400" lang={lang} />
-            <ExampleChip query="4757811" label={t('home.cnkCode')} lang={lang} />
-            <ExampleChip query="N02BE01" label={t('home.atcCode')} lang={lang} />
+            <ExampleChip query="paracetamol" href={links.toSearch({ q: 'paracetamol' })} />
+            <ExampleChip query="ibuprofen 400" href={links.toSearch({ q: 'ibuprofen 400' })} />
+            <ExampleChip query="4757811" label={t('home.cnkCode')} href={links.toSearch({ q: '4757811' })} />
+            <ExampleChip query="N02BE01" label={t('home.atcCode')} href={links.toSearch({ q: 'N02BE01' })} />
           </div>
         </div>
 
@@ -90,10 +89,10 @@ export default function HomePage() {
   );
 }
 
-function ExampleChip({ query, label, lang }: { query: string; label?: string; lang: string }) {
+function ExampleChip({ query, label, href }: { query: string; label?: string; href: string }) {
   return (
     <a
-      href={`/${lang}/search?q=${encodeURIComponent(query)}`}
+      href={href}
       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
     >
       <span className="font-medium">{query}</span>

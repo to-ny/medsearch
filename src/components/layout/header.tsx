@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LanguageSelector } from './language-selector';
 import { SearchBarCompact } from '@/components/search/search-bar';
-import { useCurrentLanguage } from '@/lib/hooks/use-language';
+import { useLinks } from '@/lib/hooks';
 import { cn } from '@/lib/utils/cn';
 
 interface HeaderProps {
@@ -13,13 +13,15 @@ interface HeaderProps {
 
 export function Header({ className }: HeaderProps) {
   const pathname = usePathname();
-  const language = useCurrentLanguage();
+  const links = useLinks();
+  const homePath = links.toHome();
+  const searchPath = links.toSearch();
 
   // Check for home page (with or without language prefix)
-  const isHomePage = pathname === '/' || pathname === `/${language}`;
+  const isHomePage = pathname === '/' || pathname === homePath;
 
   // Check for search page (with language prefix)
-  const isSearchPage = pathname === `/${language}/search`;
+  const isSearchPage = pathname === searchPath;
 
   return (
     <header
@@ -34,7 +36,7 @@ export function Header({ className }: HeaderProps) {
         <div className="flex items-center justify-between h-16 gap-4">
           {/* Logo */}
           <Link
-            href={`/${language}`}
+            href={homePath}
             className="flex items-center gap-2 flex-shrink-0"
           >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">

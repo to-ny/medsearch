@@ -6,11 +6,9 @@ import { ChevronRightIcon, MagnifyingGlassIcon } from '@heroicons/react/20/solid
 import { EntityTypeBadge } from './entity-type-badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
-import { useLanguage } from '@/lib/hooks/use-language';
-import { useTranslation } from '@/lib/hooks/use-translation';
+import { useLinks, useTranslation } from '@/lib/hooks';
 import { LocalizedText } from '@/components/shared/localized-text';
-import { generateEntitySlug, generateCompanySlug, generateATCSlug } from '@/lib/utils/slug';
-import type { EntityType, MultilingualText, Language } from '@/server/types/domain';
+import type { EntityType, MultilingualText } from '@/server/types/domain';
 
 interface RelationshipItem {
   entityType: EntityType;
@@ -32,48 +30,10 @@ interface RelationshipListProps {
   items: RelationshipItem[];
   maxInitialDisplay?: number;
   className?: string;
-  getHref?: (item: RelationshipItem, lang: Language) => string;
   /** Filter for search link - uses proper relationship filtering instead of text search */
   searchFilter?: SearchFilter;
   /** Entity type to filter results by in search */
   searchType?: EntityType;
-}
-
-function getDefaultHref(item: RelationshipItem, lang: Language): string {
-  switch (item.entityType) {
-    case 'vtm':
-    case 'substance': {
-      const slug = generateEntitySlug(item.name, item.code, lang);
-      return `/${lang}/substances/${slug}`;
-    }
-    case 'vmp': {
-      const slug = generateEntitySlug(item.name, item.code, lang);
-      return `/${lang}/generics/${slug}`;
-    }
-    case 'amp': {
-      const slug = generateEntitySlug(item.name, item.code, lang);
-      return `/${lang}/medications/${slug}`;
-    }
-    case 'ampp': {
-      const slug = generateEntitySlug(item.name, item.code, lang);
-      return `/${lang}/packages/${slug}`;
-    }
-    case 'company': {
-      const companyName = item.name?.nl || item.name?.fr || item.name?.en || item.name?.de || '';
-      const slug = generateCompanySlug(companyName, item.code);
-      return `/${lang}/companies/${slug}`;
-    }
-    case 'vmp_group': {
-      const slug = generateEntitySlug(item.name, item.code, lang);
-      return `/${lang}/therapeutic-groups/${slug}`;
-    }
-    case 'atc': {
-      const slug = generateATCSlug(item.code, item.name, lang);
-      return `/${lang}/classifications/${slug}`;
-    }
-    default:
-      return '#';
-  }
 }
 
 export function RelationshipList({
@@ -81,12 +41,11 @@ export function RelationshipList({
   items,
   maxInitialDisplay = 5,
   className,
-  getHref = getDefaultHref,
   searchFilter,
   searchType,
 }: RelationshipListProps) {
   const [showAll, setShowAll] = useState(false);
-  const { language } = useLanguage();
+  const links = useLinks();
   const { t } = useTranslation();
 
   if (items.length === 0) {
@@ -99,10 +58,10 @@ export function RelationshipList({
   // Build search URL with proper filter parameter
   let searchUrl: string | null = null;
   if (searchFilter && searchType) {
-    const params = new URLSearchParams();
-    params.set(searchFilter.type, searchFilter.code);
-    params.set('types', searchType);
-    searchUrl = `/${language}/search?${params.toString()}`;
+    searchUrl = links.toSearch({
+      [searchFilter.type]: searchFilter.code,
+      types: searchType,
+    });
   }
 
   return (
@@ -130,7 +89,7 @@ export function RelationshipList({
         {displayedItems.map((item) => (
           <Link
             key={`${item.entityType}-${item.code}`}
-            href={getHref(item, language)}
+            href={links.toEntity(item.entityType, item.name, item.code)}
             className="group block"
           >
             <div className={cn(

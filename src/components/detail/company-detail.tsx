@@ -13,7 +13,7 @@ import { Pagination } from '@/components/search/pagination';
 import { Card } from '@/components/ui/card';
 import { formatValidityPeriod, formatAddress, formatCountryName } from '@/lib/utils/format';
 import type { CompanyWithRelations } from '@/server/types/entities';
-import { useLanguage, useTranslation } from '@/lib/hooks';
+import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 
 interface CompanyDetailProps {
   company: CompanyWithRelations;
@@ -24,13 +24,14 @@ interface CompanyDetailProps {
 export function CompanyDetail({ company, currentPage, pageSize }: CompanyDetailProps) {
   const router = useRouter();
   const { language } = useLanguage();
+  const links = useLinks();
   const { t } = useTranslation();
   const breadcrumbs = [{ label: company.denomination }];
 
   const totalPages = Math.ceil(company.productCount / pageSize);
 
   const handlePageChange = (page: number) => {
-    router.push(`/company/${company.actorNr}?page=${page}`);
+    router.push(links.withPage(links.toCompany(company.denomination, company.actorNr), page));
   };
 
   const addressLines = formatAddress(
@@ -120,7 +121,7 @@ export function CompanyDetail({ company, currentPage, pageSize }: CompanyDetailP
             headerAction={
               company.productCount > 0 ? (
                 <Link
-                  href={`/search?company=${company.actorNr}&types=amp`}
+                  href={links.toSearch({ company: company.actorNr, types: 'amp' })}
                   className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                   title={t('common.searchAll')}
                 >
@@ -134,7 +135,7 @@ export function CompanyDetail({ company, currentPage, pageSize }: CompanyDetailP
               {company.products.map((product) => (
                 <Link
                   key={product.code}
-                  href={`/amp/${product.code}`}
+                  href={links.toMedication(product.name, product.code)}
                   className="block group"
                 >
                   <Card hover padding="sm">
