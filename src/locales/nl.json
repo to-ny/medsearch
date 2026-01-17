@@ -71,7 +71,8 @@
     "noResultsMessage": "Probeer uw zoektermen of filters aan te passen",
     "searching": "Zoeken...",
     "findMedications": "Vind geneesmiddelen, stoffen, merken en verpakkingen",
-    "examples": "Voorbeelden"
+    "examples": "Voorbeelden",
+    "filteredBy": "Gefilterd op"
   },
   "detail": {
     "overview": "Overzicht",

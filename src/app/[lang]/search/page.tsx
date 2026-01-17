@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, Suspense, useMemo } from 'react';
+import { XMarkIcon } from '@heroicons/react/20/solid';
 import { SearchBar } from '@/components/search/search-bar';
 import { EntityTypeFilter } from '@/components/search/entity-type-filter';
 import { Pagination } from '@/components/search/pagination';
@@ -108,6 +109,32 @@ function SearchContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const removeFilter = (filterKey: string) => {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (selectedTypes.length > 0) params.set('types', selectedTypes.join(','));
+    // Keep all filters except the one being removed
+    if (filterKey !== 'vtm' && vtmCode) params.set('vtm', vtmCode);
+    if (filterKey !== 'vmp' && vmpCode) params.set('vmp', vmpCode);
+    if (filterKey !== 'amp' && ampCode) params.set('amp', ampCode);
+    if (filterKey !== 'atc' && atcCode) params.set('atc', atcCode);
+    if (filterKey !== 'company' && companyCode) params.set('company', companyCode);
+    if (filterKey !== 'vmpGroup' && vmpGroupCode) params.set('vmpGroup', vmpGroupCode);
+    router.push(`/${language}/search?${params.toString()}`);
+  };
+
+  // Build active filters for display
+  const activeFilters = useMemo(() => {
+    const list: { key: string; label: string; value: string }[] = [];
+    if (vtmCode) list.push({ key: 'vtm', label: t('entityLabels.substance'), value: vtmCode });
+    if (vmpCode) list.push({ key: 'vmp', label: t('entityLabels.generic'), value: vmpCode });
+    if (ampCode) list.push({ key: 'amp', label: t('entityLabels.medication'), value: ampCode });
+    if (atcCode) list.push({ key: 'atc', label: t('entityLabels.classification'), value: atcCode });
+    if (companyCode) list.push({ key: 'company', label: t('entityLabels.company'), value: companyCode });
+    if (vmpGroupCode) list.push({ key: 'vmpGroup', label: t('entityLabels.therapeuticGroup'), value: vmpGroupCode });
+    return list;
+  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, t]);
+
   const totalPages = data ? Math.ceil(data.totalCount / RESULTS_PER_PAGE) : 0;
 
   return (
@@ -120,6 +147,25 @@ function SearchContent() {
           autoFocus={!query}
         />
       </div>
+
+      {/* Active filters */}
+      {activeFilters.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {t('search.filteredBy')}:
+          </span>
+          {activeFilters.map((filter) => (
+            <button
+              key={filter.key}
+              onClick={() => removeFilter(filter.key)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+            >
+              <span>{filter.label}: {filter.value}</span>
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Results area */}
       {query.length < 2 && !filters ? (

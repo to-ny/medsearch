@@ -71,7 +71,8 @@
     "noResultsMessage": "Essayez d'ajuster vos termes de recherche ou vos filtres",
     "searching": "Recherche en cours...",
     "findMedications": "Trouvez des médicaments, substances, marques et conditionnements",
-    "examples": "Exemples"
+    "examples": "Exemples",
+    "filteredBy": "Filtré par"
   },
   "detail": {
     "overview": "Aperçu",
