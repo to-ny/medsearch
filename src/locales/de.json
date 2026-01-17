@@ -235,5 +235,12 @@
     "ampCode": "AMP",
     "ampCodeFull": "AMP-Code",
     "ampCodeTooltip": "Tatsächliches Arzneimittelprodukt-Code - identifiziert Markenarzneimittelprodukte"
+  },
+  "atcLevels": {
+    "level1": "Stufe 1 (Anatomisch)",
+    "level2": "Stufe 2 (Therapeutisch)",
+    "level3": "Stufe 3 (Pharmakologisch)",
+    "level4": "Stufe 4 (Chemisch)",
+    "level5": "Stufe 5 (Substanz)"
   }
 }

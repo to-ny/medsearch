@@ -235,5 +235,12 @@
     "ampCode": "AMP",
     "ampCodeFull": "Code AMP",
     "ampCodeTooltip": "Code Médicament Réel - identifie les produits de médicaments de marque"
+  },
+  "atcLevels": {
+    "level1": "Niveau 1 (Anatomique)",
+    "level2": "Niveau 2 (Thérapeutique)",
+    "level3": "Niveau 3 (Pharmacologique)",
+    "level4": "Niveau 4 (Chimique)",
+    "level5": "Niveau 5 (Substance)"
   }
 }
