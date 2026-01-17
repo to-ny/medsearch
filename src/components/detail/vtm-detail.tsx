@@ -49,27 +49,33 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
           />
 
           {/* Overview */}
-          <Section title={t('detail.overview')}>
-            <InfoList>
-              <InfoRow
-                label={t('detail.validity')}
-                value={formatValidityPeriod(vtm.startDate, vtm.endDate)}
-              />
-              {/* Show all language variants */}
-              {vtm.name.nl && vtm.name.nl !== getLocalized(vtm.name) && (
-                <InfoRow label={t('languages.dutch')} value={vtm.name.nl} />
-              )}
-              {vtm.name.fr && vtm.name.fr !== getLocalized(vtm.name) && (
-                <InfoRow label={t('languages.french')} value={vtm.name.fr} />
-              )}
-              {vtm.name.en && vtm.name.en !== getLocalized(vtm.name) && (
-                <InfoRow label={t('languages.english')} value={vtm.name.en} />
-              )}
-              {vtm.name.de && vtm.name.de !== getLocalized(vtm.name) && (
-                <InfoRow label={t('languages.german')} value={vtm.name.de} />
-              )}
-            </InfoList>
-          </Section>
+          {(vtm.startDate || vtm.endDate ||
+            (vtm.name.nl && vtm.name.nl !== name) ||
+            (vtm.name.fr && vtm.name.fr !== name) ||
+            (vtm.name.en && vtm.name.en !== name) ||
+            (vtm.name.de && vtm.name.de !== name)) && (
+            <Section title={t('detail.overview')}>
+              <InfoList>
+                <InfoRow
+                  label={t('detail.validity')}
+                  value={formatValidityPeriod(vtm.startDate, vtm.endDate)}
+                />
+                {/* Show all language variants */}
+                {vtm.name.nl && vtm.name.nl !== name && (
+                  <InfoRow label={t('languages.dutch')} value={vtm.name.nl} />
+                )}
+                {vtm.name.fr && vtm.name.fr !== name && (
+                  <InfoRow label={t('languages.french')} value={vtm.name.fr} />
+                )}
+                {vtm.name.en && vtm.name.en !== name && (
+                  <InfoRow label={t('languages.english')} value={vtm.name.en} />
+                )}
+                {vtm.name.de && vtm.name.de !== name && (
+                  <InfoRow label={t('languages.german')} value={vtm.name.de} />
+                )}
+              </InfoList>
+            </Section>
+          )}
 
           {/* Generic Products */}
           <RelationshipList

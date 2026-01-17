@@ -61,32 +61,34 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
           />
 
           {/* Overview */}
-          <Section title={t('detail.overview')}>
-            <InfoList>
-              {ampp.packDisplayValue && (
-                <InfoRow label={t('detail.pack')} value={ampp.packDisplayValue} />
-              )}
-              {ampp.authorisationNr && (
-                <InfoRow label={t('detail.authorisationNr')} value={ampp.authorisationNr} />
-              )}
-              {ampp.orphan && (
+          {(ampp.packDisplayValue || ampp.authorisationNr || ampp.orphan || ampp.status || ampp.startDate || ampp.endDate) && (
+            <Section title={t('detail.overview')}>
+              <InfoList>
+                {ampp.packDisplayValue && (
+                  <InfoRow label={t('detail.pack')} value={ampp.packDisplayValue} />
+                )}
+                {ampp.authorisationNr && (
+                  <InfoRow label={t('detail.authorisationNr')} value={ampp.authorisationNr} />
+                )}
+                {ampp.orphan && (
+                  <InfoRow
+                    label={t('detail.orphanDrug')}
+                    value={<Badge variant="info" size="sm">{t('detail.orphanDrug')}</Badge>}
+                  />
+                )}
+                {ampp.status && (
+                  <InfoRow
+                    label={t('detail.status')}
+                    value={t(`status.${ampp.status}`) || ampp.status}
+                  />
+                )}
                 <InfoRow
-                  label={t('detail.orphanDrug')}
-                  value={<Badge variant="info" size="sm">{t('detail.orphanDrug')}</Badge>}
+                  label={t('detail.validity')}
+                  value={formatValidityPeriod(ampp.startDate, ampp.endDate)}
                 />
-              )}
-              {ampp.status && (
-                <InfoRow
-                  label={t('detail.status')}
-                  value={t(`status.${ampp.status}`) || ampp.status}
-                />
-              )}
-              <InfoRow
-                label={t('detail.validity')}
-                value={formatValidityPeriod(ampp.startDate, ampp.endDate)}
-              />
-            </InfoList>
-          </Section>
+              </InfoList>
+            </Section>
+          )}
 
           {/* Brand Information */}
           <Section title={t('detail.brandInformation')}>

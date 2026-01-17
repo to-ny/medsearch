@@ -71,29 +71,31 @@ export function AMPDetail({ amp }: AMPDetailProps) {
           )}
 
           {/* Overview */}
-          <Section title={t('detail.overview')}>
-            <InfoList>
-              {amp.officialName && amp.officialName !== name && (
-                <InfoRow label={t('detail.officialName')} value={amp.officialName} />
-              )}
-              {amp.abbreviatedName && (
+          {((amp.officialName && amp.officialName !== name) || amp.abbreviatedName || amp.medicineType || amp.startDate || amp.endDate) && (
+            <Section title={t('detail.overview')}>
+              <InfoList>
+                {amp.officialName && amp.officialName !== name && (
+                  <InfoRow label={t('detail.officialName')} value={amp.officialName} />
+                )}
+                {amp.abbreviatedName && (
+                  <InfoRow
+                    label={t('detail.abbreviatedName')}
+                    value={<LocalizedText text={amp.abbreviatedName} />}
+                  />
+                )}
+                {amp.medicineType && (
+                  <InfoRow
+                    label={t('detail.medicineType')}
+                    value={t(`medicineTypes.${amp.medicineType}`) || amp.medicineType}
+                  />
+                )}
                 <InfoRow
-                  label={t('detail.abbreviatedName')}
-                  value={<LocalizedText text={amp.abbreviatedName} />}
+                  label={t('detail.validity')}
+                  value={formatValidityPeriod(amp.startDate, amp.endDate)}
                 />
-              )}
-              {amp.medicineType && (
-                <InfoRow
-                  label={t('detail.medicineType')}
-                  value={t(`medicineTypes.${amp.medicineType}`) || amp.medicineType}
-                />
-              )}
-              <InfoRow
-                label={t('detail.validity')}
-                value={formatValidityPeriod(amp.startDate, amp.endDate)}
-              />
-            </InfoList>
-          </Section>
+              </InfoList>
+            </Section>
+          )}
 
           {/* Generic Product */}
           {amp.vmp && vmpSlug && (

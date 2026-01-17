@@ -58,26 +58,28 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
           </div>
 
           {/* Overview */}
-          <Section title={t('detail.overview')}>
-            <InfoList>
-              {chapterIV.processType && (
-                <InfoRow label={t('chapterIV.processType')} value={chapterIV.processType} />
-              )}
-              {chapterIV.processTypeOverrule && (
-                <InfoRow label={t('chapterIV.processOverride')} value={chapterIV.processTypeOverrule} />
-              )}
-              {chapterIV.paragraphVersion !== null && (
-                <InfoRow label={t('chapterIV.version')} value={chapterIV.paragraphVersion.toString()} />
-              )}
-              {chapterIV.modificationStatus && (
-                <InfoRow label={t('chapterIV.modificationStatus')} value={chapterIV.modificationStatus} />
-              )}
-              <InfoRow
-                label={t('detail.validity')}
-                value={formatValidityPeriod(chapterIV.startDate, chapterIV.endDate)}
-              />
-            </InfoList>
-          </Section>
+          {(chapterIV.processType || chapterIV.processTypeOverrule || chapterIV.paragraphVersion !== null || chapterIV.modificationStatus || chapterIV.startDate || chapterIV.endDate) && (
+            <Section title={t('detail.overview')}>
+              <InfoList>
+                {chapterIV.processType && (
+                  <InfoRow label={t('chapterIV.processType')} value={chapterIV.processType} />
+                )}
+                {chapterIV.processTypeOverrule && (
+                  <InfoRow label={t('chapterIV.processOverride')} value={chapterIV.processTypeOverrule} />
+                )}
+                {chapterIV.paragraphVersion !== null && (
+                  <InfoRow label={t('chapterIV.version')} value={chapterIV.paragraphVersion.toString()} />
+                )}
+                {chapterIV.modificationStatus && (
+                  <InfoRow label={t('chapterIV.modificationStatus')} value={chapterIV.modificationStatus} />
+                )}
+                <InfoRow
+                  label={t('detail.validity')}
+                  value={formatValidityPeriod(chapterIV.startDate, chapterIV.endDate)}
+                />
+              </InfoList>
+            </Section>
+          )}
 
           {/* Requirements & Conditions */}
           {chapterIV.verses.length > 0 && (
