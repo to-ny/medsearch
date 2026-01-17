@@ -161,7 +161,9 @@ CREATE TABLE IF NOT EXISTS amp_ingredient (
   rank INTEGER NOT NULL,
   type VARCHAR(50) DEFAULT 'ACTIVE_SUBSTANCE',
   substance_code VARCHAR(20),  -- No FK - substance table may not be populated
-  strength_description VARCHAR(255),  -- e.g., "EQUAL 500 mg"
+  strength_value DECIMAL(15, 4),  -- Numeric strength value from <Strength> element
+  strength_unit VARCHAR(50),  -- Unit from <Strength unit="..."> attribute (e.g., "mg", "mg/mL", "%")
+  strength_description VARCHAR(255),  -- Fallback text for complex cases, e.g., "EQUAL 12.0000 mg/ 6.0000 mL"
   PRIMARY KEY (amp_code, component_sequence_nr, rank),
   FOREIGN KEY (amp_code, component_sequence_nr) REFERENCES amp_component(amp_code, sequence_nr) ON DELETE CASCADE
 );

@@ -79,6 +79,10 @@ interface ParsedRecord {
   data: Record<string, unknown>;
 }
 
+// Track valid DMPP codes for filtering orphaned reimbursement contexts
+// Populated during AMP file processing, used by reimbursement context processing
+const validDmppCodes = new Set<string>();
+
 // Database connection (lazy loaded)
 import type { VercelPoolClient } from '@vercel/postgres';
 let dbClient: VercelPoolClient | null = null;
@@ -448,34 +452,69 @@ function parseAttributes(attrStr: string): Record<string, string> {
 
 /**
  * Parse content inside an XML element, extracting children and direct text
+ * Handles nested elements of the same name correctly by tracking depth
  */
 function parseContent(xml: string, tagName: string): { children: XmlElement[]; text: string } {
   const children: XmlElement[] = [];
 
   // Extract inner content between opening and closing tags
-  const innerMatch = xml.match(new RegExp(`<${tagName}[^>]*>([\\s\\S]*)</${tagName}>\\s*$`));
-  if (!innerMatch) {
+  // Use a function to find the correct closing tag by tracking depth
+  const openTagMatch = xml.match(new RegExp(`^[\\s\\S]*?<${tagName}[^>]*>`));
+  if (!openTagMatch) {
     return { children: [], text: '' };
   }
 
-  const inner = innerMatch[1];
+  const afterOpenTag = xml.slice(openTagMatch[0].length);
+  const closeTagPattern = `</${tagName}>`;
+  const openTagPattern = new RegExp(`<${tagName}(?:\\s|>)`);
 
-  // Find all child elements (handles nested elements properly)
-  const childRegex = /<((?:ns\d+:)?(\w+))([^>]*)(?:\/>|>([\s\S]*?)<\/\1>)/g;
+  // Find matching close tag by tracking depth
+  let depth = 1;
+  let pos = 0;
+  let innerEnd = -1;
+
+  while (pos < afterOpenTag.length && depth > 0) {
+    const closeIdx = afterOpenTag.indexOf(closeTagPattern, pos);
+    if (closeIdx === -1) break;
+
+    // Count any opening tags between pos and closeIdx
+    const segment = afterOpenTag.slice(pos, closeIdx);
+    const openMatches = segment.match(new RegExp(openTagPattern, 'g'));
+    if (openMatches) {
+      depth += openMatches.length;
+    }
+
+    depth--; // For the closing tag we found
+    pos = closeIdx + closeTagPattern.length;
+
+    if (depth === 0) {
+      innerEnd = closeIdx;
+    }
+  }
+
+  if (innerEnd === -1) {
+    return { children: [], text: '' };
+  }
+
+  const inner = afterOpenTag.slice(0, innerEnd);
+
+  // Find all child elements using depth-aware parsing
+  const childOpenRegex = /<((?:ns\d+:)?(\w+))([^>]*?)(\/?)>/g;
   let match;
   let lastIndex = 0;
   let directText = '';
 
-  while ((match = childRegex.exec(inner)) !== null) {
-    // Collect text before this child
-    directText += inner.slice(lastIndex, match.index);
-    lastIndex = match.index + match[0].length;
+  while ((match = childOpenRegex.exec(inner)) !== null) {
+    const [fullOpenTag, fullName, localName, attrStr, selfClose] = match;
+    const startIdx = match.index;
 
-    const [fullMatch, fullName, localName, attrStr, content] = match;
+    // Collect text before this child
+    directText += inner.slice(lastIndex, startIdx);
+
     const attributes = parseAttributes(attrStr);
 
-    // Handle self-closing tags
-    if (fullMatch.endsWith('/>')) {
+    if (selfClose === '/') {
+      // Self-closing tag
       children.push({
         name: localName,
         fullName,
@@ -483,7 +522,44 @@ function parseContent(xml: string, tagName: string): { children: XmlElement[]; t
         text: '',
         children: [],
       });
+      lastIndex = startIdx + fullOpenTag.length;
     } else {
+      // Find matching closing tag by tracking depth
+      const childCloseTag = `</${fullName}>`;
+      const childOpenPattern = new RegExp(`<${fullName}(?:\\s|>)`);
+
+      let childDepth = 1;
+      let childPos = startIdx + fullOpenTag.length;
+      let childEndIdx = -1;
+
+      while (childPos < inner.length && childDepth > 0) {
+        const childCloseIdx = inner.indexOf(childCloseTag, childPos);
+        if (childCloseIdx === -1) break;
+
+        // Count opening tags between childPos and childCloseIdx
+        const childSegment = inner.slice(childPos, childCloseIdx);
+        const childOpenMatches = childSegment.match(new RegExp(childOpenPattern, 'g'));
+        if (childOpenMatches) {
+          childDepth += childOpenMatches.length;
+        }
+
+        childDepth--;
+        childPos = childCloseIdx + childCloseTag.length;
+
+        if (childDepth === 0) {
+          childEndIdx = childCloseIdx + childCloseTag.length;
+        }
+      }
+
+      if (childEndIdx === -1) {
+        // Malformed XML, skip this element
+        lastIndex = startIdx + fullOpenTag.length;
+        continue;
+      }
+
+      const fullMatch = inner.slice(startIdx, childEndIdx);
+      const content = inner.slice(startIdx + fullOpenTag.length, childEndIdx - childCloseTag.length);
+
       // Parse children recursively
       const { children: subChildren, text: subText } = parseContent(fullMatch, fullName);
       children.push({
@@ -493,6 +569,10 @@ function parseContent(xml: string, tagName: string): { children: XmlElement[]; t
         text: subText || (content ? content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''),
         children: subChildren,
       });
+
+      lastIndex = childEndIdx;
+      // Reset regex position to continue after this element
+      childOpenRegex.lastIndex = childEndIdx;
     }
   }
 
@@ -747,6 +827,7 @@ function transformAmp(element: XmlElement): ParsedRecord[] {
       if (!ingData) continue;
 
       const substance = getChild(ingData, 'Substance');
+      const strengthElement = getChild(ingData, 'Strength');
       records.push({
         table: 'amp_ingredient',
         data: {
@@ -755,6 +836,8 @@ function transformAmp(element: XmlElement): ParsedRecord[] {
           rank: parseInt(rank),
           type: getChild(ingData, 'Type')?.text || 'ACTIVE_SUBSTANCE',
           substance_code: substance?.attributes.code || substance?.attributes.Code || null,
+          strength_value: strengthElement?.text ? parseFloat(strengthElement.text) : null,
+          strength_unit: strengthElement?.attributes.unit || strengthElement?.attributes.Unit || null,
           strength_description: getChild(ingData, 'StrengthDescription')?.text || null,
         },
       });
@@ -775,16 +858,18 @@ function transformAmp(element: XmlElement): ParsedRecord[] {
       data: {
         cti_extended: ctiExtended,
         amp_code: code,
-        prescription_name: JSON.stringify(extractMultilingualText(getChild(amppData, 'PrescriptionName'))),
+        prescription_name: JSON.stringify(extractMultilingualText(getChild(amppData, 'PrescriptionNameFamhp'))),
         authorisation_nr: getChild(amppData, 'AuthorisationNr')?.text || null,
         orphan: getChild(amppData, 'Orphan')?.text === 'true',
-        leaflet_url: JSON.stringify(extractMultilingualText(getChild(amppData, 'LeafletUrl'))),
-        spc_url: JSON.stringify(extractMultilingualText(getChild(amppData, 'SpcUrl'))),
+        leaflet_url: JSON.stringify(extractMultilingualText(getChild(amppData, 'LeafletLink'))),
+        spc_url: JSON.stringify(extractMultilingualText(getChild(amppData, 'SpcLink'))),
         pack_display_value: getChild(amppData, 'PackDisplayValue')?.text || null,
         status: getChild(amppData, 'Status')?.text || 'AUTHORIZED',
-        ex_factory_price: getChild(amppData, 'ExFactoryPrice')?.text
-          ? parseFloat(getChild(amppData, 'ExFactoryPrice')!.text)
-          : null,
+        ex_factory_price: getChild(amppData, 'OfficialExFactoryPrice')?.text
+          ? parseFloat(getChild(amppData, 'OfficialExFactoryPrice')!.text)
+          : getChild(amppData, 'ExFactoryPrice')?.text
+            ? parseFloat(getChild(amppData, 'ExFactoryPrice')!.text)
+            : null,
         atc_code: getChild(amppData, 'Atc')?.attributes.code || getChild(amppData, 'Atc')?.attributes.Code || null,
       },
     });
@@ -798,12 +883,17 @@ function transformAmp(element: XmlElement): ParsedRecord[] {
       const dmppData = getCurrentData(dmpp);
       if (!dmppData) continue;
 
+      const deliveryEnv = dmpp.attributes.deliveryEnvironment || dmpp.attributes.DeliveryEnvironment || 'P';
+
+      // Track valid DMPP codes for reimbursement context FK validation
+      validDmppCodes.add(`${dmppCode}:${deliveryEnv}`);
+
       records.push({
         table: 'dmpp',
         data: {
           code: dmppCode,
           ampp_cti_extended: ctiExtended,
-          delivery_environment: dmpp.attributes.deliveryEnvironment || dmpp.attributes.DeliveryEnvironment || 'P',
+          delivery_environment: deliveryEnv,
           price: getChild(dmppData, 'Price')?.text ? parseFloat(getChild(dmppData, 'Price')!.text) : null,
           cheap: getChild(dmppData, 'Cheap')?.text === 'true',
           cheapest: getChild(dmppData, 'Cheapest')?.text === 'true',
@@ -863,6 +953,12 @@ function transformReimbursementContext(element: XmlElement): ParsedRecord[] {
 
   // Only process CNK code types (codeType="CNK")
   if (!dmppCode || codeType !== 'CNK') return records;
+
+  // Skip orphaned reimbursement contexts (DMPP no longer exists, e.g., discontinued products)
+  const dmppKey = `${dmppCode}:${deliveryEnv}`;
+  if (!validDmppCodes.has(dmppKey)) {
+    return records;
+  }
 
   // Get current data wrapper
   const data = getCurrentData(element);
@@ -1240,13 +1336,13 @@ async function createStagingTables(
       await query(`DROP TABLE IF EXISTS ${table}_staging CASCADE`);
 
       // Create staging table as copy of production structure
-      // Use INCLUDING ALL to copy structure, defaults, and create new sequences
-      await query(`CREATE TABLE ${table}_staging (LIKE ${table} INCLUDING ALL)`);
-
-      // For tables with SERIAL id columns, drop the NOT NULL constraint
-      // This allows inserts without specifying id (will use sequence default)
+      // For tables with SERIAL id columns, create without constraints so id can use sequence default
       if (tablesWithSerialId.has(table)) {
+        // Use INCLUDING DEFAULTS for sequences, then drop NOT NULL on id
+        await query(`CREATE TABLE ${table}_staging (LIKE ${table} INCLUDING DEFAULTS)`);
         await query(`ALTER TABLE ${table}_staging ALTER COLUMN id DROP NOT NULL`);
+      } else {
+        await query(`CREATE TABLE ${table}_staging (LIKE ${table} INCLUDING ALL)`);
       }
 
       console.log(`   [OK] Created ${table}_staging`);
@@ -1547,43 +1643,64 @@ async function main(): Promise<void> {
     if (progress.phase === 'import') {
       console.log('\n3. Parsing and importing XML data...\n');
 
-      // Find XML files
-      const files = existsSync(CONFIG.exportDir)
+      // Find XML files and organize by type
+      const xmlFiles = existsSync(CONFIG.exportDir)
         ? readdirSync(CONFIG.exportDir).filter(f => f.endsWith('.xml'))
         : [];
 
-      // Process each file type based on prefix
-      // Order matters: process reference data first so FKs can be resolved
-      for (const file of files) {
-        const filePath = join(CONFIG.exportDir, file);
-
-        if (file.startsWith('REF-')) {
-          // Reference data: Substance, ATC, PharmaceuticalForm, RouteOfAdministration
-          await processXmlFile(filePath, 'Substance', transformSubstance, progress, dryRun, verbose);
-          await processXmlFile(filePath, 'AtcClassification', transformAtcClassification, progress, dryRun, verbose);
-          await processXmlFile(filePath, 'PharmaceuticalForm', transformPharmaceuticalForm, progress, dryRun, verbose);
-          await processXmlFile(filePath, 'RouteOfAdministration', transformRouteOfAdministration, progress, dryRun, verbose);
-        } else if (file.startsWith('CPN-')) {
-          // Companies/manufacturers
-          await processXmlFile(filePath, 'Company', transformCompany, progress, dryRun, verbose);
-        } else if (file.startsWith('RML-')) {
-          // Legal texts (LegalBasis with nested LegalReference and LegalText)
-          await processXmlFile(filePath, 'LegalBasis', transformLegalBasis, progress, dryRun, verbose);
-        } else if (file.startsWith('VMP-')) {
-          // VMP file contains VTM, VmpGroup, and VMP
-          await processXmlFile(filePath, 'Vtm', transformVtm, progress, dryRun, verbose);
-          await processXmlFile(filePath, 'VmpGroup', transformVmpGroup, progress, dryRun, verbose);
-          await processXmlFile(filePath, 'Vmp', transformVmp, progress, dryRun, verbose);
-        } else if (file.startsWith('AMP-')) {
-          // AMP file contains AMP, Components, Ingredients, AMPP, DMPP
-          await processXmlFile(filePath, 'Amp', transformAmp, progress, dryRun, verbose);
-        } else if (file.startsWith('RMB-')) {
-          // Reimbursement contexts
-          await processXmlFile(filePath, 'ReimbursementContext', transformReimbursementContext, progress, dryRun, verbose);
-        } else if (file.startsWith('CHAPTERIV-')) {
-          // Chapter IV paragraphs
-          await processXmlFile(filePath, 'Paragraph', transformChapterIVParagraph, progress, dryRun, verbose);
+      const filesByType: Record<string, string> = {};
+      for (const file of xmlFiles) {
+        for (const prefix of Object.keys(CONFIG.fileMapping)) {
+          if (file.startsWith(prefix)) {
+            filesByType[CONFIG.fileMapping[prefix]] = join(CONFIG.exportDir, file);
+            break;
+          }
         }
+      }
+
+      // Process files in dependency order:
+      // 1. Reference data (REF) - substances, ATC, forms, routes
+      // 2. Companies (CPN)
+      // 3. Legal texts (RML)
+      // 4. VMP hierarchy (VMP) - VTM, VmpGroup, Vmp
+      // 5. AMP hierarchy (AMP) - AMP, components, ingredients, AMPP, DMPP
+      // 6. Reimbursement (RMB) - must come after AMP to validate DMPP references
+      // 7. Chapter IV (CHAPTERIV)
+
+      if (filesByType.REF) {
+        await processXmlFile(filesByType.REF, 'Substance', transformSubstance, progress, dryRun, verbose);
+        await processXmlFile(filesByType.REF, 'AtcClassification', transformAtcClassification, progress, dryRun, verbose);
+        await processXmlFile(filesByType.REF, 'PharmaceuticalForm', transformPharmaceuticalForm, progress, dryRun, verbose);
+        await processXmlFile(filesByType.REF, 'RouteOfAdministration', transformRouteOfAdministration, progress, dryRun, verbose);
+      }
+
+      if (filesByType.CPN) {
+        await processXmlFile(filesByType.CPN, 'Company', transformCompany, progress, dryRun, verbose);
+      }
+
+      if (filesByType.RML) {
+        await processXmlFile(filesByType.RML, 'LegalBasis', transformLegalBasis, progress, dryRun, verbose);
+      }
+
+      if (filesByType.VMP) {
+        await processXmlFile(filesByType.VMP, 'Vtm', transformVtm, progress, dryRun, verbose);
+        await processXmlFile(filesByType.VMP, 'VmpGroup', transformVmpGroup, progress, dryRun, verbose);
+        await processXmlFile(filesByType.VMP, 'Vmp', transformVmp, progress, dryRun, verbose);
+      }
+
+      if (filesByType.AMP) {
+        // AMP file contains AMP, Components, Ingredients, AMPP, DMPP
+        // This also populates validDmppCodes for reimbursement context validation
+        await processXmlFile(filesByType.AMP, 'Amp', transformAmp, progress, dryRun, verbose);
+      }
+
+      if (filesByType.RMB) {
+        // Reimbursement contexts - must be processed after AMP to filter orphaned DMPP references
+        await processXmlFile(filesByType.RMB, 'ReimbursementContext', transformReimbursementContext, progress, dryRun, verbose);
+      }
+
+      if (filesByType.CHAPTERIV) {
+        await processXmlFile(filesByType.CHAPTERIV, 'Paragraph', transformChapterIVParagraph, progress, dryRun, verbose);
       }
 
       progress.phase = 'swap';
