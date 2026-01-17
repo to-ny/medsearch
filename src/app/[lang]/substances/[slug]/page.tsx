@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: name,
-    description: `${name} - Active substance with ${vtm.vmps.length} generic products and ${vtm.ampCount} brand products.`,
+    description: `${name} - Active substance with ${vtm.vmps.length} generic products and ${vtm.amps.length} brand products.`,
     alternates: generateEntityAlternates('substances', vtm.name, code),
   };
 }

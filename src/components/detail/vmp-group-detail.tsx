@@ -98,14 +98,16 @@ export function VMPGroupDetail({ vmpGroup }: VMPGroupDetailProps) {
           )}
 
           {/* Overview */}
-          <Section title={t('detail.overview')}>
-            <InfoList>
-              <InfoRow
-                label={t('detail.validity')}
-                value={formatValidityPeriod(vmpGroup.startDate, vmpGroup.endDate)}
-              />
-            </InfoList>
-          </Section>
+          {(vmpGroup.startDate || vmpGroup.endDate) && (
+            <Section title={t('detail.overview')}>
+              <InfoList>
+                <InfoRow
+                  label={t('detail.validity')}
+                  value={formatValidityPeriod(vmpGroup.startDate, vmpGroup.endDate)}
+                />
+              </InfoList>
+            </Section>
+          )}
 
           {/* Member Products */}
           <RelationshipList

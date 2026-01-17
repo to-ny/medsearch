@@ -5,7 +5,6 @@ import { EntityHeader } from '@/components/entities/entity-header';
 import { RelationshipList } from '@/components/entities/relationship-list';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
-import { CollapsibleSection } from '@/components/shared/collapsible-section';
 import { useLanguage } from '@/lib/hooks/use-language';
 import { useTranslation } from '@/lib/hooks/use-translation';
 import { formatValidityPeriod } from '@/lib/utils/format';
@@ -27,6 +26,13 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
     code: vmp.code,
     name: vmp.name,
     subtitle: vmp.status !== 'AUTHORIZED' ? (t(`status.${vmp.status}`) || vmp.status) : undefined,
+  }));
+
+  const ampItems = vtm.amps.map((amp) => ({
+    entityType: amp.entityType,
+    code: amp.code,
+    name: amp.name,
+    subtitle: amp.companyName || undefined,
   }));
 
   return (
@@ -71,18 +77,11 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
             items={vmpItems}
           />
 
-          {/* Brand Products (collapsible if many) */}
-          {vtm.ampCount > 0 && (
-            <CollapsibleSection
-              title={t('detail.brandProducts')}
-              count={vtm.ampCount}
-              defaultOpen={false}
-            >
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {vtm.ampCount} {t('detail.brandProducts').toLowerCase()}.
-              </p>
-            </CollapsibleSection>
-          )}
+          {/* Brand Products */}
+          <RelationshipList
+            title={t('detail.brandProducts')}
+            items={ampItems}
+          />
         </div>
 
         {/* Sidebar */}
@@ -96,7 +95,7 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.brandProducts')}</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{vtm.ampCount}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{vtm.amps.length}</span>
               </div>
             </div>
           </div>

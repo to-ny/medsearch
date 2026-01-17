@@ -26,7 +26,7 @@ export interface VTM extends ValidityPeriod {
 /** VTM with relationships loaded */
 export interface VTMWithRelations extends VTM {
   vmps: VMPSummary[];
-  ampCount: number;
+  amps: AMPSummary[];
 }
 
 /** VMP - Virtual Medicinal Product (Generic) */
