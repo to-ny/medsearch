@@ -54,14 +54,14 @@ export async function getSubstanceWithRelations(
   `;
 
   const usedInAmps: AMPSummary[] = ampsResult.rows.map((a) => ({
-    entityType: 'amp',
+    entityType: 'amp' as const,
     code: a.code,
     name: a.name,
-    status: a.status,
-    vmpCode: a.vmp_code,
-    companyActorNr: a.company_actor_nr,
-    companyName: a.company_name,
-    blackTriangle: a.black_triangle,
+    status: a.status ?? 'AUTHORIZED',
+    vmpCode: a.vmp_code ?? null,
+    companyActorNr: a.company_actor_nr ?? null,
+    companyName: a.company_name ?? null,
+    blackTriangle: a.black_triangle ?? false,
   }));
 
   return {

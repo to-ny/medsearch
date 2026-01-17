@@ -17,11 +17,11 @@ interface SubstanceDetailProps {
 export function SubstanceDetail({ substance }: SubstanceDetailProps) {
   const { getLocalized } = useLanguage();
   const { t } = useTranslation();
-  const name = getLocalized(substance.name);
+  const name = getLocalized(substance.name) || substance.code;
 
   const breadcrumbs = [{ label: name }];
 
-  const ampItems = substance.usedInAmps.map((amp) => ({
+  const ampItems = (substance.usedInAmps || []).map((amp) => ({
     entityType: amp.entityType,
     code: amp.code,
     name: amp.name,
@@ -49,16 +49,16 @@ export function SubstanceDetail({ substance }: SubstanceDetailProps) {
                 value={formatValidityPeriod(substance.startDate, substance.endDate)}
               />
               {/* Show all language variants */}
-              {substance.name.nl && substance.name.nl !== getLocalized(substance.name) && (
+              {substance.name?.nl && substance.name.nl !== name && (
                 <InfoRow label={t('languages.dutch')} value={substance.name.nl} />
               )}
-              {substance.name.fr && substance.name.fr !== getLocalized(substance.name) && (
+              {substance.name?.fr && substance.name.fr !== name && (
                 <InfoRow label={t('languages.french')} value={substance.name.fr} />
               )}
-              {substance.name.en && substance.name.en !== getLocalized(substance.name) && (
+              {substance.name?.en && substance.name.en !== name && (
                 <InfoRow label={t('languages.english')} value={substance.name.en} />
               )}
-              {substance.name.de && substance.name.de !== getLocalized(substance.name) && (
+              {substance.name?.de && substance.name.de !== name && (
                 <InfoRow label={t('languages.german')} value={substance.name.de} />
               )}
             </InfoList>
@@ -78,7 +78,7 @@ export function SubstanceDetail({ substance }: SubstanceDetailProps) {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.brandProducts')}</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{substance.usedInAmpCount}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{substance.usedInAmpCount ?? 0}</span>
               </div>
             </div>
           </div>
