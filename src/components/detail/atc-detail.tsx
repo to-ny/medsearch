@@ -8,6 +8,7 @@ import { EntityHeader } from '@/components/entities/entity-header';
 import { EntityTypeBadge } from '@/components/entities/entity-type-badge';
 import { Section } from '@/components/shared/section';
 import { PriceDisplay } from '@/components/shared/price-display';
+import { CodeDisplay } from '@/components/shared/code-display';
 import { Pagination } from '@/components/search/pagination';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,14 @@ interface ATCDetailProps {
   pageSize: number;
 }
 
+function getAtcLevel(code: string): number {
+  if (code.length === 1) return 1;
+  if (code.length <= 3) return 2;
+  if (code.length <= 4) return 3;
+  if (code.length <= 5) return 4;
+  return 5;
+}
+
 export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailProps) {
   const router = useRouter();
   useLanguage(); // Hook required for reactivity
@@ -38,6 +47,7 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
   ];
 
   const totalPages = Math.ceil(atc.packageCount / pageSize);
+  const atcLevel = getAtcLevel(atc.code);
 
   const handlePageChange = (page: number) => {
     router.push(`/atc/${atc.code}?page=${page}`);
@@ -54,7 +64,8 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
             entityType="atc"
             name={{ en: `${atc.code} - ${atc.description}` }}
             code={atc.code}
-            subtitle={`Level ${atc.code.length === 1 ? 1 : atc.code.length <= 3 ? 2 : atc.code.length <= 4 ? 3 : atc.code.length <= 5 ? 4 : 5} classification`}
+            codeType="atc"
+            subtitle={t(`atcLevels.level${atcLevel}`)}
           />
 
           {/* Hierarchy */}
@@ -132,9 +143,13 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
                                 {pkg.packDisplayValue || <LocalizedText text={pkg.name} showFallbackIndicator={false} />}
                               </p>
                               {pkg.cnkCode && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                  CNK: {pkg.cnkCode}
-                                </p>
+                                <CodeDisplay
+                                  type="cnk"
+                                  value={pkg.cnkCode}
+                                  variant="short"
+                                  showTooltip
+                                  className="text-xs text-gray-500 dark:text-gray-400"
+                                />
                               )}
                             </div>
                           </div>

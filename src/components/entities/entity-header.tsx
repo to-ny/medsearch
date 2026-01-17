@@ -3,6 +3,7 @@
 import { ExclamationTriangleIcon } from '@heroicons/react/20/solid';
 import { EntityTypeBadge } from './entity-type-badge';
 import { StatusBadge } from './status-badge';
+import { CodeDisplay, type CodeType } from '@/components/shared/code-display';
 import { cn } from '@/lib/utils/cn';
 import type { EntityType, MultilingualText } from '@/server/types/domain';
 import { useLanguage } from '@/lib/hooks/use-language';
@@ -13,6 +14,7 @@ interface EntityHeaderProps {
   entityType: EntityType;
   name: MultilingualText;
   code: string;
+  codeType?: CodeType;
   status?: string;
   subtitle?: string;
   blackTriangle?: boolean;
@@ -23,6 +25,7 @@ export function EntityHeader({
   entityType,
   name,
   code,
+  codeType,
   status,
   subtitle,
   blackTriangle,
@@ -52,7 +55,17 @@ export function EntityHeader({
 
       {/* Subtitle */}
       <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
-        <span className="font-mono">{t('detail.code')}: {code}</span>
+        {codeType ? (
+          <CodeDisplay
+            type={codeType}
+            value={code}
+            variant="full"
+            showTooltip
+            className="text-sm"
+          />
+        ) : (
+          <span className="font-mono">{t('detail.code')}: {code}</span>
+        )}
         {subtitle && (
           <>
             <span className="hidden sm:inline">•</span>

@@ -274,5 +274,32 @@
     "AS_NEEDED": "Bei Bedarf",
     "SHORT_TERM": "Kurzfristig",
     "LONG_TERM": "Langfristig"
+  },
+  "codes": {
+    "cnk": "CNK",
+    "cnkFull": "CNK-Code",
+    "cnkTooltip": "Belgischer Apotheken-Barcode - eindeutige Kennung für Arzneimittelverpackungen in Belgien",
+    "atc": "ATC",
+    "atcFull": "ATC-Code",
+    "atcTooltip": "Anatomisch-Therapeutisch-Chemisches Klassifikationssystem - WHO-Arzneimittelklassifikation",
+    "ctiExtended": "CTI-Erweitert",
+    "ctiExtendedFull": "Verpackungscode",
+    "ctiExtendedTooltip": "Erweiterte Verpackungskennung im belgischen Arzneimittelsystem",
+    "actorNr": "Akteur-Nr.",
+    "actorNrFull": "Unternehmenscode",
+    "actorNrTooltip": "Eindeutige Unternehmenskennung im belgischen Arzneimittelsystem",
+    "vmpCode": "VMP",
+    "vmpCodeFull": "VMP-Code",
+    "vmpCodeTooltip": "Virtuelles Arzneimittelprodukt-Code - identifiziert generische Arzneimitteldefinitionen",
+    "ampCode": "AMP",
+    "ampCodeFull": "AMP-Code",
+    "ampCodeTooltip": "Tatsächliches Arzneimittelprodukt-Code - identifiziert Markenarzneimittelprodukte"
+  },
+  "atcLevels": {
+    "level1": "Stufe 1 (Anatomisch)",
+    "level2": "Stufe 2 (Therapeutisch)",
+    "level3": "Stufe 3 (Pharmakologisch)",
+    "level4": "Stufe 4 (Chemisch)",
+    "level5": "Stufe 5 (Substanz)"
   }
 }

@@ -274,5 +274,32 @@
     "AS_NEEDED": "Indien nodig",
     "SHORT_TERM": "Korte termijn",
     "LONG_TERM": "Lange termijn"
+  },
+  "codes": {
+    "cnk": "CNK",
+    "cnkFull": "CNK-code",
+    "cnkTooltip": "Belgische apotheekstreepjescode - unieke identificatie voor medicijnverpakkingen in België",
+    "atc": "ATC",
+    "atcFull": "ATC-code",
+    "atcTooltip": "Anatomisch Therapeutisch Chemisch classificatiesysteem - WHO-geneesmiddelenclassificatie",
+    "ctiExtended": "CTI-Uitgebreid",
+    "ctiExtendedFull": "Verpakkingscode",
+    "ctiExtendedTooltip": "Uitgebreide verpakkingsidentificatie in het Belgische geneesmiddelensysteem",
+    "actorNr": "Actornr.",
+    "actorNrFull": "Bedrijfscode",
+    "actorNrTooltip": "Unieke bedrijfsidentificatie in het Belgische geneesmiddelensysteem",
+    "vmpCode": "VMP",
+    "vmpCodeFull": "VMP-code",
+    "vmpCodeTooltip": "Virtueel Geneesmiddelproduct-code - identificeert generieke geneesmiddeldefinities",
+    "ampCode": "AMP",
+    "ampCodeFull": "AMP-code",
+    "ampCodeTooltip": "Werkelijk Geneesmiddelproduct-code - identificeert merkgeneesmiddelproducten"
+  },
+  "atcLevels": {
+    "level1": "Niveau 1 (Anatomisch)",
+    "level2": "Niveau 2 (Therapeutisch)",
+    "level3": "Niveau 3 (Farmacologisch)",
+    "level4": "Niveau 4 (Chemisch)",
+    "level5": "Niveau 5 (Stof)"
   }
 }
