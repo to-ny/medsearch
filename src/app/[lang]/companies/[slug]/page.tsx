@@ -4,7 +4,6 @@ import { getCompanyWithRelations } from '@/server/queries/company';
 import { CompanyDetail } from '@/components/detail/company-detail';
 import { extractIdFromSlug, generateCompanySlug } from '@/lib/utils/slug';
 import { generateCompanyAlternates } from '@/lib/utils/seo';
-import type { Language } from '@/server/types/domain';
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;

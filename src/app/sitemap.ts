@@ -3,6 +3,9 @@ import { sql } from '@/server/db/client';
 import { generateEntitySlug, generateCompanySlug, generateATCSlug } from '@/lib/utils/slug';
 import type { Language, MultilingualText } from '@/server/types/domain';
 
+// Force dynamic rendering to avoid build-time database queries
+export const dynamic = 'force-dynamic';
+
 const BASE_URL = 'https://medsearch.be';
 const LANGUAGES: Language[] = ['nl', 'fr', 'de', 'en'];
 
