@@ -1,5 +1,6 @@
 'use client';
 
+import { InformationCircleIcon } from '@heroicons/react/16/solid';
 import { cn } from '@/lib/utils/cn';
 import { useTranslation } from '@/lib/hooks/use-translation';
 
@@ -55,6 +56,9 @@ export function CodeDisplay({
         </span>
       )}
       <span className="font-mono">{displayValue}</span>
+      {showTooltip && (
+        <InformationCircleIcon className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+      )}
     </span>
   );
 }
