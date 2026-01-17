@@ -235,5 +235,12 @@
     "ampCode": "AMP",
     "ampCodeFull": "AMP-code",
     "ampCodeTooltip": "Werkelijk Geneesmiddelproduct-code - identificeert merkgeneesmiddelproducten"
+  },
+  "atcLevels": {
+    "level1": "Niveau 1 (Anatomisch)",
+    "level2": "Niveau 2 (Therapeutisch)",
+    "level3": "Niveau 3 (Farmacologisch)",
+    "level4": "Niveau 4 (Chemisch)",
+    "level5": "Niveau 5 (Stof)"
   }
 }

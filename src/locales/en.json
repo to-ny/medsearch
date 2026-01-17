@@ -235,5 +235,12 @@
     "ampCode": "AMP",
     "ampCodeFull": "AMP Code",
     "ampCodeTooltip": "Actual Medicinal Product code - identifies branded medication products"
+  },
+  "atcLevels": {
+    "level1": "Level 1 (Anatomical)",
+    "level2": "Level 2 (Therapeutic)",
+    "level3": "Level 3 (Pharmacological)",
+    "level4": "Level 4 (Chemical)",
+    "level5": "Level 5 (Substance)"
   }
 }
