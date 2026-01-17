@@ -24,7 +24,7 @@ export function Footer({ className }: FooterProps) {
             {t('footer.disclaimer')}
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {t('footer.madeBy')} &#10084;&#65039; {t('footer.by')}{' '}
+            Made with &#10084;&#65039; by{' '}
             <a
               href="https://to-ny.github.io/"
               target="_blank"

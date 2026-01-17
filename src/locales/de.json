@@ -198,9 +198,7 @@
   },
   "footer": {
     "dataSource": "Datenquelle: SAM v2 (Belgische Arzneimitteldatenbank)",
-    "disclaimer": "Nur zu Informationszwecken. Konsultieren Sie einen Arzt für medizinische Beratung.",
-    "madeBy": "Gemacht mit",
-    "by": "von"
+    "disclaimer": "Nur zu Informationszwecken. Konsultieren Sie einen Arzt für medizinische Beratung."
   },
   "emptyState": {
     "searchDatabaseTitle": "Suchen Sie in der Belgischen Arzneimitteldatenbank",

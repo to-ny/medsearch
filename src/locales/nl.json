@@ -198,9 +198,7 @@
   },
   "footer": {
     "dataSource": "Gegevensbron: SAM v2 (Belgische Geneesmiddelendatabase)",
-    "disclaimer": "Uitsluitend ter informatie. Raadpleeg een zorgverlener voor medisch advies.",
-    "madeBy": "Gemaakt met",
-    "by": "door"
+    "disclaimer": "Uitsluitend ter informatie. Raadpleeg een zorgverlener voor medisch advies."
   },
   "emptyState": {
     "searchDatabaseTitle": "Zoek in de Belgische Geneesmiddelendatabase",
