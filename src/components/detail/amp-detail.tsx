@@ -13,10 +13,8 @@ import { PriceDisplay } from '@/components/shared/price-display';
 import { LocalizedText } from '@/components/shared/localized-text';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useLanguage } from '@/lib/hooks/use-language';
-import { useTranslation } from '@/lib/hooks/use-translation';
+import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { formatValidityPeriod } from '@/lib/utils/format';
-import { generateEntitySlug, generateCompanySlug } from '@/lib/utils/slug';
 import type { AMPWithRelations } from '@/server/types/entities';
 
 interface AMPDetailProps {
@@ -24,17 +22,14 @@ interface AMPDetailProps {
 }
 
 export function AMPDetail({ amp }: AMPDetailProps) {
-  const { getLocalized, language } = useLanguage();
+  const { getLocalized } = useLanguage();
+  const links = useLinks();
   const { t } = useTranslation();
   const name = getLocalized(amp.name);
   const vmpName = amp.vmp ? getLocalized(amp.vmp.name) : null;
 
-  // Generate slugs for links
-  const vmpSlug = amp.vmp ? generateEntitySlug(amp.vmp.name, amp.vmp.code, language) : null;
-  const companySlug = amp.company ? generateCompanySlug(amp.company.denomination, amp.company.actorNr) : null;
-
   const breadcrumbs = [
-    ...(amp.vmp && vmpSlug ? [{ label: vmpName!, href: `/${language}/generics/${vmpSlug}` }] : []),
+    ...(amp.vmp ? [{ label: vmpName!, href: links.toGeneric(amp.vmp.name, amp.vmp.code) }] : []),
     { label: name },
   ];
 
@@ -99,9 +94,9 @@ export function AMPDetail({ amp }: AMPDetailProps) {
           )}
 
           {/* Generic Product */}
-          {amp.vmp && vmpSlug && (
+          {amp.vmp && (
             <Section title={t('detail.genericProduct')}>
-              <Link href={`/${language}/generics/${vmpSlug}`} className="block group">
+              <Link href={links.toGeneric(amp.vmp.name, amp.vmp.code)} className="block group">
                 <Card hover padding="sm">
                   <div className="flex items-center gap-3">
                     <EntityTypeBadge type="vmp" size="sm" />
@@ -115,9 +110,9 @@ export function AMPDetail({ amp }: AMPDetailProps) {
           )}
 
           {/* Manufacturer */}
-          {amp.company && companySlug && (
+          {amp.company && (
             <Section title={t('detail.manufacturer')}>
-              <Link href={`/${language}/companies/${companySlug}`} className="block group">
+              <Link href={links.toCompany(amp.company.denomination, amp.company.actorNr)} className="block group">
                 <Card hover padding="sm">
                   <div className="flex items-center gap-3">
                     <EntityTypeBadge type="company" size="sm" />
@@ -218,7 +213,7 @@ export function AMPDetail({ amp }: AMPDetailProps) {
             headerAction={
               amp.packages.length > 0 ? (
                 <Link
-                  href={`/${language}/search?amp=${amp.code}&types=ampp`}
+                  href={links.toSearch({ amp: amp.code, types: 'ampp' })}
                   className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                   title={t('common.searchAll')}
                 >
@@ -229,12 +224,10 @@ export function AMPDetail({ amp }: AMPDetailProps) {
             }
           >
             <div className="space-y-2">
-              {amp.packages.map((pkg) => {
-                const pkgSlug = generateEntitySlug(pkg.name, pkg.code, language);
-                return (
+              {amp.packages.map((pkg) => (
                   <Link
                     key={pkg.code}
-                    href={`/${language}/packages/${pkgSlug}`}
+                    href={links.toPackage(pkg.name, pkg.code)}
                     className="block group"
                   >
                     <Card hover padding="sm">
@@ -261,8 +254,7 @@ export function AMPDetail({ amp }: AMPDetailProps) {
                       </div>
                     </Card>
                   </Link>
-                );
-              })}
+              ))}
             </div>
           </Section>
         </div>
@@ -272,22 +264,22 @@ export function AMPDetail({ amp }: AMPDetailProps) {
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{t('detail.summary')}</h3>
             <div className="space-y-2 text-sm">
-              {amp.vmp && vmpSlug && (
+              {amp.vmp && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('entityLabels.generic')}</span>
                   <Link
-                    href={`/${language}/generics/${vmpSlug}`}
+                    href={links.toGeneric(amp.vmp.name, amp.vmp.code)}
                     className="font-medium text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[150px]"
                   >
                     {getLocalized(amp.vmp.name)}
                   </Link>
                 </div>
               )}
-              {amp.company && companySlug && (
+              {amp.company && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('entityLabels.company')}</span>
                   <Link
-                    href={`/${language}/companies/${companySlug}`}
+                    href={links.toCompany(amp.company.denomination, amp.company.actorNr)}
                     className="font-medium text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[150px]"
                   >
                     {amp.company.denomination}

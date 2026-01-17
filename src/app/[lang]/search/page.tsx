@@ -9,9 +9,7 @@ import { Pagination } from '@/components/search/pagination';
 import { EntityCard } from '@/components/entities/entity-card';
 import { EmptyState } from '@/components/shared/empty-state';
 import { SkeletonList } from '@/components/ui/skeleton';
-import { useSearch } from '@/lib/hooks/use-search';
-import { useLanguage } from '@/lib/hooks/use-language';
-import { useTranslation } from '@/lib/hooks/use-translation';
+import { useLanguage, useLinks, useSearch, useTranslation } from '@/lib/hooks';
 import type { EntityType } from '@/server/types/domain';
 
 const RESULTS_PER_PAGE = 20;
@@ -20,6 +18,7 @@ function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { language } = useLanguage();
+  const links = useLinks();
   const { t } = useTranslation();
 
   const queryParam = searchParams.get('q') || '';
@@ -80,18 +79,17 @@ function SearchContent() {
   });
 
   const updateUrl = (newQuery: string, newTypes: EntityType[], newPage: number) => {
-    const params = new URLSearchParams();
-    if (newQuery) params.set('q', newQuery);
-    if (newTypes.length > 0) params.set('types', newTypes.join(','));
-    if (newPage > 1) params.set('page', newPage.toString());
-    // Preserve filters in URL
-    if (vtmCode) params.set('vtm', vtmCode);
-    if (vmpCode) params.set('vmp', vmpCode);
-    if (ampCode) params.set('amp', ampCode);
-    if (atcCode) params.set('atc', atcCode);
-    if (companyCode) params.set('company', companyCode);
-    if (vmpGroupCode) params.set('vmpGroup', vmpGroupCode);
-    router.push(`/${language}/search?${params.toString()}`);
+    router.push(links.toSearch({
+      q: newQuery || undefined,
+      types: newTypes.length > 0 ? newTypes : undefined,
+      page: newPage > 1 ? newPage : undefined,
+      vtm: vtmCode,
+      vmp: vmpCode,
+      amp: ampCode,
+      atc: atcCode,
+      company: companyCode,
+      vmpGroup: vmpGroupCode,
+    }));
   };
 
   const handleSearch = (newQuery: string) => {
@@ -110,17 +108,16 @@ function SearchContent() {
   };
 
   const removeFilter = (filterKey: string) => {
-    const params = new URLSearchParams();
-    if (query) params.set('q', query);
-    if (selectedTypes.length > 0) params.set('types', selectedTypes.join(','));
-    // Keep all filters except the one being removed
-    if (filterKey !== 'vtm' && vtmCode) params.set('vtm', vtmCode);
-    if (filterKey !== 'vmp' && vmpCode) params.set('vmp', vmpCode);
-    if (filterKey !== 'amp' && ampCode) params.set('amp', ampCode);
-    if (filterKey !== 'atc' && atcCode) params.set('atc', atcCode);
-    if (filterKey !== 'company' && companyCode) params.set('company', companyCode);
-    if (filterKey !== 'vmpGroup' && vmpGroupCode) params.set('vmpGroup', vmpGroupCode);
-    router.push(`/${language}/search?${params.toString()}`);
+    router.push(links.toSearch({
+      q: query || undefined,
+      types: selectedTypes.length > 0 ? selectedTypes : undefined,
+      vtm: filterKey !== 'vtm' ? vtmCode : undefined,
+      vmp: filterKey !== 'vmp' ? vmpCode : undefined,
+      amp: filterKey !== 'amp' ? ampCode : undefined,
+      atc: filterKey !== 'atc' ? atcCode : undefined,
+      company: filterKey !== 'company' ? companyCode : undefined,
+      vmpGroup: filterKey !== 'vmpGroup' ? vmpGroupCode : undefined,
+    }));
   };
 
   // Build active filters for display

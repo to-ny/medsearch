@@ -6,14 +6,11 @@ import { Card } from '@/components/ui/card';
 import { EntityTypeBadge } from './entity-type-badge';
 import { ReimbursementBadge } from './reimbursement-badge';
 import { CodeDisplay } from '@/components/shared/code-display';
-import { useLanguage } from '@/lib/hooks/use-language';
-import { useTranslation } from '@/lib/hooks/use-translation';
+import { useLinks, useTranslation } from '@/lib/hooks';
 import { LocalizedText } from '@/components/shared/localized-text';
 import { formatPrice } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
-import { generateEntitySlug, generateCompanySlug, generateATCSlug } from '@/lib/utils/slug';
 import type { SearchResultItem } from '@/server/types/api';
-import type { EntityType, Language, MultilingualText } from '@/server/types/domain';
 
 interface EntityCardProps {
   entity: SearchResultItem;
@@ -21,53 +18,10 @@ interface EntityCardProps {
   className?: string;
 }
 
-function getEntityHref(
-  entityType: EntityType,
-  name: MultilingualText | null,
-  code: string,
-  lang: Language
-): string {
-  switch (entityType) {
-    case 'vtm':
-    case 'substance': {
-      const slug = generateEntitySlug(name, code, lang);
-      return `/${lang}/substances/${slug}`;
-    }
-    case 'vmp': {
-      const slug = generateEntitySlug(name, code, lang);
-      return `/${lang}/generics/${slug}`;
-    }
-    case 'amp': {
-      const slug = generateEntitySlug(name, code, lang);
-      return `/${lang}/medications/${slug}`;
-    }
-    case 'ampp': {
-      const slug = generateEntitySlug(name, code, lang);
-      return `/${lang}/packages/${slug}`;
-    }
-    case 'company': {
-      // Company name is plain string, not MultilingualText
-      const companyName = name?.nl || name?.fr || name?.en || name?.de || '';
-      const slug = generateCompanySlug(companyName, code);
-      return `/${lang}/companies/${slug}`;
-    }
-    case 'vmp_group': {
-      const slug = generateEntitySlug(name, code, lang);
-      return `/${lang}/therapeutic-groups/${slug}`;
-    }
-    case 'atc': {
-      const slug = generateATCSlug(code, name, lang);
-      return `/${lang}/classifications/${slug}`;
-    }
-    default:
-      return '#';
-  }
-}
-
 export function EntityCard({ entity, variant = 'default', className }: EntityCardProps) {
-  const { language } = useLanguage();
+  const links = useLinks();
   const { t } = useTranslation();
-  const href = getEntityHref(entity.entityType, entity.name, entity.code, language);
+  const href = links.toEntity(entity.entityType, entity.name, entity.code);
 
   const isCompact = variant === 'compact';
 

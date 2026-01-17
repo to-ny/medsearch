@@ -12,8 +12,7 @@ import { CodeDisplay } from '@/components/shared/code-display';
 import { Pagination } from '@/components/search/pagination';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useLanguage } from '@/lib/hooks/use-language';
-import { useTranslation } from '@/lib/hooks/use-translation';
+import { useLinks, useTranslation } from '@/lib/hooks';
 import { LocalizedText } from '@/components/shared/localized-text';
 import type { ATCWithRelations } from '@/server/types/entities';
 import type { ATCSummary } from '@/server/types/summaries';
@@ -35,13 +34,13 @@ function getAtcLevel(code: string): number {
 
 export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailProps) {
   const router = useRouter();
-  useLanguage(); // Hook required for reactivity
+  const links = useLinks();
   const { t } = useTranslation();
 
   const breadcrumbs = [
     ...hierarchy.slice(0, -1).map((h) => ({
       label: h.code,
-      href: `/atc/${h.code}`,
+      href: links.toClassification(h.code, { en: h.description }),
     })),
     { label: atc.code },
   ];
@@ -50,7 +49,7 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
   const atcLevel = getAtcLevel(atc.code);
 
   const handlePageChange = (page: number) => {
-    router.push(`/atc/${atc.code}?page=${page}`);
+    router.push(links.withPage(links.toClassification(atc.code, { en: atc.description }), page));
   };
 
   return (
@@ -82,7 +81,7 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
                     </span>
                   ) : (
                     <Link
-                      href={`/atc/${h.code}`}
+                      href={links.toClassification(h.code, { en: h.description })}
                       className="text-blue-600 dark:text-blue-400 hover:underline"
                     >
                       {h.code}
@@ -100,7 +99,7 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
                 {atc.children.map((child) => (
                   <Link
                     key={child.code}
-                    href={`/atc/${child.code}`}
+                    href={links.toClassification(child.code, { en: child.description })}
                     className="block group"
                   >
                     <Card hover padding="sm">
@@ -126,7 +125,7 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
             headerAction={
               atc.packageCount > 0 ? (
                 <Link
-                  href={`/search?atc=${atc.code}&types=ampp`}
+                  href={links.toSearch({ atc: atc.code, types: 'ampp' })}
                   className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                   title={t('common.searchAll')}
                 >
@@ -146,7 +145,7 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
                   {atc.packages.map((pkg) => (
                     <Link
                       key={pkg.code}
-                      href={`/ampp/${pkg.code}`}
+                      href={links.toPackage(pkg.name, pkg.code)}
                       className="block group"
                     >
                       <Card hover padding="sm">
@@ -202,7 +201,7 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('detail.parent')}</span>
                   <Link
-                    href={`/atc/${atc.parentCode}`}
+                    href={links.toClassification(atc.parentCode)}
                     className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     {atc.parentCode}

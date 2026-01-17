@@ -9,10 +9,8 @@ import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { LocalizedText } from '@/components/shared/localized-text';
 import { Card } from '@/components/ui/card';
-import { useLanguage } from '@/lib/hooks/use-language';
-import { useTranslation } from '@/lib/hooks/use-translation';
+import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { formatValidityPeriod } from '@/lib/utils/format';
-import { generateEntitySlug } from '@/lib/utils/slug';
 import type { VMPWithRelations } from '@/server/types/entities';
 
 interface VMPDetailProps {
@@ -20,17 +18,14 @@ interface VMPDetailProps {
 }
 
 export function VMPDetail({ vmp }: VMPDetailProps) {
-  const { getLocalized, language } = useLanguage();
+  const { getLocalized } = useLanguage();
+  const links = useLinks();
   const { t } = useTranslation();
   const name = getLocalized(vmp.name);
   const vtmName = vmp.vtm ? getLocalized(vmp.vtm.name) : null;
 
-  // Generate slugs for links
-  const vtmSlug = vmp.vtm ? generateEntitySlug(vmp.vtm.name, vmp.vtm.code, language) : null;
-  const vmpGroupSlug = vmp.vmpGroup ? generateEntitySlug(vmp.vmpGroup.name, vmp.vmpGroup.code, language) : null;
-
   const breadcrumbs = [
-    ...(vmp.vtm && vtmSlug ? [{ label: vtmName!, href: `/${language}/substances/${vtmSlug}` }] : []),
+    ...(vmp.vtm ? [{ label: vtmName!, href: links.toSubstance(vmp.vtm.name, vmp.vtm.code) }] : []),
     { label: name },
   ];
 
@@ -74,9 +69,9 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
           )}
 
           {/* Active Substance */}
-          {vmp.vtm && vtmSlug && (
+          {vmp.vtm && (
             <Section title={t('detail.activeSubstance')}>
-              <Link href={`/${language}/substances/${vtmSlug}`} className="block group">
+              <Link href={links.toSubstance(vmp.vtm.name, vmp.vtm.code)} className="block group">
                 <Card hover padding="sm">
                   <div className="flex items-center gap-3">
                     <EntityTypeBadge type="vtm" size="sm" />
@@ -90,9 +85,9 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
           )}
 
           {/* Therapeutic Group */}
-          {vmp.vmpGroup && vmpGroupSlug && (
+          {vmp.vmpGroup && (
             <Section title={t('detail.therapeuticGroup')}>
-              <Link href={`/${language}/therapeutic-groups/${vmpGroupSlug}`} className="block group">
+              <Link href={links.toTherapeuticGroup(vmp.vmpGroup.name, vmp.vmpGroup.code)} className="block group">
                 <Card hover padding="sm">
                   <div className="flex items-center gap-3">
                     <EntityTypeBadge type="vmp_group" size="sm" />
@@ -155,11 +150,11 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{t('detail.summary')}</h3>
             <div className="space-y-2 text-sm">
-              {vmp.vtm && vtmSlug && (
+              {vmp.vtm && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('entityLabels.substance')}</span>
                   <Link
-                    href={`/${language}/substances/${vtmSlug}`}
+                    href={links.toSubstance(vmp.vtm.name, vmp.vtm.code)}
                     className="font-medium text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[150px]"
                   >
                     {getLocalized(vmp.vtm.name)}

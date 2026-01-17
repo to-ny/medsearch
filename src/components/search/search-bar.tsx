@@ -4,9 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils/cn';
-import { useDebounce } from '@/lib/hooks/use-debounce';
-import { useTranslation } from '@/lib/hooks/use-translation';
-import { useCurrentLanguage } from '@/lib/hooks/use-language';
+import { useDebounce, useLinks, useTranslation } from '@/lib/hooks';
 
 interface SearchBarProps {
   defaultValue?: string;
@@ -26,7 +24,7 @@ export function SearchBar({
   className,
 }: SearchBarProps) {
   const { t } = useTranslation();
-  const language = useCurrentLanguage();
+  const links = useLinks();
   const [value, setValue] = useState(defaultValue);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,11 +53,11 @@ export function SearchBar({
         if (onSearch) {
           onSearch(value.trim());
         } else {
-          router.push(`/${language}/search?q=${encodeURIComponent(value.trim())}`);
+          router.push(links.toSearch({ q: value.trim() }));
         }
       }
     },
-    [value, onSearch, router, language]
+    [value, onSearch, router, links]
   );
 
   const handleClear = useCallback(() => {
@@ -174,7 +172,7 @@ export function SearchBar({
  */
 export function SearchBarCompact() {
   const { t } = useTranslation();
-  const language = useCurrentLanguage();
+  const links = useLinks();
   const [value, setValue] = useState('');
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -182,7 +180,7 @@ export function SearchBarCompact() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (value.trim().length >= 2) {
-      router.push(`/${language}/search?q=${encodeURIComponent(value.trim())}`);
+      router.push(links.toSearch({ q: value.trim() }));
     }
   };
 
