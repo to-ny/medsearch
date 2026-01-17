@@ -572,11 +572,8 @@ export async function executeSearch(
         const countResult = await sql`
           SELECT COUNT(DISTINCT ampp.cti_extended)::int as count
           FROM ampp
-          JOIN amp ON amp.code = ampp.amp_code
-          JOIN amp_atc_classification aac ON aac.amp_code = amp.code
-          WHERE aac.atc_code = ${atcFilter}
+          WHERE ampp.atc_code = ${atcFilter}
             AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-            AND (aac.end_date IS NULL OR aac.end_date > CURRENT_DATE)
         `;
         totalCount = countResult.rows[0]?.count || 0;
 
@@ -610,10 +607,8 @@ export async function executeSearch(
             NULL as black_triangle
           FROM ampp
           JOIN amp ON amp.code = ampp.amp_code
-          JOIN amp_atc_classification aac ON aac.amp_code = amp.code
-          WHERE aac.atc_code = ${atcFilter}
+          WHERE ampp.atc_code = ${atcFilter}
             AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-            AND (aac.end_date IS NULL OR aac.end_date > CURRENT_DATE)
           ORDER BY ampp.cti_extended
           LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
         `;
