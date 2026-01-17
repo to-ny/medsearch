@@ -71,7 +71,8 @@
     "noResultsMessage": "Try adjusting your search terms or filters",
     "searching": "Searching...",
     "findMedications": "Find medications, substances, brands, and packages",
-    "examples": "Examples"
+    "examples": "Examples",
+    "filteredBy": "Filtered by"
   },
   "detail": {
     "overview": "Overview",

@@ -71,7 +71,8 @@
     "noResultsMessage": "Versuchen Sie, Ihre Suchbegriffe oder Filter anzupassen",
     "searching": "Suche läuft...",
     "findMedications": "Finden Sie Medikamente, Substanzen, Marken und Packungen",
-    "examples": "Beispiele"
+    "examples": "Beispiele",
+    "filteredBy": "Gefiltert nach"
   },
   "detail": {
     "overview": "Übersicht",
