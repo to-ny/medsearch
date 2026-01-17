@@ -69,6 +69,8 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
           <RelationshipList
             title={t('detail.genericProducts')}
             items={vmpItems}
+            searchQuery={name}
+            searchType="vmp"
           />
 
           {/* Brand Products (collapsible if many) */}

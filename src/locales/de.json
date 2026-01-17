@@ -26,7 +26,8 @@
     "typeAtLeast": "Geben Sie mindestens 2 Zeichen ein",
     "products": "Produkte",
     "priceNotAvailable": "Preis nicht verfügbar",
-    "retrySearch": "Erneut suchen"
+    "retrySearch": "Erneut suchen",
+    "searchAll": "Alle suchen"
   },
   "entities": {
     "vtm": "Virtuelle Therapeutische Einheit",

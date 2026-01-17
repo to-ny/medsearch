@@ -26,7 +26,8 @@
     "typeAtLeast": "Tapez au moins 2 caractères",
     "products": "produits",
     "priceNotAvailable": "Prix non disponible",
-    "retrySearch": "Réessayer"
+    "retrySearch": "Réessayer",
+    "searchAll": "Rechercher tout"
   },
   "entities": {
     "vtm": "Groupe Thérapeutique Virtuel",

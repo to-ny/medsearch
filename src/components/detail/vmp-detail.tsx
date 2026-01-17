@@ -114,6 +114,8 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
           <RelationshipList
             title={t('detail.brandProducts')}
             items={ampItems}
+            searchQuery={name}
+            searchType="amp"
           />
 
           {/* Dosage Recommendations */}
