@@ -710,7 +710,7 @@ export async function executeSearch(
         SELECT DISTINCT ON (c.actor_nr)
           'company' as entity_type,
           c.actor_nr as code,
-          jsonb_build_object(${lang}, c.denomination) as name,
+          jsonb_build_object(${lang}::text, c.denomination) as name,
           NULL as parent_name,
           NULL as parent_code,
           NULL as company_name,
@@ -837,7 +837,7 @@ export async function executeSearch(
           SELECT DISTINCT ON (code)
             'atc' as entity_type,
             code,
-            jsonb_build_object(${lang}, description) as name,
+            jsonb_build_object(${lang}::text, description) as name,
             NULL as parent_name,
             NULL as parent_code,
             NULL as company_name,
@@ -857,7 +857,7 @@ export async function executeSearch(
           SELECT DISTINCT ON (code)
             'atc' as entity_type,
             code,
-            jsonb_build_object(${lang}, description) as name,
+            jsonb_build_object(${lang}::text, description) as name,
             NULL as parent_name,
             NULL as parent_code,
             NULL as company_name,
