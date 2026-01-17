@@ -47,7 +47,10 @@
     "package": "Verpakking",
     "company": "Bedrijf",
     "group": "Groep",
-    "atc": "ATC"
+    "atc": "ATC",
+    "medication": "Geneesmiddel",
+    "classification": "Classificatie",
+    "therapeuticGroup": "Therapeutische Groep"
   },
   "entityPlural": {
     "vtm": "Virtuele Therapeutische Groepen",

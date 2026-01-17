@@ -47,7 +47,10 @@
     "package": "Conditionnement",
     "company": "Entreprise",
     "group": "Groupe",
-    "atc": "ATC"
+    "atc": "ATC",
+    "medication": "Médicament",
+    "classification": "Classification",
+    "therapeuticGroup": "Groupe Thérapeutique"
   },
   "entityPlural": {
     "vtm": "Groupes Thérapeutiques Virtuels",
