@@ -26,7 +26,8 @@
     "typeAtLeast": "Typ minstens 2 tekens",
     "products": "producten",
     "priceNotAvailable": "Prijs niet beschikbaar",
-    "retrySearch": "Opnieuw zoeken"
+    "retrySearch": "Opnieuw zoeken",
+    "searchAll": "Alles zoeken"
   },
   "entities": {
     "vtm": "Virtuele Therapeutische Groep",

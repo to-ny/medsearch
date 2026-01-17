@@ -26,7 +26,8 @@
     "typeAtLeast": "Type at least 2 characters",
     "products": "products",
     "priceNotAvailable": "Price not available",
-    "retrySearch": "Retry Search"
+    "retrySearch": "Retry Search",
+    "searchAll": "Search all"
   },
   "entities": {
     "vtm": "Virtual Therapeutic Moiety",

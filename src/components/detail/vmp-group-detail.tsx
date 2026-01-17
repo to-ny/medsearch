@@ -113,6 +113,8 @@ export function VMPGroupDetail({ vmpGroup }: VMPGroupDetailProps) {
           <RelationshipList
             title={t('detail.memberProducts')}
             items={vmpItems}
+            searchQuery={name}
+            searchType="vmp"
           />
 
           {/* Dosage Recommendations */}
