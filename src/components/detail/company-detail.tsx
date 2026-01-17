@@ -10,7 +10,7 @@ import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { LocalizedText } from '@/components/shared/localized-text';
 import { Pagination } from '@/components/search/pagination';
 import { Card } from '@/components/ui/card';
-import { formatValidityPeriod, formatAddress } from '@/lib/utils/format';
+import { formatValidityPeriod, formatAddress, formatCountryName } from '@/lib/utils/format';
 import type { CompanyWithRelations } from '@/server/types/entities';
 import { useLanguage, useTranslation } from '@/lib/hooks';
 
@@ -22,7 +22,7 @@ interface CompanyDetailProps {
 
 export function CompanyDetail({ company, currentPage, pageSize }: CompanyDetailProps) {
   const router = useRouter();
-  useLanguage(); // Hook required for reactivity
+  const { language } = useLanguage();
   const { t } = useTranslation();
   const breadcrumbs = [{ label: company.denomination }];
 
@@ -38,8 +38,11 @@ export function CompanyDetail({ company, currentPage, pageSize }: CompanyDetailP
     company.postbox,
     company.postcode,
     company.city,
-    company.countryCode
+    company.countryCode,
+    language
   );
+
+  const countryName = formatCountryName(company.countryCode, language);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -52,7 +55,8 @@ export function CompanyDetail({ company, currentPage, pageSize }: CompanyDetailP
             entityType="company"
             name={{ en: company.denomination }}
             code={company.actorNr}
-            subtitle={company.city ? `${company.city}${company.countryCode ? `, ${company.countryCode}` : ''}` : undefined}
+            codeType="actorNr"
+            subtitle={company.city ? `${company.city}${countryName ? `, ${countryName}` : ''}` : undefined}
           />
 
           {/* Contact Information */}
@@ -151,10 +155,10 @@ export function CompanyDetail({ company, currentPage, pageSize }: CompanyDetailP
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.products')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{company.productCount}</span>
               </div>
-              {company.countryCode && (
+              {countryName && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('company.country')}</span>
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{company.countryCode}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{countryName}</span>
                 </div>
               )}
             </div>

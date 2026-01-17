@@ -274,5 +274,32 @@
     "AS_NEEDED": "Si nécessaire",
     "SHORT_TERM": "Court terme",
     "LONG_TERM": "Long terme"
+  },
+  "codes": {
+    "cnk": "CNK",
+    "cnkFull": "Code CNK",
+    "cnkTooltip": "Code-barres de pharmacie belge - identifiant unique pour les conditionnements de médicaments en Belgique",
+    "atc": "ATC",
+    "atcFull": "Code ATC",
+    "atcTooltip": "Classification Anatomique Thérapeutique Chimique - système de classification des médicaments de l'OMS",
+    "ctiExtended": "CTI-Étendu",
+    "ctiExtendedFull": "Code de conditionnement",
+    "ctiExtendedTooltip": "Identifiant de conditionnement étendu dans le système belge des médicaments",
+    "actorNr": "N° acteur",
+    "actorNrFull": "Code entreprise",
+    "actorNrTooltip": "Identifiant unique d'entreprise dans le système belge des médicaments",
+    "vmpCode": "VMP",
+    "vmpCodeFull": "Code VMP",
+    "vmpCodeTooltip": "Code Médicament Virtuel - identifie les définitions de médicaments génériques",
+    "ampCode": "AMP",
+    "ampCodeFull": "Code AMP",
+    "ampCodeTooltip": "Code Médicament Réel - identifie les produits de médicaments de marque"
+  },
+  "atcLevels": {
+    "level1": "Niveau 1 (Anatomique)",
+    "level2": "Niveau 2 (Thérapeutique)",
+    "level3": "Niveau 3 (Pharmacologique)",
+    "level4": "Niveau 4 (Chimique)",
+    "level5": "Niveau 5 (Substance)"
   }
 }

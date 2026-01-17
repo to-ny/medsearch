@@ -56,7 +56,8 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
             entityType="ampp"
             name={ampp.prescriptionName || ampp.amp.name}
             code={ampp.ctiExtended}
-            subtitle={ampp.atcCode ? `ATC: ${ampp.atcCode}` : undefined}
+            codeType="ctiExtended"
+            subtitle={ampp.atcCode ? `${t('codes.atc')}: ${ampp.atcCode}` : undefined}
           />
 
           {/* Overview */}
@@ -137,7 +138,7 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
                   <thead>
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        CNK
+                        {t('codes.cnk')}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         {t('chapterIV.environment')}
@@ -320,7 +321,7 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
               </div>
               {ampp.atcClassification && atcSlug && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">ATC</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t('codes.atc')}</span>
                   <Link
                     href={`/${language}/classifications/${atcSlug}`}
                     className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
@@ -330,7 +331,7 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-gray-500 dark:text-gray-400">CNK</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('codes.cnk')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{ampp.cnkCodes.length}</span>
               </div>
               {ampp.exFactoryPrice !== null && (

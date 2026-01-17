@@ -5,6 +5,7 @@ import { ChevronRightIcon, ExclamationTriangleIcon } from '@heroicons/react/20/s
 import { Card } from '@/components/ui/card';
 import { EntityTypeBadge } from './entity-type-badge';
 import { ReimbursementBadge } from './reimbursement-badge';
+import { CodeDisplay } from '@/components/shared/code-display';
 import { useLanguage } from '@/lib/hooks/use-language';
 import { useTranslation } from '@/lib/hooks/use-translation';
 import { LocalizedText } from '@/components/shared/localized-text';
@@ -147,9 +148,13 @@ export function EntityCard({ entity, variant = 'default', className }: EntityCar
             {!isCompact && (entity.price !== undefined || entity.cnkCode || entity.reimbursable) && (
               <div className="mt-2 flex items-center gap-3 flex-wrap">
                 {entity.cnkCode && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                    CNK: {entity.cnkCode}
-                  </span>
+                  <CodeDisplay
+                    type="cnk"
+                    value={entity.cnkCode}
+                    variant="short"
+                    showTooltip
+                    className="text-xs text-gray-500 dark:text-gray-400"
+                  />
                 )}
                 {entity.price !== undefined && (
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">

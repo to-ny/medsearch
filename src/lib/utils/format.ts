@@ -153,7 +153,8 @@ export function formatAddress(
   postbox: string | null | undefined,
   postcode: string | null | undefined,
   city: string | null | undefined,
-  countryCode: string | null | undefined
+  countryCode: string | null | undefined,
+  locale?: string
 ): string[] {
   const lines: string[] = [];
 
@@ -173,9 +174,10 @@ export function formatAddress(
     lines.push(cityParts.join(' '));
   }
 
-  // Country
+  // Country - use localized name if locale is provided
   if (countryCode) {
-    lines.push(countryCode);
+    const countryName = locale ? formatCountryName(countryCode, locale) : countryCode;
+    lines.push(countryName);
   }
 
   return lines;
@@ -187,4 +189,23 @@ export function formatAddress(
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength - 1) + '…';
+}
+
+/**
+ * Format a country code to its full localized name
+ * Uses the Intl.DisplayNames API to get the country name in the specified locale
+ */
+export function formatCountryName(
+  countryCode: string | null | undefined,
+  locale: string = 'en'
+): string {
+  if (!countryCode) return '';
+
+  try {
+    const displayNames = new Intl.DisplayNames([locale], { type: 'region' });
+    return displayNames.of(countryCode.toUpperCase()) || countryCode;
+  } catch {
+    // Fallback to raw code if Intl.DisplayNames is not supported or fails
+    return countryCode;
+  }
 }
