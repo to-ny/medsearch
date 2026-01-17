@@ -198,9 +198,7 @@
   },
   "footer": {
     "dataSource": "Data source: SAM v2 (Belgian Medication Database)",
-    "disclaimer": "For informational purposes only. Consult a healthcare professional for medical advice.",
-    "madeBy": "Made with",
-    "by": "by"
+    "disclaimer": "For informational purposes only. Consult a healthcare professional for medical advice."
   },
   "emptyState": {
     "searchDatabaseTitle": "Search Belgium's Medication Database",

@@ -198,9 +198,7 @@
   },
   "footer": {
     "dataSource": "Source de données: SAM v2 (Base de Données des Médicaments Belges)",
-    "disclaimer": "À titre informatif uniquement. Consultez un professionnel de santé pour des conseils médicaux.",
-    "madeBy": "Fait avec",
-    "by": "par"
+    "disclaimer": "À titre informatif uniquement. Consultez un professionnel de santé pour des conseils médicaux."
   },
   "emptyState": {
     "searchDatabaseTitle": "Recherchez dans la Base de Données des Médicaments Belges",
