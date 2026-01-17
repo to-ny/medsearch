@@ -89,6 +89,8 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
           <RelationshipList
             title={t('detail.brandProducts')}
             items={ampItems}
+            searchFilter={{ type: 'vtm', code: vtm.code }}
+            searchType="amp"
           />
         </div>
 

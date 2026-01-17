@@ -93,7 +93,7 @@ const TYPE_PRIORITY: Record<EntityType, number> = {
  * Relationship filters for search
  */
 export interface SearchFilters {
-  vtmCode?: string;       // Filter VMPs by VTM code
+  vtmCode?: string;       // Filter VMPs by VTM code, or AMPs by VTM code (via VMP)
   vmpCode?: string;       // Filter AMPs by VMP code
   ampCode?: string;       // Filter AMPPs by AMP code
   atcCode?: string;       // Filter AMPPs by ATC code
@@ -129,7 +129,10 @@ export async function executeSearch(
     if (hasTextQuery) return null; // All types are relevant when there's a text query
 
     const relevantTypes = new Set<EntityType>();
-    if (filters?.vtmCode) relevantTypes.add('vmp');
+    if (filters?.vtmCode) {
+      relevantTypes.add('vmp');  // VMPs directly related to VTM
+      relevantTypes.add('amp');  // AMPs related to VTM via VMP
+    }
     if (filters?.vmpCode) relevantTypes.add('amp');
     if (filters?.ampCode) relevantTypes.add('ampp');
     if (filters?.atcCode) relevantTypes.add('ampp');
@@ -308,12 +311,37 @@ export async function executeSearch(
   if (isTypeRelevant('amp')) {
     searchPromises.push(
       (async () => {
-        // Support filtering by VMP code or company code
+        // Support filtering by VMP code, company code, or VTM code (via VMP)
         const vmpFilter = filters?.vmpCode;
         const companyFilter = filters?.companyCode;
+        const vtmFilter = filters?.vtmCode;
 
       let result;
-      if (vmpFilter) {
+      if (vtmFilter) {
+        // Filter AMPs by VTM code (through VMP relationship)
+        result = await sql`
+          SELECT DISTINCT ON (a.code)
+            'amp' as entity_type,
+            a.code,
+            a.name,
+            v.name as parent_name,
+            a.vmp_code as parent_code,
+            c.denomination as company_name,
+            NULL as pack_info,
+            NULL as price,
+            NULL as reimbursable,
+            NULL as cnk_code,
+            NULL as product_count,
+            a.black_triangle
+          FROM amp a
+          JOIN vmp v ON v.code = a.vmp_code
+          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
+          WHERE v.vtm_code = ${vtmFilter}
+            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
+          ORDER BY a.code
+          LIMIT ${SEARCH_LIMIT_PER_TABLE}
+        `;
+      } else if (vmpFilter) {
         result = await sql`
           SELECT DISTINCT ON (a.code)
             'amp' as entity_type,
