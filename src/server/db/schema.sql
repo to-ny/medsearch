@@ -8,6 +8,11 @@
 -- 3. Optimized for search application queries
 
 -- ============================================================================
+-- Extensions
+-- ============================================================================
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- ============================================================================
 -- VTM (Virtual Therapeutic Moiety) - Active substances
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS vtm (
@@ -461,3 +466,62 @@ CREATE TABLE IF NOT EXISTS sync_metadata (
 
 CREATE INDEX IF NOT EXISTS idx_sync_metadata_status ON sync_metadata (status);
 CREATE INDEX IF NOT EXISTS idx_sync_metadata_type ON sync_metadata (sync_type);
+
+-- ============================================================================
+-- Search Index - Unified search table with trigram support
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS search_index (
+  id SERIAL PRIMARY KEY,
+  entity_type TEXT NOT NULL,
+  code TEXT NOT NULL,
+
+  -- Concatenated searchable text for trigram index
+  search_text TEXT NOT NULL,
+
+  -- Display fields
+  name JSONB,
+  parent_code TEXT,
+  parent_name JSONB,
+  company_name TEXT,
+  pack_info TEXT,
+  price NUMERIC,
+  reimbursable BOOLEAN,
+  cnk_code TEXT,
+  product_count INT,
+  black_triangle BOOLEAN,
+
+  -- Relationship filter columns
+  vtm_code TEXT,
+  vmp_code TEXT,
+  amp_code TEXT,
+  atc_code TEXT,
+  company_actor_nr TEXT,
+  vmp_group_code TEXT,
+
+  end_date DATE,
+
+  UNIQUE(entity_type, code)
+);
+
+-- Trigram index for substring search (accelerates ILIKE '%term%')
+CREATE INDEX IF NOT EXISTS idx_search_text_trgm ON search_index USING GIN (search_text gin_trgm_ops);
+
+-- Code prefix matching
+CREATE INDEX IF NOT EXISTS idx_search_code ON search_index (code);
+
+-- CNK exact match
+CREATE INDEX IF NOT EXISTS idx_search_cnk ON search_index (cnk_code) WHERE cnk_code IS NOT NULL;
+
+-- Relationship filter indexes (partial to save space)
+CREATE INDEX IF NOT EXISTS idx_search_vtm ON search_index (vtm_code) WHERE vtm_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_vmp ON search_index (vmp_code) WHERE vmp_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_amp ON search_index (amp_code) WHERE amp_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_atc ON search_index (atc_code) WHERE atc_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_company ON search_index (company_actor_nr) WHERE company_actor_nr IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_vmp_group ON search_index (vmp_group_code) WHERE vmp_group_code IS NOT NULL;
+
+-- Entity type for faceting
+CREATE INDEX IF NOT EXISTS idx_search_entity_type ON search_index (entity_type);
+
+-- Validity filtering
+CREATE INDEX IF NOT EXISTS idx_search_end_date ON search_index (end_date) WHERE end_date IS NOT NULL;
