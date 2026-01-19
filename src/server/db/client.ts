@@ -7,6 +7,26 @@ import 'server-only';
 
 import { sql as vercelSql, db as vercelDb, VercelPoolClient } from '@vercel/postgres';
 
+/**
+ * Validate SQL identifier (table name, column name) to prevent SQL injection
+ * Only allows alphanumeric characters and underscores
+ */
+function isValidIdentifier(name: string): boolean {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
+}
+
+/**
+ * Validate and sanitize an array of SQL identifiers
+ * Throws if any identifier is invalid
+ */
+function validateIdentifiers(names: string[], context: string): void {
+  for (const name of names) {
+    if (!isValidIdentifier(name)) {
+      throw new Error(`Invalid ${context}: "${name}". Only alphanumeric characters and underscores are allowed.`);
+    }
+  }
+}
+
 // Re-export the sql tagged template function for queries
 export const sql = vercelSql;
 
@@ -75,6 +95,7 @@ export async function transaction<T>(
 
 /**
  * Batch insert helper - inserts multiple rows efficiently
+ * Validates table and column names to prevent SQL injection
  */
 export async function batchInsert(
   tableName: string,
@@ -83,6 +104,10 @@ export async function batchInsert(
   chunkSize = 1000
 ): Promise<number> {
   if (rows.length === 0) return 0;
+
+  // Validate identifiers to prevent SQL injection
+  validateIdentifiers([tableName], 'table name');
+  validateIdentifiers(columns, 'column name');
 
   let inserted = 0;
 
@@ -111,6 +136,7 @@ export async function batchInsert(
 
 /**
  * Upsert (insert or update) helper
+ * Validates table and column names to prevent SQL injection
  */
 export async function upsert(
   tableName: string,
@@ -119,6 +145,14 @@ export async function upsert(
   conflictColumn: string,
   updateColumns?: string[]
 ): Promise<void> {
+  // Validate identifiers to prevent SQL injection
+  validateIdentifiers([tableName], 'table name');
+  validateIdentifiers(columns, 'column name');
+  validateIdentifiers([conflictColumn], 'conflict column name');
+  if (updateColumns) {
+    validateIdentifiers(updateColumns, 'update column name');
+  }
+
   const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
 
   // Determine which columns to update on conflict

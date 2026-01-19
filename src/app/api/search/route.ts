@@ -6,7 +6,64 @@ import { isValidEntityType, isValidLanguage, type EntityType, type Language } fr
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Simple in-memory rate limiting
+// In production, consider using Redis or a dedicated rate limiting service
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
+const RATE_LIMIT_MAX_REQUESTS = 100; // Max requests per window per IP
+
+function getRateLimitKey(request: NextRequest): string {
+  // Use forwarded IP if behind proxy, otherwise use connection IP
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const ip = forwardedFor?.split(',')[0]?.trim() || 'unknown';
+  return ip;
+}
+
+function checkRateLimit(key: string): { allowed: boolean; remaining: number; resetIn: number } {
+  const now = Date.now();
+  const record = rateLimitMap.get(key);
+
+  // Clean up expired entries periodically (every 100 checks)
+  if (Math.random() < 0.01) {
+    for (const [k, v] of rateLimitMap.entries()) {
+      if (v.resetTime < now) rateLimitMap.delete(k);
+    }
+  }
+
+  if (!record || record.resetTime < now) {
+    // New window
+    rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetIn: RATE_LIMIT_WINDOW_MS };
+  }
+
+  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false, remaining: 0, resetIn: record.resetTime - now };
+  }
+
+  record.count++;
+  return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - record.count, resetIn: record.resetTime - now };
+}
+
 export async function GET(request: NextRequest) {
+  // Check rate limit
+  const rateLimitKey = getRateLimitKey(request);
+  const rateLimit = checkRateLimit(rateLimitKey);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      createAPIError('RATE_LIMITED', 'Too many requests. Please try again later.'),
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000)),
+          'X-RateLimit-Limit': String(RATE_LIMIT_MAX_REQUESTS),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetIn / 1000)),
+        },
+      }
+    );
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
 
@@ -65,7 +122,13 @@ export async function GET(request: NextRequest) {
     // Execute search
     const results = await executeSearch(query.trim(), lang, types, limit, offset, filters);
 
-    return NextResponse.json(results);
+    return NextResponse.json(results, {
+      headers: {
+        'X-RateLimit-Limit': String(RATE_LIMIT_MAX_REQUESTS),
+        'X-RateLimit-Remaining': String(rateLimit.remaining),
+        'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetIn / 1000)),
+      },
+    });
   } catch (error) {
     console.error('Search error:', error);
     return NextResponse.json(
