@@ -139,6 +139,12 @@ export function AMPDetail({ amp }: AMPDetailProps) {
                 {amp.components.map((component) => (
                   <Card key={component.sequenceNr} padding="sm">
                     <InfoList>
+                      {amp.components.length > 1 && (
+                        <InfoRow
+                          label={t('sidebar.component')}
+                          value={`#${component.sequenceNr}`}
+                        />
+                      )}
                       {component.pharmaceuticalFormName && (
                         <InfoRow
                           label={t('detail.form')}
@@ -274,9 +280,30 @@ export function AMPDetail({ amp }: AMPDetailProps) {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Clinical Indicators */}
+          {amp.blackTriangle && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <span className="font-medium text-amber-800 dark:text-amber-200">{t('sidebar.blackTriangle')}</span>
+              </div>
+            </div>
+          )}
+
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{t('detail.summary')}</h3>
             <div className="space-y-2 text-sm">
+              {amp.vmp?.vtmCode && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('entityLabels.substance')}</span>
+                  <Link
+                    href={links.toSubstance({ en: amp.vmp.vtmCode }, amp.vmp.vtmCode)}
+                    className="font-medium text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[150px]"
+                  >
+                    {amp.vmp.vtmCode}
+                  </Link>
+                </div>
+              )}
               {amp.vmp && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('entityLabels.generic')}</span>
@@ -307,6 +334,28 @@ export function AMPDetail({ amp }: AMPDetailProps) {
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.activeIngredients')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{amp.ingredients.length}</span>
               </div>
+              {amp.components.length > 1 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('sidebar.component')}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{amp.components.length}</span>
+                </div>
+              )}
+              {/* Validity indicator */}
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('detail.validity')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {amp.endDate && new Date(amp.endDate) < new Date() ? t('sidebar.expired') : t('sidebar.active')}
+                </span>
+              </div>
+              {/* Reimbursable percentage */}
+              {amp.packages.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('sidebar.reimbursablePercent')}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {Math.round((amp.packages.filter(p => p.reimbursable).length / amp.packages.length) * 100)}%
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

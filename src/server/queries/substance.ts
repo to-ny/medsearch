@@ -8,15 +8,24 @@ import type { AMPSummary } from '@/server/types/summaries';
  * Get a substance by code with relationships
  */
 export async function getSubstanceWithRelations(
-  code: string
+  code: string,
+  ampsLimit = 50,
+  ampsOffset = 0
 ): Promise<SubstanceWithRelations | null> {
-  // Get base substance data
+  // Get base substance data with total count
   const result = await sql`
     SELECT
       code,
       name,
       start_date,
-      end_date
+      end_date,
+      (
+        SELECT COUNT(DISTINCT amp.code)::int
+        FROM amp_ingredient ai
+        JOIN amp ON amp.code = ai.amp_code
+        WHERE ai.substance_code = ${code}
+          AND (amp.end_date IS NULL OR amp.end_date > CURRENT_DATE)
+      ) as amp_count
     FROM substance
     WHERE code = ${code}
   `;
@@ -25,7 +34,7 @@ export async function getSubstanceWithRelations(
 
   const row = result.rows[0];
 
-  // Get AMPs using this substance as ingredient
+  // Get paginated AMPs using this substance as ingredient
   const ampsResult = await sql`
     SELECT DISTINCT ON (amp.code)
       amp.code,
@@ -41,7 +50,8 @@ export async function getSubstanceWithRelations(
     WHERE ai.substance_code = ${code}
       AND (amp.end_date IS NULL OR amp.end_date > CURRENT_DATE)
     ORDER BY amp.code, amp.name->>'en'
-    LIMIT 50
+    LIMIT ${ampsLimit}
+    OFFSET ${ampsOffset}
   `;
 
   const usedInAmps: AMPSummary[] = ampsResult.rows.map((a) => ({
@@ -61,6 +71,6 @@ export async function getSubstanceWithRelations(
     startDate: row.start_date,
     endDate: row.end_date,
     usedInAmps,
-    usedInAmpCount: usedInAmps.length,
+    usedInAmpCount: row.amp_count,
   };
 }

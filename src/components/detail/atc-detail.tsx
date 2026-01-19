@@ -197,6 +197,10 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{t('detail.summary')}</h3>
             <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('sidebar.level')}</span>
+                <Badge variant="outline" size="sm">{atcLevel}</Badge>
+              </div>
               {atc.parentCode && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('detail.parent')}</span>

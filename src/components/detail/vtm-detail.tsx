@@ -1,12 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { EntityHeader } from '@/components/entities/entity-header';
 import { RelationshipList } from '@/components/entities/relationship-list';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
-import { useLanguage } from '@/lib/hooks/use-language';
-import { useTranslation } from '@/lib/hooks/use-translation';
+import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { formatValidityPeriod } from '@/lib/utils/format';
 import type { VTMWithRelations } from '@/server/types/entities';
 
@@ -16,6 +16,7 @@ interface VTMDetailProps {
 
 export function VTMDetail({ vtm }: VTMDetailProps) {
   const { getLocalized } = useLanguage();
+  const links = useLinks();
   const { t } = useTranslation();
   const name = getLocalized(vtm.name);
 
@@ -99,6 +100,26 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{t('detail.summary')}</h3>
             <div className="space-y-2 text-sm">
+              {/* Therapeutic Groups */}
+              {vtm.vmpGroups.length > 0 && (
+                <div className="flex justify-between items-start">
+                  <span className="text-gray-500 dark:text-gray-400">{t('detail.therapeuticGroup')}</span>
+                  <div className="text-right">
+                    {vtm.vmpGroups.slice(0, 2).map((group) => (
+                      <Link
+                        key={group.code}
+                        href={links.toTherapeuticGroup(group.name, group.code)}
+                        className="block font-medium text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[150px]"
+                      >
+                        {getLocalized(group.name)}
+                      </Link>
+                    ))}
+                    {vtm.vmpGroups.length > 2 && (
+                      <span className="text-gray-500 dark:text-gray-400 text-xs">+{vtm.vmpGroups.length - 2} more</span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.genericProducts')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{vtm.vmps.length}</span>
@@ -106,6 +127,17 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.brandProducts')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{vtm.amps.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('sidebar.packageCount')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{vtm.packageCount}</span>
+              </div>
+              {/* Validity indicator */}
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('detail.validity')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {vtm.endDate && new Date(vtm.endDate) < new Date() ? t('sidebar.expired') : t('sidebar.active')}
+                </span>
               </div>
             </div>
           </div>

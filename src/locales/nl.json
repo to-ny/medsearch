@@ -35,7 +35,8 @@
     "medication": "Geneesmiddel",
     "classification": "Classificatie",
     "therapeuticGroup": "Therapeutische Groep",
-    "ingredient": "Ingredient"
+    "ingredient": "Ingredient",
+    "chapterIV": "Hoofdstuk IV"
   },
   "search": {
     "resultsFor": "voor",
@@ -135,6 +136,7 @@
     "examples": "Voorbeelden",
     "cnkCode": "CNK-code",
     "atcCode": "ATC-code",
+    "company": "bedrijf",
     "infoSubstances": "Stoffen",
     "infoSubstancesDescription": "Zoek op actief ingrediënt of generieke naam",
     "infoBrands": "Merken & Verpakkingen",
@@ -244,5 +246,22 @@
     "level3": "Niveau 3 (Farmacologisch)",
     "level4": "Niveau 4 (Chemisch)",
     "level5": "Niveau 5 (Stof)"
+  },
+  "sidebar": {
+    "blackTriangle": "Zwarte Driehoek",
+    "orphanDrug": "Weesgeneesmiddel",
+    "frailtyWarning": "Kwetsbaarheid",
+    "noGenericRx": "Geen Generiek Rx",
+    "noSwitching": "Geen Wisseling",
+    "validUntil": "Geldig tot",
+    "validFrom": "Geldig vanaf",
+    "active": "Actief",
+    "expired": "Verlopen",
+    "level": "Niveau",
+    "genericCount": "Generieken",
+    "packageCount": "Verpakkingen",
+    "reimbursablePercent": "Terugbetaalbaar",
+    "chapterIV": "Hoofdstuk IV",
+    "component": "Component"
   }
 }

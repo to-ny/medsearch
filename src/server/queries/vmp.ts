@@ -106,6 +106,17 @@ export async function getVMPWithRelations(code: string): Promise<VMPWithRelation
     indicationName: d.indication_name,
   }));
 
+  // Get package count
+  const packageCountResult = await sql`
+    SELECT COUNT(DISTINCT ampp.cti_extended)::int as count
+    FROM ampp
+    JOIN amp ON amp.code = ampp.amp_code
+    WHERE amp.vmp_code = ${code}
+      AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+  `;
+
+  const packageCount = packageCountResult.rows[0]?.count || 0;
+
   return {
     code: row.code,
     name: row.name,
@@ -119,5 +130,6 @@ export async function getVMPWithRelations(code: string): Promise<VMPWithRelation
     vmpGroup,
     amps,
     dosages,
+    packageCount,
   };
 }

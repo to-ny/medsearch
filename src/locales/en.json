@@ -35,7 +35,8 @@
     "medication": "Medication",
     "classification": "Classification",
     "therapeuticGroup": "Therapeutic Group",
-    "ingredient": "Ingredient"
+    "ingredient": "Ingredient",
+    "chapterIV": "Chapter IV"
   },
   "search": {
     "resultsFor": "for",
@@ -135,6 +136,7 @@
     "examples": "Examples",
     "cnkCode": "CNK code",
     "atcCode": "ATC code",
+    "company": "company",
     "infoSubstances": "Substances",
     "infoSubstancesDescription": "Search by active ingredient or generic name",
     "infoBrands": "Brands & Packages",
@@ -244,5 +246,22 @@
     "level3": "Level 3 (Pharmacological)",
     "level4": "Level 4 (Chemical)",
     "level5": "Level 5 (Substance)"
+  },
+  "sidebar": {
+    "blackTriangle": "Black Triangle",
+    "orphanDrug": "Orphan Drug",
+    "frailtyWarning": "Frailty Warning",
+    "noGenericRx": "No Generic Rx",
+    "noSwitching": "No Switching",
+    "validUntil": "Valid until",
+    "validFrom": "Valid from",
+    "active": "Active",
+    "expired": "Expired",
+    "level": "Level",
+    "genericCount": "Generics",
+    "packageCount": "Packages",
+    "reimbursablePercent": "Reimbursable",
+    "chapterIV": "Chapter IV",
+    "component": "Component"
   }
 }

@@ -1,13 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { CollapsibleSection } from '@/components/shared/collapsible-section';
 import { PriceDisplay } from '@/components/shared/price-display';
 import { Badge } from '@/components/ui/badge';
-import { useLanguage } from '@/lib/hooks/use-language';
-import { useTranslation } from '@/lib/hooks/use-translation';
+import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { LocalizedText } from '@/components/shared/localized-text';
 import { formatValidityPeriod, formatAgreementTerm } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
@@ -19,6 +19,7 @@ interface ChapterIVDetailProps {
 
 export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
   const { getLocalized } = useLanguage();
+  const links = useLinks();
   const { t } = useTranslation();
   const keyString = chapterIV.keyString ? getLocalized(chapterIV.keyString) : null;
 
@@ -36,25 +37,23 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Header */}
+          {/* Custom header for Chapter IV */}
           <div className="space-y-2">
-            <Badge
-              size="lg"
-              style={{
-                backgroundColor: '#EF444420',
-                color: '#EF4444',
-              }}
-            >
-              Chapter IV
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" size="lg">{t('entityLabels.chapterIV')}</Badge>
+            </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
               Chapter {chapterIV.chapterName} - {chapterIV.paragraphName}
             </h1>
-            {keyString && (
-              <p className="text-lg text-gray-600 dark:text-gray-400">
-                {keyString}
-              </p>
-            )}
+            <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
+              <span className="font-mono">{t('detail.code')}: {chapterIV.chapterName}-{chapterIV.paragraphName}</span>
+              {keyString && (
+                <>
+                  <span className="hidden sm:inline">•</span>
+                  <span>{keyString}</span>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Overview */}
@@ -125,8 +124,17 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {chapterIV.linkedProducts.map((product) => (
                       <tr key={`${product.code}-${product.deliveryEnvironment}`}>
-                        <td className="px-3 py-2 font-mono text-gray-900 dark:text-gray-100">
-                          {product.code}
+                        <td className="px-3 py-2 font-mono">
+                          {product.amppCtiExtended ? (
+                            <Link
+                              href={links.toPackage(product.name || { en: product.code }, product.amppCtiExtended)}
+                              className="text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              {product.code}
+                            </Link>
+                          ) : (
+                            <span className="text-gray-900 dark:text-gray-100">{product.code}</span>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-gray-600 dark:text-gray-400">
                           {product.deliveryEnvironment === 'P' ? t('detail.public') : t('detail.hospital')}
@@ -155,6 +163,18 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{t('detail.summary')}</h3>
             <div className="space-y-2 text-sm">
+              {chapterIV.processType && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('chapterIV.processType')}</span>
+                  <Badge variant="outline" size="sm">{chapterIV.processType}</Badge>
+                </div>
+              )}
+              {chapterIV.paragraphVersion !== null && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('chapterIV.version')}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">v{chapterIV.paragraphVersion}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('chapterIV.conditions')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{chapterIV.verses.length}</span>
@@ -162,6 +182,13 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.products')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{chapterIV.linkedProducts.length}</span>
+              </div>
+              {/* Validity indicator */}
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('detail.validity')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {chapterIV.endDate && new Date(chapterIV.endDate) < new Date() ? t('sidebar.expired') : t('sidebar.active')}
+                </span>
               </div>
             </div>
           </div>
