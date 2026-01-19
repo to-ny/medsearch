@@ -33,7 +33,8 @@ function buildSearchUrl(options: UseSearchOptions): string | null {
   const hasFilters = filters && (filters.vtmCode || filters.vmpCode || filters.ampCode || filters.atcCode || filters.companyCode || filters.vmpGroupCode || filters.substanceCode);
 
   // Don't search if disabled or (query is too short and no filters)
-  if (!enabled || (!hasFilters && query.length < 2)) {
+  // Minimum 3 characters required for text search (trigram index requirement)
+  if (!enabled || (!hasFilters && query.length < 3)) {
     return null;
   }
 

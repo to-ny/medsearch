@@ -34,7 +34,7 @@ export function SearchBar({
 
   // Handle debounced search loading state
   useEffect(() => {
-    if (debouncedValue.length >= 2) {
+    if (debouncedValue.length >= 3) {
       // Use a micro-task to avoid synchronous setState in effect
       const timer = setTimeout(() => {
         setIsLoading(true);
@@ -49,7 +49,7 @@ export function SearchBar({
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (value.trim().length >= 2) {
+      if (value.trim().length >= 3) {
         if (onSearch) {
           onSearch(value.trim());
         } else {
@@ -158,7 +158,7 @@ export function SearchBar({
           )}
         </div>
       </div>
-      {value.length > 0 && value.length < 2 && (
+      {value.length > 0 && value.length < 3 && (
         <p className="absolute mt-1 text-xs text-gray-500 dark:text-gray-400">
           {t('common.typeAtLeast')}
         </p>
@@ -179,7 +179,7 @@ export function SearchBarCompact() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (value.trim().length >= 2) {
+    if (value.trim().length >= 3) {
       router.push(links.toSearch({ q: value.trim() }));
     }
   };

@@ -75,7 +75,7 @@ function SearchContent() {
     types: selectedTypes.length > 0 ? selectedTypes : undefined,
     limit: RESULTS_PER_PAGE,
     offset: (currentPage - 1) * RESULTS_PER_PAGE,
-    enabled: query.length >= 2 || !!filters,
+    enabled: query.length >= 3 || !!filters,
     filters,
   });
 
@@ -169,7 +169,7 @@ function SearchContent() {
       )}
 
       {/* Results area */}
-      {query.length < 2 && !filters ? (
+      {query.length < 3 && !filters ? (
         <EmptyState variant="no-query" />
       ) : isLoading ? (
         <div className="space-y-6">

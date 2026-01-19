@@ -1299,11 +1299,28 @@ function validateAllTablesHaveData(): string[] {
   return missing;
 }
 
+async function ensureExtensions(dryRun: boolean): Promise<void> {
+  if (dryRun) {
+    console.log('   [DRY RUN] Would ensure pg_trgm extension exists');
+    return;
+  }
+
+  try {
+    await query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+    console.log('   [OK] pg_trgm extension ready');
+  } catch (error) {
+    console.log(`   [WARN] Could not create pg_trgm extension: ${error}`);
+  }
+}
+
 async function createStagingTables(
   progress: ProgressState,
   dryRun: boolean
 ): Promise<void> {
   console.log('\n2. Creating staging tables...\n');
+
+  // Ensure required extensions exist
+  await ensureExtensions(dryRun);
 
   // Only create staging tables for files we have
   const tables = new Set<string>();
@@ -1311,6 +1328,9 @@ async function createStagingTables(
     const fileTables = FILE_TABLE_MAPPING[fileType] || [];
     fileTables.forEach(t => tables.add(t));
   }
+
+  // Always include search_index (populated from all other tables)
+  tables.add('search_index');
 
   const tableList = Array.from(tables);
 
@@ -1327,13 +1347,64 @@ async function createStagingTables(
   // Tables with SERIAL id columns - need special handling for staging
   const tablesWithSerialId = new Set([
     'reimbursement_context', 'copayment', 'chapter_iv_verse',
-    'legal_reference', 'legal_text', 'sync_metadata', 'dosage_parameter_bounds'
+    'legal_reference', 'legal_text', 'sync_metadata', 'dosage_parameter_bounds',
+    'search_index'
   ]);
 
   for (const table of tableList) {
     try {
       // Drop staging table if exists
       await query(`DROP TABLE IF EXISTS ${table}_staging CASCADE`);
+
+      // Tables that should be created from DDL (either new or have schema updates)
+      const tableDDL: Record<string, string> = {
+        search_index: `
+          CREATE TABLE search_index_staging (
+            id SERIAL PRIMARY KEY,
+            entity_type TEXT NOT NULL,
+            code TEXT NOT NULL,
+            search_text TEXT NOT NULL,
+            name JSONB,
+            parent_code TEXT,
+            parent_name JSONB,
+            company_name TEXT,
+            pack_info TEXT,
+            price NUMERIC,
+            reimbursable BOOLEAN,
+            cnk_code TEXT,
+            product_count INT,
+            black_triangle BOOLEAN,
+            vtm_code TEXT,
+            vmp_code TEXT,
+            amp_code TEXT,
+            atc_code TEXT,
+            company_actor_nr TEXT,
+            vmp_group_code TEXT,
+            end_date DATE,
+            UNIQUE(entity_type, code)
+          )
+        `,
+        amp_ingredient: `
+          CREATE TABLE amp_ingredient_staging (
+            amp_code VARCHAR(50) NOT NULL,
+            component_sequence_nr INTEGER NOT NULL,
+            rank INTEGER NOT NULL,
+            type VARCHAR(50) DEFAULT 'ACTIVE_SUBSTANCE',
+            substance_code VARCHAR(20),
+            strength_value DECIMAL(15, 4),
+            strength_unit VARCHAR(50),
+            strength_description VARCHAR(255),
+            PRIMARY KEY (amp_code, component_sequence_nr, rank)
+          )
+        `,
+      };
+
+      // Use DDL if available for this table
+      if (tableDDL[table]) {
+        await query(tableDDL[table]);
+        console.log(`   [OK] Created ${table}_staging (from DDL)`);
+        continue;
+      }
 
       // Create staging table as copy of production structure
       // For tables with SERIAL id columns, create without constraints so id can use sequence default
@@ -1418,6 +1489,181 @@ async function importRecords(
   return counts;
 }
 
+async function populateSearchIndex(dryRun: boolean): Promise<void> {
+  console.log('\n3b. Populating search_index_staging...\n');
+
+  if (dryRun) {
+    console.log('   [DRY RUN] Would populate search_index_staging');
+    tablesWithData.add('search_index');
+    return;
+  }
+
+  await query(`
+    INSERT INTO search_index_staging (
+      entity_type, code, search_text, name, parent_code, parent_name,
+      company_name, pack_info, price, reimbursable, cnk_code,
+      product_count, black_triangle,
+      vtm_code, vmp_code, amp_code, atc_code, company_actor_nr, vmp_group_code,
+      end_date
+    )
+
+    -- VTM
+    SELECT * FROM (
+      SELECT DISTINCT ON (code)
+        'vtm'::text as entity_type, code,
+        LOWER(COALESCE(name->>'en','') || ' ' || COALESCE(name->>'nl','') || ' ' ||
+              COALESCE(name->>'fr','') || ' ' || COALESCE(name->>'de','')) as search_text,
+        name, NULL::text as parent_code, NULL::jsonb as parent_name,
+        NULL::text as company_name, NULL::text as pack_info, NULL::numeric as price, NULL::boolean as reimbursable, NULL::text as cnk_code,
+        NULL::int as product_count, NULL::boolean as black_triangle,
+        NULL::text as vtm_code, NULL::text as vmp_code, NULL::text as amp_code, NULL::text as atc_code, NULL::text as company_actor_nr, NULL::text as vmp_group_code,
+        end_date
+      FROM vtm_staging
+      ORDER BY code
+    ) vtm_sub
+
+    UNION ALL
+
+    -- VMP
+    SELECT * FROM (
+      SELECT DISTINCT ON (v.code)
+        'vmp'::text, v.code,
+        LOWER(COALESCE(v.name->>'en','') || ' ' || COALESCE(v.name->>'nl','') || ' ' ||
+              COALESCE(v.name->>'fr','') || ' ' || COALESCE(v.name->>'de','') || ' ' ||
+              COALESCE(v.abbreviated_name->>'en','') || ' ' || COALESCE(v.abbreviated_name->>'nl','')),
+        v.name, v.vtm_code, vtm.name,
+        NULL::text, NULL::text, NULL::numeric, NULL::boolean, NULL::text,
+        NULL::int, NULL::boolean,
+        v.vtm_code, NULL::text, NULL::text, NULL::text, NULL::text, v.vmp_group_code,
+        v.end_date
+      FROM vmp_staging v
+      LEFT JOIN vtm_staging vtm ON vtm.code = v.vtm_code
+      ORDER BY v.code
+    ) vmp_sub
+
+    UNION ALL
+
+    -- AMP
+    SELECT * FROM (
+      SELECT DISTINCT ON (a.code)
+        'amp'::text, a.code,
+        LOWER(COALESCE(a.name->>'en','') || ' ' || COALESCE(a.name->>'nl','') || ' ' ||
+              COALESCE(a.name->>'fr','') || ' ' || COALESCE(a.name->>'de','') || ' ' ||
+              COALESCE(a.abbreviated_name->>'en','') || ' ' || COALESCE(a.official_name,'')),
+        a.name, a.vmp_code, v.name,
+        c.denomination, NULL::text, NULL::numeric, NULL::boolean, NULL::text,
+        NULL::int, a.black_triangle,
+        v.vtm_code, a.vmp_code, NULL::text, NULL::text, a.company_actor_nr, NULL::text,
+        a.end_date
+      FROM amp_staging a
+      LEFT JOIN vmp_staging v ON v.code = a.vmp_code
+      LEFT JOIN company_staging c ON c.actor_nr = a.company_actor_nr
+      ORDER BY a.code
+    ) amp_sub
+
+    UNION ALL
+
+    -- AMPP
+    SELECT * FROM (
+      SELECT DISTINCT ON (ampp.cti_extended)
+        'ampp'::text, ampp.cti_extended,
+        LOWER(COALESCE(ampp.prescription_name->>'en','') || ' ' ||
+              COALESCE(ampp.prescription_name->>'nl','') || ' ' ||
+              COALESCE(ampp.prescription_name->>'fr','') || ' ' ||
+              COALESCE(amp.name->>'en','')),
+        COALESCE(ampp.prescription_name, amp.name), ampp.amp_code, amp.name,
+        NULL::text, ampp.pack_display_value, ampp.ex_factory_price,
+        (SELECT EXISTS(
+          SELECT 1 FROM dmpp_staging d
+          WHERE d.ampp_cti_extended = ampp.cti_extended
+          AND d.reimbursable = true
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+        ))::boolean,
+        (SELECT d.code FROM dmpp_staging d
+         WHERE d.ampp_cti_extended = ampp.cti_extended
+         AND d.delivery_environment = 'P'
+         AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+         LIMIT 1),
+        NULL::int, NULL::boolean,
+        v.vtm_code, amp.vmp_code, ampp.amp_code, ampp.atc_code, NULL::text, NULL::text,
+        ampp.end_date
+      FROM ampp_staging ampp
+      JOIN amp_staging amp ON amp.code = ampp.amp_code
+      LEFT JOIN vmp_staging v ON v.code = amp.vmp_code
+      ORDER BY ampp.cti_extended
+    ) ampp_sub
+
+    UNION ALL
+
+    -- Company
+    SELECT * FROM (
+      SELECT DISTINCT ON (c.actor_nr)
+        'company'::text, c.actor_nr,
+        LOWER(COALESCE(c.denomination,'')),
+        jsonb_build_object('en', c.denomination, 'nl', c.denomination, 'fr', c.denomination, 'de', c.denomination),
+        NULL::text, NULL::jsonb,
+        NULL::text, NULL::text, NULL::numeric, NULL::boolean, NULL::text,
+        (SELECT COUNT(*)::int FROM amp_staging WHERE company_actor_nr = c.actor_nr), NULL::boolean,
+        NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text,
+        c.end_date
+      FROM company_staging c
+      ORDER BY c.actor_nr
+    ) company_sub
+
+    UNION ALL
+
+    -- VMP Group
+    SELECT * FROM (
+      SELECT DISTINCT ON (code)
+        'vmp_group'::text, code,
+        LOWER(COALESCE(name->>'en','') || ' ' || COALESCE(name->>'nl','') || ' ' || COALESCE(name->>'fr','')),
+        name, NULL::text, NULL::jsonb,
+        NULL::text, NULL::text, NULL::numeric, NULL::boolean, NULL::text,
+        NULL::int, NULL::boolean,
+        NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text,
+        end_date
+      FROM vmp_group_staging
+      ORDER BY code
+    ) vmp_group_sub
+
+    UNION ALL
+
+    -- Substance
+    SELECT * FROM (
+      SELECT DISTINCT ON (code)
+        'substance'::text, code,
+        LOWER(COALESCE(name->>'en','') || ' ' || COALESCE(name->>'nl','') || ' ' || COALESCE(name->>'fr','')),
+        name, NULL::text, NULL::jsonb,
+        NULL::text, NULL::text, NULL::numeric, NULL::boolean, NULL::text,
+        NULL::int, NULL::boolean,
+        NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text,
+        end_date
+      FROM substance_staging
+      ORDER BY code
+    ) substance_sub
+
+    UNION ALL
+
+    -- ATC
+    SELECT * FROM (
+      SELECT DISTINCT ON (code)
+        'atc'::text, code,
+        LOWER(COALESCE(description,'')),
+        jsonb_build_object('en', description, 'nl', description, 'fr', description, 'de', description),
+        NULL::text, NULL::jsonb,
+        NULL::text, NULL::text, NULL::numeric, NULL::boolean, NULL::text,
+        NULL::int, NULL::boolean,
+        NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text,
+        NULL::date
+      FROM atc_classification_staging
+      ORDER BY code
+    ) atc_sub
+  `);
+
+  tablesWithData.add('search_index');
+  console.log('   [OK] Populated search_index_staging');
+}
+
 async function swapTables(dryRun: boolean): Promise<void> {
   console.log('\n4. Validating and swapping staging tables to production...\n');
 
@@ -1449,6 +1695,8 @@ async function swapTables(dryRun: boolean): Promise<void> {
     'amp', 'amp_component', 'amp_ingredient', 'ampp', 'dmpp',
     // Fifth: reimbursement and chapter IV
     'reimbursement_context', 'chapter_iv_paragraph',
+    // Last: search index (populated from all other tables)
+    'search_index',
   ];
 
   // Only swap tables that have data (should be all expected tables after validation)
@@ -1477,6 +1725,56 @@ async function swapTables(dryRun: boolean): Promise<void> {
         console.error('   Rolling back ALL changes...');
         throw error;
       }
+    }
+
+    // Add PRIMARY KEY constraints (staging tables don't have them for faster inserts)
+    // First, deduplicate any tables that may have duplicate keys from XML parsing
+    console.log('   Deduplicating and adding PRIMARY KEY constraints...');
+    const primaryKeys: [string, string][] = [
+      ['substance', 'code'],
+      ['atc_classification', 'code'],
+      ['pharmaceutical_form', 'code'],
+      ['route_of_administration', 'code'],
+      ['company', 'actor_nr'],
+      ['vtm', 'code'],
+      ['vmp_group', 'code'],
+      ['legal_basis', 'key'],
+      ['vmp', 'code'],
+      ['amp', 'code'],
+      ['ampp', 'cti_extended'],
+    ];
+    for (const [table, column] of primaryKeys) {
+      if (tablesToSwap.includes(table)) {
+        try {
+          // Delete duplicates keeping only one row per key
+          await query(`
+            DELETE FROM ${table} a USING ${table} b
+            WHERE a.ctid < b.ctid AND a.${column} = b.${column}
+          `);
+          // Add primary key
+          await query(`ALTER TABLE ${table} ADD PRIMARY KEY (${column})`);
+        } catch {
+          // Ignore if PK already exists or fails
+        }
+      }
+    }
+    console.log('   [OK] Deduplicated and added PRIMARY KEY constraints');
+
+    // Create indexes for search_index if it was newly created
+    if (tablesToSwap.includes('search_index')) {
+      console.log('   Creating search_index indexes...');
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_text_trgm ON search_index USING GIN (search_text gin_trgm_ops)`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_code ON search_index (code)`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_cnk ON search_index (cnk_code) WHERE cnk_code IS NOT NULL`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_vtm ON search_index (vtm_code) WHERE vtm_code IS NOT NULL`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_vmp ON search_index (vmp_code) WHERE vmp_code IS NOT NULL`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_amp ON search_index (amp_code) WHERE amp_code IS NOT NULL`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_atc ON search_index (atc_code) WHERE atc_code IS NOT NULL`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_company ON search_index (company_actor_nr) WHERE company_actor_nr IS NOT NULL`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_vmp_group ON search_index (vmp_group_code) WHERE vmp_group_code IS NOT NULL`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_entity_type ON search_index (entity_type)`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_search_end_date ON search_index (end_date) WHERE end_date IS NOT NULL`);
+      console.log('   [OK] Created search_index indexes');
     }
   });
 
@@ -1702,6 +2000,9 @@ async function main(): Promise<void> {
       if (filesByType.CHAPTERIV) {
         await processXmlFile(filesByType.CHAPTERIV, 'Paragraph', transformChapterIVParagraph, progress, dryRun, verbose);
       }
+
+      // Populate search_index from all entity staging tables
+      await populateSearchIndex(dryRun);
 
       progress.phase = 'swap';
       saveProgress(progress);

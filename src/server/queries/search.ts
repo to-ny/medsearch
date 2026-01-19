@@ -5,7 +5,7 @@ import type { EntityType, Language } from '@/server/types/domain';
 import type { SearchResultItem, SearchResponse } from '@/server/types/api';
 import { getLocalizedText } from '@/server/utils/localization';
 
-const SEARCH_LIMIT_PER_TABLE = 50;
+const MAX_SEARCH_RESULTS = 2000; // Maximum results we can serve for pagination
 
 interface RawSearchResult {
   entityType: EntityType;
@@ -104,7 +104,7 @@ export interface SearchFilters {
 }
 
 /**
- * Execute search across all entity types
+ * Execute search across all entity types using unified search_index table
  */
 export async function executeSearch(
   query: string,
@@ -115,908 +115,160 @@ export async function executeSearch(
   filters?: SearchFilters
 ): Promise<SearchResponse> {
   const normalizedQuery = query.trim().toLowerCase();
-  const searchPattern = `%${normalizedQuery}%`;
-  const prefixPattern = `${normalizedQuery}%`;
 
-  // Check if we have a meaningful text query
+  // Minimum query length validation (skip for filter-only queries)
   const hasTextQuery = normalizedQuery.length > 0;
+  const hasFilters = filters && (
+    filters.vtmCode || filters.vmpCode || filters.ampCode ||
+    filters.atcCode || filters.companyCode || filters.vmpGroupCode
+  );
+
+  if (hasTextQuery && normalizedQuery.length < 3) {
+    return {
+      query,
+      totalCount: 0,
+      results: [],
+      facets: { byType: { vtm: 0, vmp: 0, amp: 0, ampp: 0, company: 0, vmp_group: 0, substance: 0, atc: 0 } },
+      pagination: { limit, offset, hasMore: false },
+    };
+  }
+
+  // If no text query and no filters, return empty results
+  if (!hasTextQuery && !hasFilters) {
+    return {
+      query,
+      totalCount: 0,
+      results: [],
+      facets: { byType: { vtm: 0, vmp: 0, amp: 0, ampp: 0, company: 0, vmp_group: 0, substance: 0, atc: 0 } },
+      pagination: { limit, offset, hasMore: false },
+    };
+  }
 
   // Detect special query types
   const isCnkQuery = /^\d{7}$/.test(query.trim());
   const isAtcQuery = /^[A-Z]\d{2}[A-Z]{0,2}\d{0,2}$/i.test(query.trim());
 
-  // Determine which entity types are relevant for the current filters
-  // When relationship filters are applied without a text query, only certain types make sense
-  const getRelevantTypes = (): Set<EntityType> | null => {
-    if (hasTextQuery) return null; // All types are relevant when there's a text query
+  const searchPattern = `%${normalizedQuery}%`;
+  const prefixPattern = `${normalizedQuery}%`;
 
-    const relevantTypes = new Set<EntityType>();
-    if (filters?.vtmCode) {
-      relevantTypes.add('vmp');  // VMPs directly related to VTM
-      relevantTypes.add('amp');  // AMPs related to VTM via VMP
+  // Build WHERE conditions - separate base conditions from type filter
+  // Base conditions are used for facets (to show all types)
+  // Full conditions (with type filter) are used for results
+  const baseConditions: string[] = ['(end_date IS NULL OR end_date > CURRENT_DATE)'];
+  const baseParams: unknown[] = [];
+  let paramIndex = 1;
+
+  // Text search condition
+  if (hasTextQuery) {
+    if (isCnkQuery) {
+      baseConditions.push(`cnk_code = $${paramIndex++}`);
+      baseParams.push(query.trim());
+    } else if (isAtcQuery) {
+      baseConditions.push(`(code ILIKE $${paramIndex++} AND entity_type = 'atc')`);
+      baseParams.push(prefixPattern);
+    } else {
+      baseConditions.push(`(search_text ILIKE $${paramIndex} OR code ILIKE $${paramIndex + 1})`);
+      baseParams.push(searchPattern, prefixPattern);
+      paramIndex += 2;
     }
-    if (filters?.vmpCode) relevantTypes.add('amp');
-    if (filters?.ampCode) relevantTypes.add('ampp');
-    if (filters?.atcCode) relevantTypes.add('ampp');
-    if (filters?.companyCode) relevantTypes.add('amp');
-    if (filters?.vmpGroupCode) relevantTypes.add('vmp');
-    if (filters?.substanceCode) relevantTypes.add('amp');  // AMPs containing this substance
+  }
 
-    return relevantTypes.size > 0 ? relevantTypes : null;
-  };
+  // Relationship filters
+  if (filters?.vtmCode) {
+    baseConditions.push(`vtm_code = $${paramIndex++}`);
+    baseParams.push(filters.vtmCode);
+  }
+  if (filters?.vmpCode) {
+    baseConditions.push(`vmp_code = $${paramIndex++}`);
+    baseParams.push(filters.vmpCode);
+  }
+  if (filters?.ampCode) {
+    baseConditions.push(`amp_code = $${paramIndex++}`);
+    baseParams.push(filters.ampCode);
+  }
+  if (filters?.atcCode) {
+    baseConditions.push(`atc_code = $${paramIndex++}`);
+    baseParams.push(filters.atcCode);
+  }
+  if (filters?.companyCode) {
+    baseConditions.push(`company_actor_nr = $${paramIndex++}`);
+    baseParams.push(filters.companyCode);
+  }
+  if (filters?.vmpGroupCode) {
+    baseConditions.push(`vmp_group_code = $${paramIndex++}`);
+    baseParams.push(filters.vmpGroupCode);
+  }
 
-  const relevantTypes = getRelevantTypes();
-  const isTypeRelevant = (type: EntityType) => !relevantTypes || relevantTypes.has(type);
+  // Base WHERE clause (without type filter) - for facets
+  const baseWhereClause = baseConditions.join(' AND ');
 
-  // Determine if we should use DB-level pagination for relationship filters
-  // Only use DB pagination when a single entity type is selected
-  // For multiple types, pagination at DB level doesn't work because each query applies
-  // offset independently (e.g., VMP offset 80 = 0, AMP offset 80 = 0 even though total > 80)
-  const hasRelationshipFilter = filters && (
-    filters.vtmCode || filters.vmpCode || filters.ampCode ||
-    filters.atcCode || filters.companyCode || filters.vmpGroupCode || filters.substanceCode
-  );
-  const useDbPagination = hasRelationshipFilter && types && types.length === 1;
-  // When not using DB pagination, fetch up to this many results per type
-  const maxResultsPerType = useDbPagination ? limit : Math.max(SEARCH_LIMIT_PER_TABLE, limit + offset);
+  // Full conditions include entity type filter - for results
+  const fullConditions = [...baseConditions];
+  const fullParams = [...baseParams];
+  if (types && types.length > 0) {
+    fullConditions.push(`entity_type = ANY($${paramIndex++})`);
+    fullParams.push(types);
+  }
+  const fullWhereClause = fullConditions.join(' AND ');
 
-  const allResults: RawSearchResult[] = [];
+  // Calculate how many results we need to fetch for the requested page
+  // We need at least offset + limit results to paginate correctly
+  // Add a buffer to handle scoring reordering, cap at reasonable maximum
+  const maxResultsToFetch = Math.min(offset + limit + 100, MAX_SEARCH_RESULTS);
+
+  // Fetch results and facet counts in parallel
+  // Results use fullWhereClause (with type filter)
+  // Facets use baseWhereClause (without type filter) so all types are shown
+  const [resultsQuery, facetsQuery] = await Promise.all([
+    sql.query(`
+      SELECT entity_type, code, name, parent_code, parent_name,
+             company_name, pack_info, price, reimbursable, cnk_code,
+             product_count, black_triangle
+      FROM search_index
+      WHERE ${fullWhereClause}
+      ORDER BY entity_type, code
+      LIMIT $${paramIndex}
+    `, [...fullParams, maxResultsToFetch]),
+    sql.query(`
+      SELECT entity_type, COUNT(*)::int as count
+      FROM search_index
+      WHERE ${baseWhereClause}
+      GROUP BY entity_type
+    `, baseParams),
+  ]);
+
+  // Build facet counts
   const facetCounts: Record<EntityType, number> = {
-    vtm: 0,
-    vmp: 0,
-    amp: 0,
-    ampp: 0,
-    company: 0,
-    vmp_group: 0,
-    substance: 0,
-    atc: 0,
+    vtm: 0, vmp: 0, amp: 0, ampp: 0, company: 0, vmp_group: 0, substance: 0, atc: 0,
   };
-
-  // Run all searches in parallel
-  const searchPromises: Promise<void>[] = [];
-
-  // Always run count queries for accurate facets, but only fetch results for requested types
-  const shouldFetchResults = (type: EntityType) => !types || types.includes(type);
-
-  // VTM search - skip if not relevant (e.g., when filtering by relationship without text query)
-  if (isTypeRelevant('vtm')) {
-    searchPromises.push(
-      (async () => {
-        const result = await sql`
-          SELECT DISTINCT ON (code)
-            'vtm' as entity_type,
-            code,
-            name,
-            NULL as parent_name,
-            NULL as parent_code,
-            NULL as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            NULL as black_triangle
-          FROM vtm
-          WHERE (
-            name->>'en' ILIKE ${searchPattern}
-            OR name->>'nl' ILIKE ${searchPattern}
-            OR name->>'fr' ILIKE ${searchPattern}
-            OR name->>'de' ILIKE ${searchPattern}
-            OR code ILIKE ${prefixPattern}
-          )
-          AND (end_date IS NULL OR end_date > CURRENT_DATE)
-          ORDER BY code
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
-        `;
-        facetCounts.vtm = result.rows.length;
-        if (shouldFetchResults('vtm')) {
-          result.rows.forEach((r) => {
-            allResults.push({
-              entityType: 'vtm',
-              code: r.code,
-              name: r.name,
-            });
-          });
-        }
-      })()
-    );
+  for (const row of facetsQuery.rows) {
+    facetCounts[row.entity_type as EntityType] = row.count;
   }
 
-  // VMP search - skip if not relevant (unless has its own filter)
-  if (isTypeRelevant('vmp')) {
-    searchPromises.push(
-      (async () => {
-        // Support filtering by VTM code or VMP Group code
-        const vtmFilter = filters?.vtmCode;
-        const vmpGroupFilter = filters?.vmpGroupCode;
+  // Convert to RawSearchResult and score
+  const allResults: RawSearchResult[] = resultsQuery.rows.map(r => ({
+    entityType: r.entity_type as EntityType,
+    code: r.code,
+    name: r.name,
+    parentName: r.parent_name,
+    parentCode: r.parent_code,
+    companyName: r.company_name,
+    packInfo: r.pack_info,
+    price: r.price,
+    reimbursable: r.reimbursable,
+    cnkCode: r.cnk_code,
+    productCount: r.product_count,
+    blackTriangle: r.black_triangle,
+  }));
 
-        let result;
-        let totalCount: number | null = null;
-
-        if (vtmFilter) {
-        // Get accurate count first
-        const countResult = await sql`
-          SELECT COUNT(DISTINCT v.code)::int as count
-          FROM vmp v
-          WHERE v.vtm_code = ${vtmFilter}
-            AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
-        `;
-        totalCount = countResult.rows[0]?.count || 0;
-
-        // Only apply offset when single type is selected (DB-level pagination)
-        const queryOffset = useDbPagination ? offset : 0;
-        result = await sql`
-          SELECT DISTINCT ON (v.code)
-            'vmp' as entity_type,
-            v.code,
-            v.name,
-            vtm.name as parent_name,
-            v.vtm_code as parent_code,
-            NULL as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            NULL as black_triangle
-          FROM vmp v
-          LEFT JOIN vtm ON vtm.code = v.vtm_code
-          WHERE v.vtm_code = ${vtmFilter}
-            AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
-          ORDER BY v.code
-          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
-        `;
-      } else if (vmpGroupFilter) {
-        // Get accurate count first
-        const countResult = await sql`
-          SELECT COUNT(DISTINCT v.code)::int as count
-          FROM vmp v
-          WHERE v.vmp_group_code = ${vmpGroupFilter}
-            AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
-        `;
-        totalCount = countResult.rows[0]?.count || 0;
-
-        // Only apply offset when single type is selected (DB-level pagination)
-        const queryOffset = useDbPagination ? offset : 0;
-        result = await sql`
-          SELECT DISTINCT ON (v.code)
-            'vmp' as entity_type,
-            v.code,
-            v.name,
-            vtm.name as parent_name,
-            v.vtm_code as parent_code,
-            NULL as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            NULL as black_triangle
-          FROM vmp v
-          LEFT JOIN vtm ON vtm.code = v.vtm_code
-          WHERE v.vmp_group_code = ${vmpGroupFilter}
-            AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
-          ORDER BY v.code
-          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
-        `;
-      } else {
-        result = await sql`
-          SELECT DISTINCT ON (v.code)
-            'vmp' as entity_type,
-            v.code,
-            v.name,
-            vtm.name as parent_name,
-            v.vtm_code as parent_code,
-            NULL as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            NULL as black_triangle
-          FROM vmp v
-          LEFT JOIN vtm ON vtm.code = v.vtm_code
-          WHERE (
-            v.name->>'en' ILIKE ${searchPattern}
-            OR v.name->>'nl' ILIKE ${searchPattern}
-            OR v.name->>'fr' ILIKE ${searchPattern}
-            OR v.name->>'de' ILIKE ${searchPattern}
-            OR v.abbreviated_name->>'en' ILIKE ${searchPattern}
-            OR v.abbreviated_name->>'nl' ILIKE ${searchPattern}
-            OR v.code ILIKE ${prefixPattern}
-          )
-          AND (v.end_date IS NULL OR v.end_date > CURRENT_DATE)
-          ORDER BY v.code
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
-        `;
-      }
-        // Use accurate count from COUNT query if available, otherwise use rows.length
-        facetCounts.vmp = totalCount !== null ? totalCount : result.rows.length;
-        if (shouldFetchResults('vmp')) {
-          result.rows.forEach((r) => {
-            allResults.push({
-              entityType: 'vmp',
-              code: r.code,
-              name: r.name,
-              parentName: r.parent_name,
-              parentCode: r.parent_code,
-            });
-          });
-        }
-      })()
-    );
-  }
-
-  // AMP search - skip if not relevant (unless has its own filter)
-  if (isTypeRelevant('amp')) {
-    searchPromises.push(
-      (async () => {
-        // Support filtering by VMP code, company code, VTM code (via VMP), or substance code
-        const vmpFilter = filters?.vmpCode;
-        const companyFilter = filters?.companyCode;
-        const vtmFilter = filters?.vtmCode;
-        const substanceFilter = filters?.substanceCode;
-
-      let result;
-      let totalCount: number | null = null;
-
-      if (vtmFilter) {
-        // Get accurate count first
-        const countResult = await sql`
-          SELECT COUNT(DISTINCT a.code)::int as count
-          FROM amp a
-          JOIN vmp v ON v.code = a.vmp_code
-          WHERE v.vtm_code = ${vtmFilter}
-            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
-        `;
-        totalCount = countResult.rows[0]?.count || 0;
-
-        // Only apply offset when single type is selected (DB-level pagination)
-        const queryOffset = useDbPagination ? offset : 0;
-        // Filter AMPs by VTM code (through VMP relationship) with pagination
-        result = await sql`
-          SELECT DISTINCT ON (a.code)
-            'amp' as entity_type,
-            a.code,
-            a.name,
-            v.name as parent_name,
-            a.vmp_code as parent_code,
-            c.denomination as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            a.black_triangle
-          FROM amp a
-          JOIN vmp v ON v.code = a.vmp_code
-          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
-          WHERE v.vtm_code = ${vtmFilter}
-            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
-          ORDER BY a.code
-          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
-        `;
-      } else if (vmpFilter) {
-        // Get accurate count first
-        const countResult = await sql`
-          SELECT COUNT(DISTINCT a.code)::int as count
-          FROM amp a
-          WHERE a.vmp_code = ${vmpFilter}
-            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
-        `;
-        totalCount = countResult.rows[0]?.count || 0;
-
-        // Only apply offset when single type is selected (DB-level pagination)
-        const queryOffset = useDbPagination ? offset : 0;
-        result = await sql`
-          SELECT DISTINCT ON (a.code)
-            'amp' as entity_type,
-            a.code,
-            a.name,
-            v.name as parent_name,
-            a.vmp_code as parent_code,
-            c.denomination as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            a.black_triangle
-          FROM amp a
-          LEFT JOIN vmp v ON v.code = a.vmp_code
-          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
-          WHERE a.vmp_code = ${vmpFilter}
-            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
-          ORDER BY a.code
-          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
-        `;
-      } else if (companyFilter) {
-        // Get accurate count first
-        const countResult = await sql`
-          SELECT COUNT(DISTINCT a.code)::int as count
-          FROM amp a
-          WHERE a.company_actor_nr = ${companyFilter}
-            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
-        `;
-        totalCount = countResult.rows[0]?.count || 0;
-
-        // Only apply offset when single type is selected (DB-level pagination)
-        const queryOffset = useDbPagination ? offset : 0;
-        result = await sql`
-          SELECT DISTINCT ON (a.code)
-            'amp' as entity_type,
-            a.code,
-            a.name,
-            v.name as parent_name,
-            a.vmp_code as parent_code,
-            c.denomination as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            a.black_triangle
-          FROM amp a
-          LEFT JOIN vmp v ON v.code = a.vmp_code
-          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
-          WHERE a.company_actor_nr = ${companyFilter}
-            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
-          ORDER BY a.code
-          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
-        `;
-      } else if (substanceFilter) {
-        // Get accurate count first - AMPs containing this substance as an ingredient
-        const countResult = await sql`
-          SELECT COUNT(DISTINCT a.code)::int as count
-          FROM amp a
-          JOIN amp_ingredient ai ON ai.amp_code = a.code
-          WHERE ai.substance_code = ${substanceFilter}
-            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
-        `;
-        totalCount = countResult.rows[0]?.count || 0;
-
-        // Only apply offset when single type is selected (DB-level pagination)
-        const queryOffset = useDbPagination ? offset : 0;
-        result = await sql`
-          SELECT DISTINCT ON (a.code)
-            'amp' as entity_type,
-            a.code,
-            a.name,
-            v.name as parent_name,
-            a.vmp_code as parent_code,
-            c.denomination as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            a.black_triangle
-          FROM amp a
-          JOIN amp_ingredient ai ON ai.amp_code = a.code
-          LEFT JOIN vmp v ON v.code = a.vmp_code
-          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
-          WHERE ai.substance_code = ${substanceFilter}
-            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
-          ORDER BY a.code
-          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
-        `;
-      } else {
-        result = await sql`
-          SELECT DISTINCT ON (a.code)
-            'amp' as entity_type,
-            a.code,
-            a.name,
-            v.name as parent_name,
-            a.vmp_code as parent_code,
-            c.denomination as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            a.black_triangle
-          FROM amp a
-          LEFT JOIN vmp v ON v.code = a.vmp_code
-          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
-          WHERE (
-            a.name->>'en' ILIKE ${searchPattern}
-            OR a.name->>'nl' ILIKE ${searchPattern}
-            OR a.name->>'fr' ILIKE ${searchPattern}
-            OR a.name->>'de' ILIKE ${searchPattern}
-            OR a.abbreviated_name->>'en' ILIKE ${searchPattern}
-            OR a.official_name ILIKE ${searchPattern}
-            OR a.code ILIKE ${prefixPattern}
-          )
-          AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
-          ORDER BY a.code
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
-        `;
-      }
-        // Use accurate count from COUNT query if available, otherwise use rows.length
-        facetCounts.amp = totalCount !== null ? totalCount : result.rows.length;
-        if (shouldFetchResults('amp')) {
-          result.rows.forEach((r) => {
-            allResults.push({
-              entityType: 'amp',
-              code: r.code,
-              name: r.name,
-              parentName: r.parent_name,
-              parentCode: r.parent_code,
-              companyName: r.company_name,
-              blackTriangle: r.black_triangle,
-            });
-          });
-        }
-      })()
-    );
-  }
-
-  // AMPP search (including CNK codes) - skip if not relevant (unless has its own filter)
-  if (isTypeRelevant('ampp')) {
-    searchPromises.push(
-      (async () => {
-        // Support filtering by AMP code or ATC code
-        const ampFilter = filters?.ampCode;
-        const atcFilter = filters?.atcCode;
-
-      let amppQuery;
-      let totalCount: number | null = null;
-
-      if (ampFilter) {
-        // Get accurate count first
-        const countResult = await sql`
-          SELECT COUNT(DISTINCT ampp.cti_extended)::int as count
-          FROM ampp
-          WHERE ampp.amp_code = ${ampFilter}
-            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-        `;
-        totalCount = countResult.rows[0]?.count || 0;
-
-        // Only apply offset when single type is selected (DB-level pagination)
-        const queryOffset = useDbPagination ? offset : 0;
-        // Filter by AMP code with pagination
-        amppQuery = sql`
-          SELECT DISTINCT ON (ampp.cti_extended)
-            'ampp' as entity_type,
-            ampp.cti_extended as code,
-            COALESCE(ampp.prescription_name, amp.name) as name,
-            amp.name as parent_name,
-            ampp.amp_code as parent_code,
-            NULL as company_name,
-            ampp.pack_display_value as pack_info,
-            ampp.ex_factory_price as price,
-            (
-              SELECT rc.reimbursement_criterion_category
-              FROM dmpp d
-              JOIN reimbursement_context rc
-                ON rc.dmpp_code = d.code
-                AND rc.delivery_environment = d.delivery_environment
-              WHERE d.ampp_cti_extended = ampp.cti_extended
-                AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-                AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
-              ORDER BY
-                CASE rc.reimbursement_criterion_category
-                  WHEN 'A' THEN 1
-                  WHEN 'B' THEN 2
-                  WHEN 'C' THEN 3
-                  WHEN 'Cs' THEN 4
-                  WHEN 'Cx' THEN 5
-                  WHEN 'Fa' THEN 6
-                  WHEN 'Fb' THEN 7
-                  ELSE 8
-                END
-              LIMIT 1
-            ) as reimbursement_category,
-            (
-              SELECT d.code FROM dmpp d
-              WHERE d.ampp_cti_extended = ampp.cti_extended
-              AND d.delivery_environment = 'P'
-              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-              LIMIT 1
-            ) as cnk_code,
-            NULL as product_count,
-            NULL as black_triangle
-          FROM ampp
-          JOIN amp ON amp.code = ampp.amp_code
-          WHERE ampp.amp_code = ${ampFilter}
-            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-          ORDER BY ampp.cti_extended
-          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
-        `;
-      } else if (atcFilter) {
-        // Get accurate count first
-        const countResult = await sql`
-          SELECT COUNT(DISTINCT ampp.cti_extended)::int as count
-          FROM ampp
-          WHERE ampp.atc_code = ${atcFilter}
-            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-        `;
-        totalCount = countResult.rows[0]?.count || 0;
-
-        // Only apply offset when single type is selected (DB-level pagination)
-        const queryOffset = useDbPagination ? offset : 0;
-        // Filter by ATC code with pagination
-        amppQuery = sql`
-          SELECT DISTINCT ON (ampp.cti_extended)
-            'ampp' as entity_type,
-            ampp.cti_extended as code,
-            COALESCE(ampp.prescription_name, amp.name) as name,
-            amp.name as parent_name,
-            ampp.amp_code as parent_code,
-            NULL as company_name,
-            ampp.pack_display_value as pack_info,
-            ampp.ex_factory_price as price,
-            (
-              SELECT rc.reimbursement_criterion_category
-              FROM dmpp d
-              JOIN reimbursement_context rc
-                ON rc.dmpp_code = d.code
-                AND rc.delivery_environment = d.delivery_environment
-              WHERE d.ampp_cti_extended = ampp.cti_extended
-                AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-                AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
-              ORDER BY
-                CASE rc.reimbursement_criterion_category
-                  WHEN 'A' THEN 1
-                  WHEN 'B' THEN 2
-                  WHEN 'C' THEN 3
-                  WHEN 'Cs' THEN 4
-                  WHEN 'Cx' THEN 5
-                  WHEN 'Fa' THEN 6
-                  WHEN 'Fb' THEN 7
-                  ELSE 8
-                END
-              LIMIT 1
-            ) as reimbursement_category,
-            (
-              SELECT d.code FROM dmpp d
-              WHERE d.ampp_cti_extended = ampp.cti_extended
-              AND d.delivery_environment = 'P'
-              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-              LIMIT 1
-            ) as cnk_code,
-            NULL as product_count,
-            NULL as black_triangle
-          FROM ampp
-          JOIN amp ON amp.code = ampp.amp_code
-          WHERE ampp.atc_code = ${atcFilter}
-            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-          ORDER BY ampp.cti_extended
-          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
-        `;
-      } else if (isCnkQuery) {
-        // CNK exact match
-        amppQuery = sql`
-          SELECT DISTINCT ON (ampp.cti_extended)
-            'ampp' as entity_type,
-            ampp.cti_extended as code,
-            COALESCE(ampp.prescription_name, amp.name) as name,
-            amp.name as parent_name,
-            ampp.amp_code as parent_code,
-            NULL as company_name,
-            ampp.pack_display_value as pack_info,
-            ampp.ex_factory_price as price,
-            (
-              SELECT rc.reimbursement_criterion_category
-              FROM reimbursement_context rc
-              WHERE rc.dmpp_code = d.code
-                AND rc.delivery_environment = d.delivery_environment
-                AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
-              ORDER BY
-                CASE rc.reimbursement_criterion_category
-                  WHEN 'A' THEN 1
-                  WHEN 'B' THEN 2
-                  WHEN 'C' THEN 3
-                  WHEN 'Cs' THEN 4
-                  WHEN 'Cx' THEN 5
-                  WHEN 'Fa' THEN 6
-                  WHEN 'Fb' THEN 7
-                  ELSE 8
-                END
-              LIMIT 1
-            ) as reimbursement_category,
-            d.code as cnk_code,
-            NULL as product_count,
-            NULL as black_triangle
-          FROM dmpp d
-          JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
-          JOIN amp ON amp.code = ampp.amp_code
-          WHERE d.code = ${query.trim()}
-            AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-          ORDER BY ampp.cti_extended
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
-        `;
-      } else {
-        amppQuery = sql`
-          SELECT DISTINCT ON (ampp.cti_extended)
-            'ampp' as entity_type,
-            ampp.cti_extended as code,
-            COALESCE(ampp.prescription_name, amp.name) as name,
-            amp.name as parent_name,
-            ampp.amp_code as parent_code,
-            NULL as company_name,
-            ampp.pack_display_value as pack_info,
-            ampp.ex_factory_price as price,
-            (
-              SELECT rc.reimbursement_criterion_category
-              FROM dmpp d
-              JOIN reimbursement_context rc
-                ON rc.dmpp_code = d.code
-                AND rc.delivery_environment = d.delivery_environment
-              WHERE d.ampp_cti_extended = ampp.cti_extended
-                AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-                AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
-              ORDER BY
-                CASE rc.reimbursement_criterion_category
-                  WHEN 'A' THEN 1
-                  WHEN 'B' THEN 2
-                  WHEN 'C' THEN 3
-                  WHEN 'Cs' THEN 4
-                  WHEN 'Cx' THEN 5
-                  WHEN 'Fa' THEN 6
-                  WHEN 'Fb' THEN 7
-                  ELSE 8
-                END
-              LIMIT 1
-            ) as reimbursement_category,
-            (
-              SELECT d.code FROM dmpp d
-              WHERE d.ampp_cti_extended = ampp.cti_extended
-              AND d.delivery_environment = 'P'
-              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-              LIMIT 1
-            ) as cnk_code,
-            NULL as product_count,
-            NULL as black_triangle
-          FROM ampp
-          JOIN amp ON amp.code = ampp.amp_code
-          WHERE (
-            ampp.prescription_name->>'en' ILIKE ${searchPattern}
-            OR ampp.prescription_name->>'nl' ILIKE ${searchPattern}
-            OR ampp.prescription_name->>'fr' ILIKE ${searchPattern}
-            OR ampp.cti_extended ILIKE ${prefixPattern}
-          )
-          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-          ORDER BY ampp.cti_extended
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
-        `;
-      }
-        const result = await amppQuery;
-        // Use accurate count from COUNT query if available, otherwise use rows.length
-        facetCounts.ampp = totalCount !== null ? totalCount : result.rows.length;
-        if (shouldFetchResults('ampp')) {
-          result.rows.forEach((r) => {
-            allResults.push({
-              entityType: 'ampp',
-              code: r.code,
-              name: r.name,
-              parentName: r.parent_name,
-              parentCode: r.parent_code,
-              packInfo: r.pack_info,
-              price: r.price,
-              reimbursable: r.reimbursement_category != null,
-              reimbursementCategory: r.reimbursement_category,
-              cnkCode: r.cnk_code,
-            });
-          });
-        }
-      })()
-    );
-  }
-
-  // Company search - skip if not relevant
-  if (isTypeRelevant('company')) {
-    searchPromises.push(
-      (async () => {
-      const result = await sql`
-        SELECT DISTINCT ON (c.actor_nr)
-          'company' as entity_type,
-          c.actor_nr as code,
-          jsonb_build_object(${lang}::text, c.denomination) as name,
-          NULL as parent_name,
-          NULL as parent_code,
-          NULL as company_name,
-          NULL as pack_info,
-          NULL as price,
-          NULL as reimbursable,
-          NULL as cnk_code,
-          (SELECT COUNT(*)::int FROM amp WHERE company_actor_nr = c.actor_nr) as product_count,
-          NULL as black_triangle
-        FROM company c
-        WHERE c.denomination ILIKE ${searchPattern}
-        AND (c.end_date IS NULL OR c.end_date > CURRENT_DATE)
-        ORDER BY c.actor_nr
-        LIMIT ${SEARCH_LIMIT_PER_TABLE}
-      `;
-        facetCounts.company = result.rows.length;
-        if (shouldFetchResults('company')) {
-          result.rows.forEach((r) => {
-            allResults.push({
-              entityType: 'company',
-              code: r.code,
-              name: r.name,
-              productCount: r.product_count,
-            });
-          });
-        }
-      })()
-    );
-  }
-
-  // VMP Group search - skip if not relevant
-  if (isTypeRelevant('vmp_group')) {
-    searchPromises.push(
-      (async () => {
-      const result = await sql`
-        SELECT DISTINCT ON (code)
-          'vmp_group' as entity_type,
-          code,
-          name,
-          NULL as parent_name,
-          NULL as parent_code,
-          NULL as company_name,
-          NULL as pack_info,
-          NULL as price,
-          NULL as reimbursable,
-          NULL as cnk_code,
-          NULL as product_count,
-          NULL as black_triangle
-        FROM vmp_group
-        WHERE (
-          name->>'en' ILIKE ${searchPattern}
-          OR name->>'nl' ILIKE ${searchPattern}
-          OR name->>'fr' ILIKE ${searchPattern}
-          OR code ILIKE ${prefixPattern}
-        )
-        AND (end_date IS NULL OR end_date > CURRENT_DATE)
-        ORDER BY code
-        LIMIT ${SEARCH_LIMIT_PER_TABLE}
-      `;
-        facetCounts.vmp_group = result.rows.length;
-        if (shouldFetchResults('vmp_group')) {
-          result.rows.forEach((r) => {
-            allResults.push({
-              entityType: 'vmp_group',
-              code: r.code,
-              name: r.name,
-            });
-          });
-        }
-      })()
-    );
-  }
-
-  // Substance search - skip if not relevant
-  if (isTypeRelevant('substance')) {
-    searchPromises.push(
-      (async () => {
-      const result = await sql`
-        SELECT DISTINCT ON (code)
-          'substance' as entity_type,
-          code,
-          name,
-          NULL as parent_name,
-          NULL as parent_code,
-          NULL as company_name,
-          NULL as pack_info,
-          NULL as price,
-          NULL as reimbursable,
-          NULL as cnk_code,
-          NULL as product_count,
-          NULL as black_triangle
-        FROM substance
-        WHERE (
-          name->>'en' ILIKE ${searchPattern}
-          OR name->>'nl' ILIKE ${searchPattern}
-          OR name->>'fr' ILIKE ${searchPattern}
-          OR code ILIKE ${prefixPattern}
-        )
-        AND (end_date IS NULL OR end_date > CURRENT_DATE)
-        ORDER BY code
-        LIMIT ${SEARCH_LIMIT_PER_TABLE}
-      `;
-        facetCounts.substance = result.rows.length;
-        if (shouldFetchResults('substance')) {
-          result.rows.forEach((r) => {
-            allResults.push({
-              entityType: 'substance',
-              code: r.code,
-              name: r.name,
-            });
-          });
-        }
-      })()
-    );
-  }
-
-  // ATC search - skip if not relevant
-  if (isTypeRelevant('atc')) {
-    searchPromises.push(
-      (async () => {
-      let atcQuery;
-      if (isAtcQuery) {
-        atcQuery = sql`
-          SELECT DISTINCT ON (code)
-            'atc' as entity_type,
-            code,
-            jsonb_build_object(${lang}::text, description) as name,
-            NULL as parent_name,
-            NULL as parent_code,
-            NULL as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            NULL as black_triangle
-          FROM atc_classification
-          WHERE code ILIKE ${query.trim() + '%'}
-          ORDER BY code
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
-        `;
-      } else {
-        atcQuery = sql`
-          SELECT DISTINCT ON (code)
-            'atc' as entity_type,
-            code,
-            jsonb_build_object(${lang}::text, description) as name,
-            NULL as parent_name,
-            NULL as parent_code,
-            NULL as company_name,
-            NULL as pack_info,
-            NULL as price,
-            NULL as reimbursable,
-            NULL as cnk_code,
-            NULL as product_count,
-            NULL as black_triangle
-          FROM atc_classification
-          WHERE (
-            code ILIKE ${prefixPattern}
-            OR description ILIKE ${searchPattern}
-          )
-          ORDER BY code
-          LIMIT ${SEARCH_LIMIT_PER_TABLE}
-        `;
-      }
-        const result = await atcQuery;
-        facetCounts.atc = result.rows.length;
-        if (shouldFetchResults('atc')) {
-          result.rows.forEach((r) => {
-            allResults.push({
-              entityType: 'atc',
-              code: r.code,
-              name: r.name,
-            });
-          });
-        }
-      })()
-    );
-  }
-
-  // Wait for all searches to complete
-  await Promise.all(searchPromises);
-
-  // Deduplicate results by entityType + code
-  const uniqueResultsMap = new Map<string, RawSearchResult>();
-  for (const result of allResults) {
-    const key = `${result.entityType}-${result.code}`;
-    if (!uniqueResultsMap.has(key)) {
-      uniqueResultsMap.set(key, result);
-    }
-  }
-  const uniqueResults = Array.from(uniqueResultsMap.values());
-
-  // Score and sort results
-  const scoredResults = uniqueResults.map((result) => {
+  // Score and sort (keep existing scoring logic)
+  const scoredResults = allResults.map((result) => {
     const { score, matchedField } = calculateScore(result, query, lang);
     return { ...result, matchScore: score, matchedField };
   });
 
-  // Sort by score (descending), then by type priority, then alphabetically
   scoredResults.sort((a, b) => {
-    if (b.matchScore !== a.matchScore) {
-      return b.matchScore - a.matchScore;
-    }
+    if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
     if (TYPE_PRIORITY[a.entityType] !== TYPE_PRIORITY[b.entityType]) {
       return TYPE_PRIORITY[a.entityType] - TYPE_PRIORITY[b.entityType];
     }
@@ -1025,19 +277,16 @@ export async function executeSearch(
     return nameA.localeCompare(nameB);
   });
 
-  // Calculate total count from facet counts (more accurate than result array length
-  // when pagination is applied with relationship filters)
-  const totalCount = types
+  // Paginate
+  // Calculate total from facets, but cap at maximum we can serve
+  // to prevent showing pagination for pages we can't actually fetch
+  const facetTotal = types
     ? types.reduce((sum, type) => sum + (facetCounts[type] || 0), 0)
     : Object.values(facetCounts).reduce((sum, count) => sum + count, 0);
 
-  // Check if we applied DB-level pagination (only for single type with relationship filters)
-  // DB-level pagination only works correctly when querying a single entity type.
-  // For multiple types, each query applies offset independently which causes page N to be empty
-  // when offset exceeds individual type counts (e.g., VMP has 10, AMP has 68, offset 80 = 0 results from both)
-  const paginatedResults = useDbPagination
-    ? scoredResults  // Already paginated at DB level for single type
-    : scoredResults.slice(offset, offset + limit);  // In-memory pagination for text search or multi-type
+  const totalCount = Math.min(facetTotal, MAX_SEARCH_RESULTS);
+
+  const paginatedResults = scoredResults.slice(offset, offset + limit);
 
   const results: SearchResultItem[] = paginatedResults.map((r) => ({
     entityType: r.entityType,
@@ -1061,13 +310,7 @@ export async function executeSearch(
     query,
     totalCount,
     results,
-    facets: {
-      byType: facetCounts,
-    },
-    pagination: {
-      limit,
-      offset,
-      hasMore: offset + limit < totalCount,
-    },
+    facets: { byType: facetCounts },
+    pagination: { limit, offset, hasMore: offset + limit < totalCount },
   };
 }

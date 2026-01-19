@@ -605,15 +605,22 @@ async function swapTables(dryRun: boolean, verbose: boolean): Promise<void> {
     await query('ALTER TABLE IF EXISTS amp_excipient RENAME TO amp_excipient_old');
     await query('ALTER TABLE amp_excipient_staging RENAME TO amp_excipient');
 
-    // Add FK constraint (staging table didn't have it to allow faster inserts)
+    // Delete orphan records (excipients without matching AMPs) before adding FK constraint
+    const deleteResult = await query(`
+      DELETE FROM amp_excipient
+      WHERE amp_code NOT IN (SELECT code FROM amp)
+    `);
+    const orphanCount = deleteResult.rowCount || 0;
+    if (orphanCount > 0 && verbose) {
+      console.log(`   [INFO] Removed ${orphanCount} orphan records (AMPs no longer exist)`);
+    }
+
+    // Add FK constraint (should succeed now that orphans are removed)
     await query(`
       ALTER TABLE amp_excipient
       ADD CONSTRAINT amp_excipient_amp_code_fkey
       FOREIGN KEY (amp_code) REFERENCES amp(code) ON DELETE CASCADE
-    `).catch(() => {
-      // FK might fail if some AMPs don't exist - that's OK, orphans will be cleaned up
-      if (verbose) console.log('   [WARN] Some excipient records reference non-existent AMPs');
-    });
+    `);
 
     // Create index
     await query('CREATE INDEX IF NOT EXISTS idx_amp_excipient_text ON amp_excipient USING GIN (text)');
