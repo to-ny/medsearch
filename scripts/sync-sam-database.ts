@@ -22,11 +22,50 @@
 
 import { createReadStream, existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, unlinkSync } from 'fs';
 import { createInterface } from 'readline';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import { join, dirname } from 'path';
 
-const execAsync = promisify(exec);
+/**
+ * Execute a command safely using spawn (no shell interpolation)
+ * This prevents command injection attacks
+ */
+function execCommand(command: string, args: string[], options?: { maxBuffer?: number }): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    const chunks: Buffer[] = [];
+    const errChunks: Buffer[] = [];
+    let totalSize = 0;
+    const maxBuffer = options?.maxBuffer ?? 10 * 1024 * 1024; // 10MB default
+
+    proc.stdout.on('data', (data: Buffer) => {
+      totalSize += data.length;
+      if (totalSize > maxBuffer) {
+        proc.kill();
+        reject(new Error('Max buffer exceeded'));
+        return;
+      }
+      chunks.push(data);
+    });
+
+    proc.stderr.on('data', (data: Buffer) => {
+      errChunks.push(data);
+    });
+
+    proc.on('close', (code) => {
+      const stdout = Buffer.concat(chunks).toString();
+      const stderr = Buffer.concat(errChunks).toString();
+      if (code === 0) {
+        resolve({ stdout, stderr });
+      } else {
+        reject(new Error(`Command failed with code ${code}: ${stderr}`));
+      }
+    });
+
+    proc.on('error', (err) => {
+      reject(err);
+    });
+  });
+}
 
 // ============================================================================
 // Configuration
@@ -165,8 +204,10 @@ async function getLatestVersion(xsd: number, verbose: boolean): Promise<string |
     const url = `${CONFIG.samPortal}download/samv2-full-getLastVersion?xsd=${xsd}`;
     if (verbose) console.log(`   Fetching latest version from: ${url}`);
 
-    const { stdout } = await execAsync(
-      `curl -sL "${url}" --max-time 15`,
+    // Use spawn with array args to prevent command injection
+    const { stdout } = await execCommand(
+      'curl',
+      ['-sL', url, '--max-time', '15'],
       { maxBuffer: 1024 * 1024 }
     );
 
@@ -197,22 +238,22 @@ async function downloadFile(url: string, destPath: string, verbose: boolean): Pr
       console.log(`   Downloading: ${url}`);
     }
 
-    // Use curl with progress bar for large files
-    const progressFlag = verbose ? '-#' : '-s';
-    await execAsync(
-      `curl ${progressFlag} -L -o "${destPath}" "${url}" --max-time 600 --retry 3 --retry-delay 5`,
-      { maxBuffer: 10 * 1024 * 1024 }
-    );
+    // Use spawn with array args to prevent command injection
+    const curlArgs = verbose
+      ? ['-#', '-L', '-o', destPath, url, '--max-time', '600', '--retry', '3', '--retry-delay', '5']
+      : ['-s', '-L', '-o', destPath, url, '--max-time', '600', '--retry', '3', '--retry-delay', '5'];
+
+    await execCommand('curl', curlArgs, { maxBuffer: 10 * 1024 * 1024 });
 
     // Check if file was downloaded
     if (!existsSync(destPath)) {
       return false;
     }
 
-    // If it's a zip file, extract it
+    // If it's a zip file, extract it using spawn
     if (destPath.endsWith('.zip')) {
       if (verbose) console.log(`   Extracting: ${destPath}`);
-      await execAsync(`unzip -o "${destPath}" -d "${dir}"`, { maxBuffer: 10 * 1024 * 1024 });
+      await execCommand('unzip', ['-o', destPath, '-d', dir], { maxBuffer: 10 * 1024 * 1024 });
       // Remove zip after extraction
       unlinkSync(destPath);
     }

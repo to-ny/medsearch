@@ -29,11 +29,47 @@
 
 import { createReadStream, existsSync, mkdirSync, unlinkSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { createInterface } from 'readline';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import { join, dirname } from 'path';
 
-const execAsync = promisify(exec);
+/**
+ * Execute a command safely using spawn (no shell interpolation)
+ * This prevents command injection attacks
+ */
+function execCommand(command: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => { stdout += data.toString(); });
+    proc.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    proc.on('close', (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+      } else {
+        reject(new Error(`Command failed with code ${code}: ${stderr}`));
+      }
+    });
+
+    proc.on('error', (err) => {
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Check if a command exists in PATH
+ */
+async function commandExists(command: string): Promise<boolean> {
+  try {
+    await execCommand('which', [command]);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // ============================================================================
 // Configuration
@@ -361,8 +397,9 @@ async function getUrlMappings(verbose: boolean): Promise<AmpSmpcMapping[]> {
 
 async function downloadPdf(url: string, destPath: string): Promise<boolean> {
   try {
-    await execAsync(`curl -sL -o "${destPath}" "${url}" --max-time 30 --retry 2`);
-    const { stdout } = await execAsync(`file "${destPath}"`);
+    // Use spawn with array args to prevent command injection
+    await execCommand('curl', ['-sL', '-o', destPath, url, '--max-time', '30', '--retry', '2']);
+    const { stdout } = await execCommand('file', [destPath]);
     return stdout.includes('PDF');
   } catch {
     return false;
@@ -439,7 +476,8 @@ async function processSmpc(url: string, expectedLang: string): Promise<{ rawText
     const isValidPdf = await downloadPdf(url, tempFile);
     if (!isValidPdf) return null;
 
-    const { stdout: text } = await execAsync(`pdftotext "${tempFile}" -`);
+    // Use spawn with array args to prevent command injection
+    const { stdout: text } = await execCommand('pdftotext', [tempFile, '-']);
     const result = extractSection61(text);
 
     if (result && !['fr', 'nl', 'de', 'en'].includes(result.language)) {
@@ -667,9 +705,9 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  try {
-    await execAsync('which pdftotext');
-  } catch {
+  // Check if pdftotext is available using safe command execution
+  const hasPdftotext = await commandExists('pdftotext');
+  if (!hasPdftotext) {
     console.error('\n   ERROR: pdftotext not found. Install poppler-utils:');
     console.error('   Ubuntu/Debian: sudo apt install poppler-utils');
     console.error('   macOS: brew install poppler');
