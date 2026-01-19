@@ -98,13 +98,30 @@ export function VMPGroupDetail({ vmpGroup }: VMPGroupDetailProps) {
           )}
 
           {/* Overview */}
-          {(vmpGroup.startDate || vmpGroup.endDate) && (
+          {(vmpGroup.startDate || vmpGroup.endDate ||
+            (vmpGroup.name.nl && vmpGroup.name.nl !== name) ||
+            (vmpGroup.name.fr && vmpGroup.name.fr !== name) ||
+            (vmpGroup.name.en && vmpGroup.name.en !== name) ||
+            (vmpGroup.name.de && vmpGroup.name.de !== name)) && (
             <Section title={t('detail.overview')}>
               <InfoList>
                 <InfoRow
                   label={t('detail.validity')}
                   value={formatValidityPeriod(vmpGroup.startDate, vmpGroup.endDate)}
                 />
+                {/* Show all language variants */}
+                {vmpGroup.name.nl && vmpGroup.name.nl !== name && (
+                  <InfoRow label={t('languages.dutch')} value={vmpGroup.name.nl} />
+                )}
+                {vmpGroup.name.fr && vmpGroup.name.fr !== name && (
+                  <InfoRow label={t('languages.french')} value={vmpGroup.name.fr} />
+                )}
+                {vmpGroup.name.en && vmpGroup.name.en !== name && (
+                  <InfoRow label={t('languages.english')} value={vmpGroup.name.en} />
+                )}
+                {vmpGroup.name.de && vmpGroup.name.de !== name && (
+                  <InfoRow label={t('languages.german')} value={vmpGroup.name.de} />
+                )}
               </InfoList>
             </Section>
           )}
@@ -147,6 +164,30 @@ export function VMPGroupDetail({ vmpGroup }: VMPGroupDetailProps) {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Clinical Indicators */}
+          {vmpGroup.patientFrailtyIndicator && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <span className="font-medium text-amber-800 dark:text-amber-200">{t('sidebar.frailtyWarning')}</span>
+              </div>
+            </div>
+          )}
+          {vmpGroup.noGenericPrescriptionReason && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="info" size="sm">{t('sidebar.noGenericRx')}</Badge>
+              </div>
+            </div>
+          )}
+          {vmpGroup.noSwitchReason && (
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" size="sm">{t('sidebar.noSwitching')}</Badge>
+              </div>
+            </div>
+          )}
+
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{t('detail.summary')}</h3>
             <div className="space-y-2 text-sm">
@@ -157,6 +198,13 @@ export function VMPGroupDetail({ vmpGroup }: VMPGroupDetailProps) {
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.dosageRecommendations')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{vmpGroup.dosages.length}</span>
+              </div>
+              {/* Validity indicator */}
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('detail.validity')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {vmpGroup.endDate && new Date(vmpGroup.endDate) < new Date() ? t('sidebar.expired') : t('sidebar.active')}
+                </span>
               </div>
             </div>
           </div>

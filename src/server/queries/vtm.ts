@@ -2,7 +2,7 @@ import 'server-only';
 
 import { sql } from '@/server/db/client';
 import type { VTMWithRelations } from '@/server/types/entities';
-import type { VMPSummary, AMPSummary } from '@/server/types/summaries';
+import type { VMPSummary, AMPSummary, VMPGroupSummary } from '@/server/types/summaries';
 
 /**
  * Get a VTM by code with all relationships
@@ -74,6 +74,41 @@ export async function getVTMWithRelations(code: string): Promise<VTMWithRelation
     blackTriangle: a.black_triangle,
   }));
 
+  // Get VMP Groups (therapeutic groups) linked via VMPs
+  const vmpGroupsResult = await sql`
+    SELECT DISTINCT ON (vg.code)
+      vg.code,
+      vg.name,
+      vg.patient_frailty_indicator
+    FROM vmp_group vg
+    WHERE vg.code IN (
+      SELECT DISTINCT vmp_group_code FROM vmp
+      WHERE vtm_code = ${code}
+        AND vmp_group_code IS NOT NULL
+        AND (end_date IS NULL OR end_date > CURRENT_DATE)
+    )
+    ORDER BY vg.code, vg.name->>'en'
+  `;
+
+  const vmpGroups: VMPGroupSummary[] = vmpGroupsResult.rows.map((vg) => ({
+    entityType: 'vmp_group' as const,
+    code: vg.code,
+    name: vg.name,
+    patientFrailtyIndicator: vg.patient_frailty_indicator,
+  }));
+
+  // Get package count
+  const packageCountResult = await sql`
+    SELECT COUNT(DISTINCT ampp.cti_extended)::int as count
+    FROM ampp
+    JOIN amp ON amp.code = ampp.amp_code
+    JOIN vmp ON vmp.code = amp.vmp_code
+    WHERE vmp.vtm_code = ${code}
+      AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+  `;
+
+  const packageCount = packageCountResult.rows[0]?.count || 0;
+
   return {
     code: row.code,
     name: row.name,
@@ -81,6 +116,8 @@ export async function getVTMWithRelations(code: string): Promise<VTMWithRelation
     endDate: row.end_date,
     vmps,
     amps,
+    vmpGroups,
+    packageCount,
   };
 }
 

@@ -35,7 +35,8 @@
     "medication": "Arzneimittel",
     "classification": "Klassifikation",
     "therapeuticGroup": "Therapeutische Gruppe",
-    "ingredient": "Zutat"
+    "ingredient": "Zutat",
+    "chapterIV": "Kapitel IV"
   },
   "search": {
     "resultsFor": "für",
@@ -135,6 +136,7 @@
     "examples": "Beispiele",
     "cnkCode": "CNK-Code",
     "atcCode": "ATC-Code",
+    "company": "Unternehmen",
     "infoSubstances": "Substanzen",
     "infoSubstancesDescription": "Suchen Sie nach Wirkstoff oder Generikum",
     "infoBrands": "Marken & Packungen",
@@ -244,5 +246,22 @@
     "level3": "Stufe 3 (Pharmakologisch)",
     "level4": "Stufe 4 (Chemisch)",
     "level5": "Stufe 5 (Substanz)"
+  },
+  "sidebar": {
+    "blackTriangle": "Schwarzes Dreieck",
+    "orphanDrug": "Orphan-Arzneimittel",
+    "frailtyWarning": "Gebrechlichkeit",
+    "noGenericRx": "Kein Generika-Rx",
+    "noSwitching": "Kein Wechsel",
+    "validUntil": "Gültig bis",
+    "validFrom": "Gültig ab",
+    "active": "Aktiv",
+    "expired": "Abgelaufen",
+    "level": "Stufe",
+    "genericCount": "Generika",
+    "packageCount": "Packungen",
+    "reimbursablePercent": "Erstattungsfähig",
+    "chapterIV": "Kapitel IV",
+    "component": "Komponente"
   }
 }

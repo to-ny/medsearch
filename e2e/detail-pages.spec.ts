@@ -127,3 +127,61 @@ test('Chapter IV shows paragraph info and indication', async ({ page }) => {
   // Should show the medical indication
   await expect(page.locator('main')).toContainText(/hepatocellul|carcinoma|HCC/i);
 });
+
+// =============================================================================
+// Sidebar Features Tests
+// =============================================================================
+
+test('AMP sidebar shows validity indicator', async ({ page }) => {
+  // Any AMP page should show Active/Expired status in sidebar
+  await page.goto('/en/medications/SAM662556-00');
+  await page.waitForLoadState('networkidle');
+
+  // Sidebar should show validity status (Active or Expired)
+  await expect(page.locator('main')).toContainText(/Active|Expired/);
+});
+
+test('AMP sidebar shows reimbursable percentage', async ({ page }) => {
+  // Chlorure de Sodium Aguettant - has many reimbursable packages
+  await page.goto('/en/medications/SAM208966-00');
+  await page.waitForLoadState('networkidle');
+
+  // Sidebar should show reimbursable percentage
+  await expect(page.locator('main')).toContainText(/%/);
+});
+
+test('VTM sidebar shows package count', async ({ page }) => {
+  // paracetamol - has many packages
+  await page.goto('/en/substances/974');
+  await page.waitForLoadState('networkidle');
+
+  // Sidebar should show package count
+  await expect(page.locator('main')).toContainText(/Package/i);
+});
+
+test('ATC sidebar shows level indicator', async ({ page }) => {
+  // Atorvastatin - C10AA05 (level 5)
+  await page.goto('/en/classifications/C10AA05');
+  await page.waitForLoadState('networkidle');
+
+  // Sidebar should show ATC level
+  await expect(page.locator('main')).toContainText(/Level/i);
+});
+
+test('Company sidebar shows product statistics', async ({ page }) => {
+  // Boiron - has multiple products
+  await page.goto('/en/companies/02605');
+  await page.waitForLoadState('networkidle');
+
+  // Sidebar should show product count, generic count, package count
+  await expect(page.locator('main')).toContainText(/Product|Generic|Package/i);
+});
+
+test('VMP Group sidebar shows validity indicator', async ({ page }) => {
+  // lenograstim group
+  await page.goto('/en/therapeutic-groups/18689');
+  await page.waitForLoadState('networkidle');
+
+  // Sidebar should show validity status
+  await expect(page.locator('main')).toContainText(/Active|Expired/);
+});

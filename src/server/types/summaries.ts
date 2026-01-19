@@ -75,6 +75,8 @@ export interface DMPPSummary {
   deliveryEnvironment: 'P' | 'H';
   price: number | null;
   reimbursable: boolean;
+  amppCtiExtended: string | null;
+  name: MultilingualText | null;
 }
 
 export interface StandardDosageSummary {

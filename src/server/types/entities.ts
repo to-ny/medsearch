@@ -27,6 +27,8 @@ export interface VTM extends ValidityPeriod {
 export interface VTMWithRelations extends VTM {
   vmps: VMPSummary[];
   amps: AMPSummary[];
+  vmpGroups: VMPGroupSummary[];
+  packageCount: number;
 }
 
 /** VMP - Virtual Medicinal Product (Generic) */
@@ -45,6 +47,7 @@ export interface VMPWithRelations extends VMP {
   vmpGroup: VMPGroupSummary | null;
   amps: AMPSummary[];
   dosages: StandardDosageSummary[];
+  packageCount: number;
 }
 
 /** AMP - Actual Medicinal Product (Brand) */
@@ -153,6 +156,9 @@ export interface Company extends ValidityPeriod {
 export interface CompanyWithRelations extends Company {
   products: AMPSummary[];
   productCount: number;
+  vmpCount: number;
+  packageCount: number;
+  reimbursableCount: number;
 }
 
 /** VMP Group - Therapeutic classification */

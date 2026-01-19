@@ -51,15 +51,18 @@ export async function getChapterIVParagraphWithRelations(
 
   const row = result.rows[0];
 
-  // Get linked products (DMPPs)
+  // Get linked products (DMPPs) with AMPP info for linking
   const productsResult = await sql`
     SELECT DISTINCT
       d.code,
       d.delivery_environment,
       d.price,
-      d.reimbursable
+      d.reimbursable,
+      d.ampp_cti_extended,
+      ampp.prescription_name as ampp_name
     FROM dmpp_chapter_iv dciv
     JOIN dmpp d ON d.code = dciv.dmpp_code AND d.delivery_environment = dciv.delivery_environment
+    LEFT JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
     WHERE dciv.chapter_name = ${chapterName}
       AND dciv.paragraph_name = ${paragraphName}
       AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
@@ -72,6 +75,8 @@ export async function getChapterIVParagraphWithRelations(
     deliveryEnvironment: p.delivery_environment,
     price: p.price,
     reimbursable: p.reimbursable,
+    amppCtiExtended: p.ampp_cti_extended,
+    name: p.ampp_name,
   }));
 
   return {

@@ -34,7 +34,31 @@ export async function getCompanyWithRelations(
         FROM amp
         WHERE amp.company_actor_nr = c.actor_nr
           AND (amp.end_date IS NULL OR amp.end_date > CURRENT_DATE)
-      ) as product_count
+      ) as product_count,
+      (
+        SELECT COUNT(DISTINCT vmp_code)::int
+        FROM amp
+        WHERE amp.company_actor_nr = c.actor_nr
+          AND amp.vmp_code IS NOT NULL
+          AND (amp.end_date IS NULL OR amp.end_date > CURRENT_DATE)
+      ) as vmp_count,
+      (
+        SELECT COUNT(DISTINCT ampp.cti_extended)::int
+        FROM ampp
+        JOIN amp ON amp.code = ampp.amp_code
+        WHERE amp.company_actor_nr = c.actor_nr
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+      ) as package_count,
+      (
+        SELECT COUNT(DISTINCT ampp.cti_extended)::int
+        FROM ampp
+        JOIN amp ON amp.code = ampp.amp_code
+        JOIN dmpp ON dmpp.ampp_cti_extended = ampp.cti_extended
+        WHERE amp.company_actor_nr = c.actor_nr
+          AND dmpp.reimbursable = true
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+          AND (dmpp.end_date IS NULL OR dmpp.end_date > CURRENT_DATE)
+      ) as reimbursable_count
     FROM company c
     WHERE c.actor_nr = ${actorNr}
   `;
@@ -91,5 +115,8 @@ export async function getCompanyWithRelations(
     endDate: row.end_date,
     products,
     productCount: row.product_count,
+    vmpCount: row.vmp_count,
+    packageCount: row.package_count,
+    reimbursableCount: row.reimbursable_count,
   };
 }

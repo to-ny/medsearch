@@ -1,32 +1,39 @@
 'use client';
 
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { EntityHeader } from '@/components/entities/entity-header';
-import { RelationshipList } from '@/components/entities/relationship-list';
+import { EntityTypeBadge } from '@/components/entities/entity-type-badge';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
-import { useLanguage } from '@/lib/hooks/use-language';
-import { useTranslation } from '@/lib/hooks/use-translation';
+import { LocalizedText } from '@/components/shared/localized-text';
+import { Pagination } from '@/components/search/pagination';
+import { Card } from '@/components/ui/card';
+import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { formatValidityPeriod } from '@/lib/utils/format';
 import type { SubstanceWithRelations } from '@/server/types/entities';
 
 interface SubstanceDetailProps {
   substance: SubstanceWithRelations;
+  currentPage: number;
+  pageSize: number;
 }
 
-export function SubstanceDetail({ substance }: SubstanceDetailProps) {
+export function SubstanceDetail({ substance, currentPage, pageSize }: SubstanceDetailProps) {
+  const router = useRouter();
   const { getLocalized } = useLanguage();
+  const links = useLinks();
   const { t } = useTranslation();
   const name = getLocalized(substance.name);
 
   const breadcrumbs = [{ label: name }];
+  const totalPages = Math.ceil(substance.usedInAmpCount / pageSize);
 
-  const ampItems = substance.usedInAmps.map((amp) => ({
-    entityType: amp.entityType,
-    code: amp.code,
-    name: amp.name,
-    subtitle: amp.companyName || undefined,
-  }));
+  const handlePageChange = (page: number) => {
+    router.push(links.withPage(links.toIngredient(substance.name, substance.code), page));
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -65,12 +72,57 @@ export function SubstanceDetail({ substance }: SubstanceDetailProps) {
           </Section>
 
           {/* Products containing this ingredient */}
-          <RelationshipList
+          <Section
             title={t('detail.productsContainingIngredient')}
-            items={ampItems}
-            searchFilter={{ type: 'substance', code: substance.code }}
-            searchType="amp"
-          />
+            count={substance.usedInAmpCount}
+            headerAction={
+              substance.usedInAmpCount > 0 ? (
+                <Link
+                  href={links.toSearch({ substance: substance.code, types: 'amp' })}
+                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title={t('common.searchAll')}
+                >
+                  <MagnifyingGlassIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('common.searchAll')}</span>
+                </Link>
+              ) : undefined
+            }
+          >
+            <div className="space-y-2">
+              {substance.usedInAmps.map((amp) => (
+                <Link
+                  key={amp.code}
+                  href={links.toMedication(amp.name, amp.code)}
+                  className="block group"
+                >
+                  <Card hover padding="sm">
+                    <div className="flex items-center gap-3">
+                      <EntityTypeBadge type="amp" size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                          <LocalizedText text={amp.name} />
+                        </p>
+                        {amp.companyName && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                            {amp.companyName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                className="mt-6"
+              />
+            )}
+          </Section>
         </div>
 
         {/* Sidebar */}
@@ -81,6 +133,13 @@ export function SubstanceDetail({ substance }: SubstanceDetailProps) {
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.brandProducts')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{substance.usedInAmpCount}</span>
+              </div>
+              {/* Validity indicator */}
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('detail.validity')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {substance.endDate && new Date(substance.endDate) < new Date() ? t('sidebar.expired') : t('sidebar.active')}
+                </span>
               </div>
             </div>
           </div>

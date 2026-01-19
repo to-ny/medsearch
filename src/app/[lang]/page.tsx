@@ -48,9 +48,11 @@ export default function HomePage() {
           <p className="mb-2">{t('home.examples')}:</p>
           <div className="flex flex-wrap justify-center gap-2">
             <ExampleChip query="paracetamol" href={links.toSearch({ q: 'paracetamol' })} />
-            <ExampleChip query="ibuprofen 400" href={links.toSearch({ q: 'ibuprofen 400' })} />
+            <ExampleChip query="Dafalgan" href={links.toSearch({ q: 'Dafalgan' })} />
+            <ExampleChip query="Ventolin" href={links.toSearch({ q: 'Ventolin' })} />
             <ExampleChip query="4757811" label={t('home.cnkCode')} href={links.toSearch({ q: '4757811' })} />
             <ExampleChip query="N02BE01" label={t('home.atcCode')} href={links.toSearch({ q: 'N02BE01' })} />
+            <ExampleChip query="Janssen-Cilag" label={t('home.company')} href={links.toSearch({ q: 'Janssen-Cilag' })} />
           </div>
         </div>
 

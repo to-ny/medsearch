@@ -51,7 +51,11 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
           />
 
           {/* Overview */}
-          {(vmp.abbreviatedName || vmp.startDate || vmp.endDate) && (
+          {(vmp.abbreviatedName || vmp.startDate || vmp.endDate ||
+            (vmp.name.nl && vmp.name.nl !== name) ||
+            (vmp.name.fr && vmp.name.fr !== name) ||
+            (vmp.name.en && vmp.name.en !== name) ||
+            (vmp.name.de && vmp.name.de !== name)) && (
             <Section title={t('detail.overview')}>
               <InfoList>
                 {vmp.abbreviatedName && (
@@ -64,6 +68,19 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
                   label={t('detail.validity')}
                   value={formatValidityPeriod(vmp.startDate, vmp.endDate)}
                 />
+                {/* Show all language variants */}
+                {vmp.name.nl && vmp.name.nl !== name && (
+                  <InfoRow label={t('languages.dutch')} value={vmp.name.nl} />
+                )}
+                {vmp.name.fr && vmp.name.fr !== name && (
+                  <InfoRow label={t('languages.french')} value={vmp.name.fr} />
+                )}
+                {vmp.name.en && vmp.name.en !== name && (
+                  <InfoRow label={t('languages.english')} value={vmp.name.en} />
+                )}
+                {vmp.name.de && vmp.name.de !== name && (
+                  <InfoRow label={t('languages.german')} value={vmp.name.de} />
+                )}
               </InfoList>
             </Section>
           )}
@@ -166,8 +183,19 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
                 <span className="font-medium text-gray-900 dark:text-gray-100">{vmp.amps.length}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('sidebar.packageCount')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{vmp.packageCount}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.dosageRecommendations')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{vmp.dosages.length}</span>
+              </div>
+              {/* Validity indicator */}
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('detail.validity')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {vmp.endDate && new Date(vmp.endDate) < new Date() ? t('sidebar.expired') : t('sidebar.active')}
+                </span>
               </div>
             </div>
           </div>

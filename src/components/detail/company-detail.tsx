@@ -172,12 +172,35 @@ export function CompanyDetail({ company, currentPage, pageSize }: CompanyDetailP
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.products')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{company.productCount}</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('sidebar.genericCount')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{company.vmpCount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('sidebar.packageCount')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{company.packageCount}</span>
+              </div>
+              {company.packageCount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('sidebar.reimbursablePercent')}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {Math.round((company.reimbursableCount / company.packageCount) * 100)}%
+                  </span>
+                </div>
+              )}
               {countryName && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('company.country')}</span>
                   <span className="font-medium text-gray-900 dark:text-gray-100">{countryName}</span>
                 </div>
               )}
+              {/* Validity indicator */}
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('detail.validity')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {company.endDate && new Date(company.endDate) < new Date() ? t('sidebar.expired') : t('sidebar.active')}
+                </span>
+              </div>
             </div>
           </div>
         </div>

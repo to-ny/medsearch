@@ -35,7 +35,8 @@
     "medication": "Médicament",
     "classification": "Classification",
     "therapeuticGroup": "Groupe Thérapeutique",
-    "ingredient": "Ingrédient"
+    "ingredient": "Ingrédient",
+    "chapterIV": "Chapitre IV"
   },
   "search": {
     "resultsFor": "pour",
@@ -135,6 +136,7 @@
     "examples": "Exemples",
     "cnkCode": "Code CNK",
     "atcCode": "Code ATC",
+    "company": "entreprise",
     "infoSubstances": "Substances",
     "infoSubstancesDescription": "Recherchez par ingrédient actif ou nom générique",
     "infoBrands": "Marques & Conditionnements",
@@ -244,5 +246,22 @@
     "level3": "Niveau 3 (Pharmacologique)",
     "level4": "Niveau 4 (Chimique)",
     "level5": "Niveau 5 (Substance)"
+  },
+  "sidebar": {
+    "blackTriangle": "Triangle Noir",
+    "orphanDrug": "Médicament Orphelin",
+    "frailtyWarning": "Avert. Fragilité",
+    "noGenericRx": "Pas de Rx Générique",
+    "noSwitching": "Pas de Substitution",
+    "validUntil": "Valable jusqu'au",
+    "validFrom": "Valable à partir du",
+    "active": "Actif",
+    "expired": "Expiré",
+    "level": "Niveau",
+    "genericCount": "Génériques",
+    "packageCount": "Conditionnements",
+    "reimbursablePercent": "Remboursable",
+    "chapterIV": "Chapitre IV",
+    "component": "Composant"
   }
 }

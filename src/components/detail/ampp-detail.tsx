@@ -46,6 +46,7 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
             name={ampp.prescriptionName || ampp.amp.name}
             code={ampp.ctiExtended}
             codeType="ctiExtended"
+            status={ampp.status || undefined}
             subtitle={ampp.atcCode ? `${t('codes.atc')}: ${ampp.atcCode}` : undefined}
           />
 
@@ -202,7 +203,8 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
                             value={formatPrice(ctx.referenceBasePrice)}
                           />
                         )}
-                        {ctx.reimbursementBasePrice !== null && (
+                        {/* Only show reimbursement amount if it's not 0, or if it's not a reference price system */}
+                        {ctx.reimbursementBasePrice !== null && ctx.reimbursementBasePrice > 0 && (
                           <InfoRow
                             label={t('detail.reimbursement')}
                             value={formatPrice(ctx.reimbursementBasePrice)}
@@ -298,9 +300,29 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Orphan Drug Indicator */}
+          {ampp.orphan && (
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="info" size="sm">{t('sidebar.orphanDrug')}</Badge>
+              </div>
+            </div>
+          )}
+
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{t('detail.summary')}</h3>
             <div className="space-y-2 text-sm">
+              {ampp.amp.vmpCode && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('entityLabels.generic')}</span>
+                  <Link
+                    href={links.toGeneric({ en: ampp.amp.vmpCode }, ampp.amp.vmpCode)}
+                    className="font-medium text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[150px]"
+                  >
+                    {ampp.amp.vmpCode}
+                  </Link>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('entityLabels.brand')}</span>
                 <Link
@@ -331,6 +353,20 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
                   <PriceDisplay amount={ampp.exFactoryPrice} />
                 </div>
               )}
+              {/* Chapter IV indicator */}
+              {ampp.chapterIVParagraphs.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('sidebar.chapterIV')}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{ampp.chapterIVParagraphs.length}</span>
+                </div>
+              )}
+              {/* Validity indicator */}
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">{t('detail.validity')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {ampp.endDate && new Date(ampp.endDate) < new Date() ? t('sidebar.expired') : t('sidebar.active')}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -342,7 +378,7 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
               </h3>
               <div className="flex flex-wrap gap-2">
                 {[...new Set(ampp.reimbursementContexts.map((c) => c.reimbursementCriterionCategory))].map(
-                  (cat) => cat && <ReimbursementBadge key={cat} category={cat} />
+                  (cat) => cat && <ReimbursementBadge key={cat} category={cat} showLabel />
                 )}
               </div>
             </div>
