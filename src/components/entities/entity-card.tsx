@@ -115,8 +115,8 @@ export function EntityCard({ entity, variant = 'default', className }: EntityCar
                     {formatPrice(entity.price)}
                   </span>
                 )}
-                {entity.reimbursable && (
-                  <ReimbursementBadge category="B" />
+                {entity.reimbursementCategory && (
+                  <ReimbursementBadge category={entity.reimbursementCategory} />
                 )}
               </div>
             )}
