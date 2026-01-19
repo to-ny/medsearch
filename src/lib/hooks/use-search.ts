@@ -3,16 +3,7 @@
 import useSWR from 'swr';
 import type { SearchResponse } from '@/server/types/api';
 import type { EntityType, Language } from '@/server/types/domain';
-
-interface SearchFilters {
-  vtmCode?: string;
-  vmpCode?: string;
-  ampCode?: string;
-  atcCode?: string;
-  companyCode?: string;
-  vmpGroupCode?: string;
-  substanceCode?: string;
-}
+import type { SearchFilters } from '@/server/queries/search';
 
 interface UseSearchOptions {
   query: string;
