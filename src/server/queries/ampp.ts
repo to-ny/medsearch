@@ -1,11 +1,12 @@
 import 'server-only';
 
 import { sql } from '@/server/db/client';
-import type { AMPPWithRelations, DMPP, ReimbursementContext, ATCClassification, Copayment } from '@/server/types/entities';
+import type { AMPPWithRelations, DMPP, ReimbursementContext, ATCClassification } from '@/server/types/entities';
 import type { AMPSummary, ChapterIVParagraphSummary } from '@/server/types/summaries';
 
 /**
  * Get an AMPP by CTI extended with all relationships
+ * Single query using JSON aggregation for performance
  */
 export async function getAMPPWithRelations(ctiExtended: string): Promise<AMPPWithRelations | null> {
   const result = await sql`
@@ -23,6 +24,7 @@ export async function getAMPPWithRelations(ctiExtended: string): Promise<AMPPWit
       ampp.atc_code,
       ampp.start_date,
       ampp.end_date,
+      -- AMP as JSON object
       (SELECT json_build_object(
         'entityType', 'amp',
         'code', amp.code,
@@ -35,12 +37,14 @@ export async function getAMPPWithRelations(ctiExtended: string): Promise<AMPPWit
       ) FROM amp
       LEFT JOIN company c ON c.actor_nr = amp.company_actor_nr
       WHERE amp.code = ampp.amp_code) as amp,
+      -- ATC Classification as JSON object (or null)
       CASE WHEN ampp.atc_code IS NOT NULL THEN
         (SELECT json_build_object(
           'code', atc.code,
           'description', atc.description
         ) FROM atc_classification atc WHERE atc.code = ampp.atc_code)
       ELSE NULL END as atc_classification,
+      -- CNK codes (DMPP) as JSON array
       COALESCE(
         (
           SELECT json_agg(json_build_object(
@@ -60,6 +64,7 @@ export async function getAMPPWithRelations(ctiExtended: string): Promise<AMPPWit
         ),
         '[]'::json
       ) as cnk_codes,
+      -- Chapter IV paragraphs as JSON array
       COALESCE(
         (
           SELECT json_agg(json_build_object(
@@ -73,7 +78,68 @@ export async function getAMPPWithRelations(ctiExtended: string): Promise<AMPPWit
           WHERE d.ampp_cti_extended = ampp.cti_extended
         ),
         '[]'::json
-      ) as chapter_iv_paragraphs
+      ) as chapter_iv_paragraphs,
+      -- Reimbursement contexts with nested copayments as JSON array
+      COALESCE(
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', sub.id,
+              'dmppCode', sub.dmpp_code,
+              'deliveryEnvironment', sub.delivery_environment,
+              'legalReferencePath', sub.legal_reference_path,
+              'reimbursementCriterionCategory', sub.reimbursement_criterion_category,
+              'reimbursementCriterionCode', sub.reimbursement_criterion_code,
+              'flatRateSystem', sub.flat_rate_system,
+              'referencePrice', sub.reference_price,
+              'temporary', sub.temporary,
+              'referenceBasePrice', sub.reference_base_price,
+              'reimbursementBasePrice', sub.reimbursement_base_price,
+              'pricingUnitQuantity', sub.pricing_unit_quantity,
+              'pricingUnitLabel', sub.pricing_unit_label,
+              'startDate', sub.start_date,
+              'endDate', sub.end_date,
+              'copayments', sub.copayments
+            ) ORDER BY sub.reimbursement_criterion_category
+          )
+          FROM (
+            SELECT
+              rc.id,
+              rc.dmpp_code,
+              rc.delivery_environment,
+              rc.legal_reference_path,
+              rc.reimbursement_criterion_category,
+              rc.reimbursement_criterion_code,
+              rc.flat_rate_system,
+              rc.reference_price,
+              rc.temporary,
+              rc.reference_base_price,
+              rc.reimbursement_base_price,
+              rc.pricing_unit_quantity,
+              rc.pricing_unit_label,
+              rc.start_date,
+              rc.end_date,
+              COALESCE(
+                (
+                  SELECT json_agg(json_build_object(
+                    'id', cp.id,
+                    'regimenType', cp.regimen_type,
+                    'feeAmount', cp.fee_amount,
+                    'reimbursementAmount', cp.reimbursement_amount
+                  ) ORDER BY cp.regimen_type)
+                  FROM copayment cp
+                  WHERE cp.reimbursement_context_id = rc.id
+                ),
+                '[]'::json
+              ) as copayments
+            FROM reimbursement_context rc
+            JOIN dmpp d ON d.code = rc.dmpp_code AND d.delivery_environment = rc.delivery_environment
+            WHERE d.ampp_cti_extended = ampp.cti_extended
+              AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
+          ) sub
+        ),
+        '[]'::json
+      ) as reimbursement_contexts
     FROM ampp
     WHERE ampp.cti_extended = ${ctiExtended}
   `;
@@ -81,63 +147,6 @@ export async function getAMPPWithRelations(ctiExtended: string): Promise<AMPPWit
   if (result.rows.length === 0) return null;
 
   const row = result.rows[0];
-
-  // Get reimbursement contexts separately (complex nested query)
-  const reimbursementResult = await sql`
-    SELECT
-      rc.id,
-      rc.dmpp_code,
-      rc.delivery_environment,
-      rc.legal_reference_path,
-      rc.reimbursement_criterion_category,
-      rc.reimbursement_criterion_code,
-      rc.flat_rate_system,
-      rc.reference_price,
-      rc.temporary,
-      rc.reference_base_price,
-      rc.reimbursement_base_price,
-      rc.pricing_unit_quantity,
-      rc.pricing_unit_label,
-      rc.start_date,
-      rc.end_date,
-      COALESCE(
-        (
-          SELECT json_agg(json_build_object(
-            'id', cp.id,
-            'regimenType', cp.regimen_type,
-            'feeAmount', cp.fee_amount,
-            'reimbursementAmount', cp.reimbursement_amount
-          ) ORDER BY cp.regimen_type)
-          FROM copayment cp
-          WHERE cp.reimbursement_context_id = rc.id
-        ),
-        '[]'::json
-      ) as copayments
-    FROM reimbursement_context rc
-    JOIN dmpp d ON d.code = rc.dmpp_code AND d.delivery_environment = rc.delivery_environment
-    WHERE d.ampp_cti_extended = ${ctiExtended}
-      AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
-    ORDER BY rc.reimbursement_criterion_category
-  `;
-
-  const reimbursementContexts: ReimbursementContext[] = reimbursementResult.rows.map((r) => ({
-    id: r.id,
-    dmppCode: r.dmpp_code,
-    deliveryEnvironment: r.delivery_environment,
-    legalReferencePath: r.legal_reference_path,
-    reimbursementCriterionCategory: r.reimbursement_criterion_category,
-    reimbursementCriterionCode: r.reimbursement_criterion_code,
-    flatRateSystem: r.flat_rate_system,
-    referencePrice: r.reference_price,
-    temporary: r.temporary,
-    referenceBasePrice: r.reference_base_price,
-    reimbursementBasePrice: r.reimbursement_base_price,
-    pricingUnitQuantity: r.pricing_unit_quantity,
-    pricingUnitLabel: r.pricing_unit_label,
-    startDate: r.start_date,
-    endDate: r.end_date,
-    copayments: r.copayments as Copayment[],
-  }));
 
   return {
     ctiExtended: row.cti_extended,
@@ -156,7 +165,7 @@ export async function getAMPPWithRelations(ctiExtended: string): Promise<AMPPWit
     amp: row.amp as AMPSummary,
     atcClassification: row.atc_classification as ATCClassification | null,
     cnkCodes: row.cnk_codes as DMPP[],
-    reimbursementContexts,
+    reimbursementContexts: row.reimbursement_contexts as ReimbursementContext[],
     chapterIVParagraphs: row.chapter_iv_paragraphs as ChapterIVParagraphSummary[],
   };
 }
