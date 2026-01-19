@@ -17,6 +17,7 @@ interface RawSearchResult {
   packInfo?: string | null;
   price?: number | null;
   reimbursable?: boolean;
+  reimbursementCategory?: string | null;
   cnkCode?: string | null;
   productCount?: number;
   blackTriangle?: boolean;
@@ -584,12 +585,28 @@ export async function executeSearch(
             NULL as company_name,
             ampp.pack_display_value as pack_info,
             ampp.ex_factory_price as price,
-            EXISTS(
-              SELECT 1 FROM dmpp d
+            (
+              SELECT rc.reimbursement_criterion_category
+              FROM dmpp d
+              JOIN reimbursement_context rc
+                ON rc.dmpp_code = d.code
+                AND rc.delivery_environment = d.delivery_environment
               WHERE d.ampp_cti_extended = ampp.cti_extended
-              AND d.reimbursable = true
-              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-            ) as reimbursable,
+                AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+                AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
+              ORDER BY
+                CASE rc.reimbursement_criterion_category
+                  WHEN 'A' THEN 1
+                  WHEN 'B' THEN 2
+                  WHEN 'C' THEN 3
+                  WHEN 'Cs' THEN 4
+                  WHEN 'Cx' THEN 5
+                  WHEN 'Fa' THEN 6
+                  WHEN 'Fb' THEN 7
+                  ELSE 8
+                END
+              LIMIT 1
+            ) as reimbursement_category,
             (
               SELECT d.code FROM dmpp d
               WHERE d.ampp_cti_extended = ampp.cti_extended
@@ -629,12 +646,28 @@ export async function executeSearch(
             NULL as company_name,
             ampp.pack_display_value as pack_info,
             ampp.ex_factory_price as price,
-            EXISTS(
-              SELECT 1 FROM dmpp d
+            (
+              SELECT rc.reimbursement_criterion_category
+              FROM dmpp d
+              JOIN reimbursement_context rc
+                ON rc.dmpp_code = d.code
+                AND rc.delivery_environment = d.delivery_environment
               WHERE d.ampp_cti_extended = ampp.cti_extended
-              AND d.reimbursable = true
-              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-            ) as reimbursable,
+                AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+                AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
+              ORDER BY
+                CASE rc.reimbursement_criterion_category
+                  WHEN 'A' THEN 1
+                  WHEN 'B' THEN 2
+                  WHEN 'C' THEN 3
+                  WHEN 'Cs' THEN 4
+                  WHEN 'Cx' THEN 5
+                  WHEN 'Fa' THEN 6
+                  WHEN 'Fb' THEN 7
+                  ELSE 8
+                END
+              LIMIT 1
+            ) as reimbursement_category,
             (
               SELECT d.code FROM dmpp d
               WHERE d.ampp_cti_extended = ampp.cti_extended
@@ -663,7 +696,25 @@ export async function executeSearch(
             NULL as company_name,
             ampp.pack_display_value as pack_info,
             ampp.ex_factory_price as price,
-            d.reimbursable,
+            (
+              SELECT rc.reimbursement_criterion_category
+              FROM reimbursement_context rc
+              WHERE rc.dmpp_code = d.code
+                AND rc.delivery_environment = d.delivery_environment
+                AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
+              ORDER BY
+                CASE rc.reimbursement_criterion_category
+                  WHEN 'A' THEN 1
+                  WHEN 'B' THEN 2
+                  WHEN 'C' THEN 3
+                  WHEN 'Cs' THEN 4
+                  WHEN 'Cx' THEN 5
+                  WHEN 'Fa' THEN 6
+                  WHEN 'Fb' THEN 7
+                  ELSE 8
+                END
+              LIMIT 1
+            ) as reimbursement_category,
             d.code as cnk_code,
             NULL as product_count,
             NULL as black_triangle
@@ -686,12 +737,28 @@ export async function executeSearch(
             NULL as company_name,
             ampp.pack_display_value as pack_info,
             ampp.ex_factory_price as price,
-            EXISTS(
-              SELECT 1 FROM dmpp d
+            (
+              SELECT rc.reimbursement_criterion_category
+              FROM dmpp d
+              JOIN reimbursement_context rc
+                ON rc.dmpp_code = d.code
+                AND rc.delivery_environment = d.delivery_environment
               WHERE d.ampp_cti_extended = ampp.cti_extended
-              AND d.reimbursable = true
-              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-            ) as reimbursable,
+                AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+                AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
+              ORDER BY
+                CASE rc.reimbursement_criterion_category
+                  WHEN 'A' THEN 1
+                  WHEN 'B' THEN 2
+                  WHEN 'C' THEN 3
+                  WHEN 'Cs' THEN 4
+                  WHEN 'Cx' THEN 5
+                  WHEN 'Fa' THEN 6
+                  WHEN 'Fb' THEN 7
+                  ELSE 8
+                END
+              LIMIT 1
+            ) as reimbursement_category,
             (
               SELECT d.code FROM dmpp d
               WHERE d.ampp_cti_extended = ampp.cti_extended
@@ -727,7 +794,8 @@ export async function executeSearch(
               parentCode: r.parent_code,
               packInfo: r.pack_info,
               price: r.price,
-              reimbursable: r.reimbursable,
+              reimbursable: r.reimbursement_category != null,
+              reimbursementCategory: r.reimbursement_category,
               cnkCode: r.cnk_code,
             });
           });
@@ -981,6 +1049,7 @@ export async function executeSearch(
     packInfo: r.packInfo || undefined,
     price: r.price ?? undefined,
     reimbursable: r.reimbursable ?? undefined,
+    reimbursementCategory: r.reimbursementCategory ?? undefined,
     cnkCode: r.cnkCode || undefined,
     productCount: r.productCount ?? undefined,
     blackTriangle: r.blackTriangle ?? undefined,

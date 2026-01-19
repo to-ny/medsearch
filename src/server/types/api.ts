@@ -17,6 +17,7 @@ export interface SearchResultItem {
   packInfo?: string;
   price?: number;
   reimbursable?: boolean;
+  reimbursementCategory?: string;  // A, B, C, Cs, Cx, Fa, Fb
   cnkCode?: string;
   productCount?: number;
   blackTriangle?: boolean;
