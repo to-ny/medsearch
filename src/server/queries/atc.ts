@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { sql } from '@/server/db/client';
+import { sql, query } from '@/server/db/client';
 import type { ATCWithRelations } from '@/server/types/entities';
 import type { ATCSummary, AMPPSummary } from '@/server/types/summaries';
 
@@ -24,6 +24,7 @@ function getParentATCCode(code: string): string | null {
 
 /**
  * Get an ATC classification by code with relationships
+ * Single query using JSON aggregation for performance
  */
 export async function getATCWithRelations(
   code: string,
@@ -33,7 +34,73 @@ export async function getATCWithRelations(
   const result = await sql`
     SELECT
       atc.code,
-      atc.description
+      atc.description,
+      -- Children classifications as JSON array
+      (
+        SELECT COALESCE(json_agg(
+          json_build_object(
+            'entityType', 'atc',
+            'code', c.code,
+            'description', c.description
+          ) ORDER BY c.code
+        ), '[]'::json)
+        FROM atc_classification c
+        WHERE c.code LIKE ${code + '%'}
+          AND c.code != ${code}
+          AND LENGTH(c.code) = ${code.length + (code.length === 1 ? 2 : code.length <= 4 ? 1 : 2)}
+      ) as children,
+      -- Package count
+      (
+        SELECT COUNT(DISTINCT ampp.cti_extended)::int
+        FROM ampp
+        WHERE ampp.atc_code LIKE ${code + '%'}
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+      ) as package_count,
+      -- Paginated packages as JSON array
+      (
+        SELECT COALESCE(json_agg(
+          json_build_object(
+            'entityType', 'ampp',
+            'code', sub.code,
+            'name', sub.name,
+            'ampCode', sub.amp_code,
+            'ampName', sub.amp_name,
+            'packDisplayValue', sub.pack_display_value,
+            'exFactoryPrice', sub.ex_factory_price,
+            'cnkCode', sub.cnk_code,
+            'reimbursable', sub.reimbursable
+          )
+        ), '[]'::json)
+        FROM (
+          SELECT DISTINCT ON (ampp.cti_extended)
+            ampp.cti_extended as code,
+            ampp.prescription_name as name,
+            ampp.amp_code,
+            amp.name as amp_name,
+            ampp.pack_display_value,
+            ampp.ex_factory_price,
+            (
+              SELECT d.code FROM dmpp d
+              WHERE d.ampp_cti_extended = ampp.cti_extended
+              AND d.delivery_environment = 'P'
+              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+              LIMIT 1
+            ) as cnk_code,
+            EXISTS(
+              SELECT 1 FROM dmpp d
+              WHERE d.ampp_cti_extended = ampp.cti_extended
+              AND d.reimbursable = true
+              AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+            ) as reimbursable
+          FROM ampp
+          JOIN amp ON amp.code = ampp.amp_code
+          WHERE ampp.atc_code LIKE ${code + '%'}
+            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+          ORDER BY ampp.cti_extended, ampp.prescription_name->>'en'
+          LIMIT ${packagesLimit}
+          OFFSET ${packagesOffset}
+        ) sub
+      ) as packages
     FROM atc_classification atc
     WHERE atc.code = ${code}
   `;
@@ -43,107 +110,44 @@ export async function getATCWithRelations(
   const row = result.rows[0];
   const parentCode = getParentATCCode(code);
 
-  // Get child classifications
-  const childrenResult = await sql`
-    SELECT code, description
-    FROM atc_classification
-    WHERE code LIKE ${code + '%'}
-      AND code != ${code}
-      AND LENGTH(code) = ${code.length + (code.length === 1 ? 2 : code.length <= 4 ? 1 : 2)}
-    ORDER BY code
-  `;
-
-  const children: ATCSummary[] = childrenResult.rows.map((c) => ({
-    entityType: 'atc',
-    code: c.code,
-    description: c.description,
-  }));
-
-  // Get package count
-  const countResult = await sql`
-    SELECT COUNT(DISTINCT ampp.cti_extended)::int as count
-    FROM ampp
-    WHERE ampp.atc_code LIKE ${code + '%'}
-      AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-  `;
-
-  // Get paginated packages
-  const packagesResult = await sql`
-    SELECT DISTINCT ON (ampp.cti_extended)
-      ampp.cti_extended as code,
-      ampp.prescription_name as name,
-      ampp.amp_code,
-      amp.name as amp_name,
-      ampp.pack_display_value,
-      ampp.ex_factory_price,
-      (
-        SELECT d.code FROM dmpp d
-        WHERE d.ampp_cti_extended = ampp.cti_extended
-        AND d.delivery_environment = 'P'
-        AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-        LIMIT 1
-      ) as cnk_code,
-      EXISTS(
-        SELECT 1 FROM dmpp d
-        WHERE d.ampp_cti_extended = ampp.cti_extended
-        AND d.reimbursable = true
-        AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-      ) as reimbursable
-    FROM ampp
-    JOIN amp ON amp.code = ampp.amp_code
-    WHERE ampp.atc_code LIKE ${code + '%'}
-      AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-    ORDER BY ampp.cti_extended, ampp.prescription_name->>'en'
-    LIMIT ${packagesLimit}
-    OFFSET ${packagesOffset}
-  `;
-
-  const packages: AMPPSummary[] = packagesResult.rows.map((p) => ({
-    entityType: 'ampp',
-    code: p.code,
-    name: p.name,
-    ampCode: p.amp_code,
-    ampName: p.amp_name,
-    packDisplayValue: p.pack_display_value,
-    exFactoryPrice: p.ex_factory_price,
-    cnkCode: p.cnk_code,
-    reimbursable: p.reimbursable,
-  }));
-
   return {
     code: row.code,
     description: row.description,
     parentCode,
-    children,
-    packages,
-    packageCount: countResult.rows[0].count,
+    children: row.children as ATCSummary[],
+    packages: row.packages as AMPPSummary[],
+    packageCount: row.package_count,
   };
 }
 
 /**
  * Get ATC hierarchy breadcrumb
+ * Uses a single query to fetch all ancestor codes
  */
 export async function getATCHierarchy(code: string): Promise<ATCSummary[]> {
-  const hierarchy: ATCSummary[] = [];
+  // Build all possible ancestor codes based on ATC structure
+  const ancestorCodes: string[] = [];
   let currentCode: string | null = code;
 
   while (currentCode) {
-    const result = await sql`
-      SELECT code, description
-      FROM atc_classification
-      WHERE code = ${currentCode}
-    `;
-
-    if (result.rows.length > 0) {
-      hierarchy.unshift({
-        entityType: 'atc',
-        code: result.rows[0].code,
-        description: result.rows[0].description,
-      });
-    }
-
+    ancestorCodes.push(currentCode);
     currentCode = getParentATCCode(currentCode);
   }
 
-  return hierarchy;
+  if (ancestorCodes.length === 0) return [];
+
+  // Fetch all ancestors in a single query using parameterized query
+  const result = await query<{ code: string; description: string }>(
+    `SELECT code, description
+     FROM atc_classification
+     WHERE code = ANY($1)
+     ORDER BY LENGTH(code) ASC`,
+    [ancestorCodes]
+  );
+
+  return result.rows.map((row) => ({
+    entityType: 'atc' as const,
+    code: row.code,
+    description: row.description,
+  }));
 }
