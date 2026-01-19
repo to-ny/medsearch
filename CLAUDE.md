@@ -5,7 +5,7 @@ Next.js App Router + PostgreSQL application for Belgium's SAM v2 medication data
 ## Commands
 
 ```bash
-bun lint && bun typecheck   # Run before commits
+bun lint && bun typecheck && bun run test   # Run after code changes
 ```
 
 ## Code Organization
