@@ -49,6 +49,103 @@ export interface UseLinksReturn {
 }
 
 /**
+ * Internal factory that creates the links object for a given language.
+ * Used by both useLinks (hook) and createLinks (non-hook).
+ */
+function createLinksForLanguage(language: Language): UseLinksReturn {
+  const entitySlug = (name: MultilingualText | null | undefined, code: string) =>
+    generateEntitySlug(name, code, language);
+
+  const atcSlug = (code: string, name: MultilingualText | null | undefined) =>
+    generateATCSlug(code, name, language);
+
+  const companySlug = (name: string | null | undefined, code: string) =>
+    generateCompanySlug(name || '', code);
+
+  return {
+    toSubstance: (name, code) =>
+      `/${language}/substances/${entitySlug(name, code)}`,
+
+    toIngredient: (name, code) =>
+      `/${language}/ingredients/${entitySlug(name, code)}`,
+
+    toGeneric: (name, code) =>
+      `/${language}/generics/${entitySlug(name, code)}`,
+
+    toMedication: (name, code) =>
+      `/${language}/medications/${entitySlug(name, code)}`,
+
+    toPackage: (name, code) =>
+      `/${language}/packages/${entitySlug(name, code)}`,
+
+    toCompany: (name, code) =>
+      `/${language}/companies/${companySlug(name, code)}`,
+
+    toClassification: (code, name) =>
+      `/${language}/classifications/${atcSlug(code, name)}`,
+
+    toTherapeuticGroup: (name, code) =>
+      `/${language}/therapeutic-groups/${entitySlug(name, code)}`,
+
+    toChapterIV: (chapter, paragraph) =>
+      `/${language}/chapter-iv/${chapter}/${paragraph}`,
+
+    toEntity: (type, name, code) => {
+      switch (type) {
+        case 'vtm':
+          return `/${language}/substances/${entitySlug(name, code)}`;
+        case 'substance':
+          return `/${language}/ingredients/${entitySlug(name, code)}`;
+        case 'vmp':
+          return `/${language}/generics/${entitySlug(name, code)}`;
+        case 'amp':
+          return `/${language}/medications/${entitySlug(name, code)}`;
+        case 'ampp':
+          return `/${language}/packages/${entitySlug(name, code)}`;
+        case 'company': {
+          const compName = name?.[language] || name?.en || name?.nl || name?.fr || name?.de || '';
+          return `/${language}/companies/${companySlug(compName, code)}`;
+        }
+        case 'vmp_group':
+          return `/${language}/therapeutic-groups/${entitySlug(name, code)}`;
+        case 'atc':
+          return `/${language}/classifications/${atcSlug(code, name)}`;
+        default:
+          return `/${language}`;
+      }
+    },
+
+    toSearch: (params) => {
+      if (!params) return `/${language}/search`;
+
+      const searchParams = new URLSearchParams();
+      if (params.q) searchParams.set('q', params.q);
+      if (params.types) {
+        const types = Array.isArray(params.types) ? params.types.join(',') : params.types;
+        searchParams.set('types', types);
+      }
+      if (params.vtm) searchParams.set('vtm', params.vtm);
+      if (params.vmp) searchParams.set('vmp', params.vmp);
+      if (params.amp) searchParams.set('amp', params.amp);
+      if (params.atc) searchParams.set('atc', params.atc);
+      if (params.company) searchParams.set('company', params.company);
+      if (params.vmpGroup) searchParams.set('vmpGroup', params.vmpGroup);
+      if (params.substance) searchParams.set('substance', params.substance);
+      if (params.page && params.page > 1) searchParams.set('page', params.page.toString());
+
+      const qs = searchParams.toString();
+      return `/${language}/search${qs ? `?${qs}` : ''}`;
+    },
+
+    toHome: () => `/${language}`,
+
+    withPage: (basePath, page) => {
+      return page > 1 ? `${basePath}?page=${page}` : basePath;
+    },
+  };
+}
+
+/**
  * Hook providing centralized, language-aware URL generation for the entire application.
  *
  * All URLs are prefixed with the current language from context.
@@ -68,106 +165,7 @@ export interface UseLinksReturn {
  */
 export function useLinks(): UseLinksReturn {
   const { language } = useLanguage();
-
-  // Helper: generate entity slug with selected language
-  const entitySlug = (name: MultilingualText | null | undefined, code: string) =>
-    generateEntitySlug(name, code, language);
-
-  // Helper: generate ATC slug with selected language
-  const atcSlug = (code: string, name: MultilingualText | null | undefined) =>
-    generateATCSlug(code, name, language);
-
-  // Helper: generate company slug
-  const companySlug = (name: string | null | undefined, code: string) =>
-    generateCompanySlug(name || '', code);
-
-  return {
-    // Entity detail pages
-    toSubstance: (name, code) =>
-      `/${language}/substances/${entitySlug(name, code)}`,
-
-    toIngredient: (name, code) =>
-      `/${language}/ingredients/${entitySlug(name, code)}`,
-
-    toGeneric: (name, code) =>
-      `/${language}/generics/${entitySlug(name, code)}`,
-
-    toMedication: (name, code) =>
-      `/${language}/medications/${entitySlug(name, code)}`,
-
-    toPackage: (name, code) =>
-      `/${language}/packages/${entitySlug(name, code)}`,
-
-    toCompany: (name, code) =>
-      `/${language}/companies/${companySlug(name, code)}`,
-
-    toClassification: (code, name) =>
-      `/${language}/classifications/${atcSlug(code, name)}`,
-
-    toTherapeuticGroup: (name, code) =>
-      `/${language}/therapeutic-groups/${entitySlug(name, code)}`,
-
-    toChapterIV: (chapter, paragraph) =>
-      `/${language}/chapter-iv/${chapter}/${paragraph}`,
-
-    // Dynamic entity link based on entity type
-    toEntity: (type, name, code) => {
-      switch (type) {
-        case 'vtm':
-          return `/${language}/substances/${entitySlug(name, code)}`;
-        case 'substance':
-          return `/${language}/ingredients/${entitySlug(name, code)}`;
-        case 'vmp':
-          return `/${language}/generics/${entitySlug(name, code)}`;
-        case 'amp':
-          return `/${language}/medications/${entitySlug(name, code)}`;
-        case 'ampp':
-          return `/${language}/packages/${entitySlug(name, code)}`;
-        case 'company': {
-          // Company name from search results is MultilingualText with 'en' key
-          const compName = name?.[language] || name?.en || name?.nl || name?.fr || name?.de || '';
-          return `/${language}/companies/${companySlug(compName, code)}`;
-        }
-        case 'vmp_group':
-          return `/${language}/therapeutic-groups/${entitySlug(name, code)}`;
-        case 'atc':
-          return `/${language}/classifications/${atcSlug(code, name)}`;
-        default:
-          return `/${language}`;
-      }
-    },
-
-    // Search page with optional filters
-    toSearch: (params) => {
-      if (!params) return `/${language}/search`;
-
-      const searchParams = new URLSearchParams();
-      if (params.q) searchParams.set('q', params.q);
-      if (params.types) {
-        const types = Array.isArray(params.types) ? params.types.join(',') : params.types;
-        searchParams.set('types', types);
-      }
-      if (params.vtm) searchParams.set('vtm', params.vtm);
-      if (params.vmp) searchParams.set('vmp', params.vmp);
-      if (params.amp) searchParams.set('amp', params.amp);
-      if (params.atc) searchParams.set('atc', params.atc);
-      if (params.company) searchParams.set('company', params.company);
-      if (params.vmpGroup) searchParams.set('vmpGroup', params.vmpGroup);
-      if (params.substance) searchParams.set('substance', params.substance);
-      if (params.page && params.page > 1) searchParams.set('page', params.page.toString());
-
-      const qs = searchParams.toString();
-      return `/${language}/search${qs ? `?${qs}` : ''}`;
-    },
-
-    // Home page
-    toHome: () => `/${language}`,
-
-    // Pagination helper
-    withPage: (basePath, page) => {
-      return page > 1 ? `${basePath}?page=${page}` : basePath;
-    },
-  };
+  return createLinksForLanguage(language);
 }
 
 /**
@@ -175,94 +173,5 @@ export function useLinks(): UseLinksReturn {
  * Provides the same API as useLinks but requires language to be passed explicitly.
  */
 export function createLinks(language: Language): UseLinksReturn {
-  const entitySlug = (name: MultilingualText | null | undefined, code: string) =>
-    generateEntitySlug(name, code, language);
-
-  const atcSlug = (code: string, name: MultilingualText | null | undefined) =>
-    generateATCSlug(code, name, language);
-
-  const companySlug = (name: string | null | undefined, code: string) =>
-    generateCompanySlug(name || '', code);
-
-  return {
-    toSubstance: (name, code) =>
-      `/${language}/substances/${entitySlug(name, code)}`,
-
-    toIngredient: (name, code) =>
-      `/${language}/ingredients/${entitySlug(name, code)}`,
-
-    toGeneric: (name, code) =>
-      `/${language}/generics/${entitySlug(name, code)}`,
-
-    toMedication: (name, code) =>
-      `/${language}/medications/${entitySlug(name, code)}`,
-
-    toPackage: (name, code) =>
-      `/${language}/packages/${entitySlug(name, code)}`,
-
-    toCompany: (name, code) =>
-      `/${language}/companies/${companySlug(name, code)}`,
-
-    toClassification: (code, name) =>
-      `/${language}/classifications/${atcSlug(code, name)}`,
-
-    toTherapeuticGroup: (name, code) =>
-      `/${language}/therapeutic-groups/${entitySlug(name, code)}`,
-
-    toChapterIV: (chapter, paragraph) =>
-      `/${language}/chapter-iv/${chapter}/${paragraph}`,
-
-    toEntity: (type, name, code) => {
-      switch (type) {
-        case 'vtm':
-          return `/${language}/substances/${entitySlug(name, code)}`;
-        case 'substance':
-          return `/${language}/ingredients/${entitySlug(name, code)}`;
-        case 'vmp':
-          return `/${language}/generics/${entitySlug(name, code)}`;
-        case 'amp':
-          return `/${language}/medications/${entitySlug(name, code)}`;
-        case 'ampp':
-          return `/${language}/packages/${entitySlug(name, code)}`;
-        case 'company': {
-          const compName = name?.[language] || name?.en || name?.nl || name?.fr || name?.de || '';
-          return `/${language}/companies/${companySlug(compName, code)}`;
-        }
-        case 'vmp_group':
-          return `/${language}/therapeutic-groups/${entitySlug(name, code)}`;
-        case 'atc':
-          return `/${language}/classifications/${atcSlug(code, name)}`;
-        default:
-          return `/${language}`;
-      }
-    },
-
-    toSearch: (params) => {
-      if (!params) return `/${language}/search`;
-
-      const searchParams = new URLSearchParams();
-      if (params.q) searchParams.set('q', params.q);
-      if (params.types) {
-        const types = Array.isArray(params.types) ? params.types.join(',') : params.types;
-        searchParams.set('types', types);
-      }
-      if (params.vtm) searchParams.set('vtm', params.vtm);
-      if (params.vmp) searchParams.set('vmp', params.vmp);
-      if (params.amp) searchParams.set('amp', params.amp);
-      if (params.atc) searchParams.set('atc', params.atc);
-      if (params.company) searchParams.set('company', params.company);
-      if (params.vmpGroup) searchParams.set('vmpGroup', params.vmpGroup);
-      if (params.substance) searchParams.set('substance', params.substance);
-      if (params.page && params.page > 1) searchParams.set('page', params.page.toString());
-
-      const qs = searchParams.toString();
-      return `/${language}/search${qs ? `?${qs}` : ''}`;
-    },
-
-    toHome: () => `/${language}`,
-
-    withPage: (basePath, page) => {
-      return page > 1 ? `${basePath}?page=${page}` : basePath;
-    },
-  };
+  return createLinksForLanguage(language);
 }
