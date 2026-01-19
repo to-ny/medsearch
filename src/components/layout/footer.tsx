@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils/cn';
 import { useTranslation } from '@/lib/hooks/use-translation';
+import { SAMDataBadgeStatic } from './SAMDataBadge';
 
 interface FooterProps {
   className?: string;
@@ -20,9 +21,12 @@ export function Footer({ className }: FooterProps) {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
-            {t('footer.disclaimer')}
-          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
+              {t('footer.disclaimer')}
+            </p>
+            <SAMDataBadgeStatic />
+          </div>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Made with &#10084;&#65039; by{' '}
             <a
