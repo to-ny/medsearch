@@ -162,32 +162,45 @@ export function AMPDetail({ amp }: AMPDetailProps) {
           {amp.ingredients.length > 0 && (
             <Section title={t('detail.activeIngredients')} count={amp.ingredients.length}>
               <div className="space-y-2">
-                {amp.ingredients.map((ingredient) => (
-                  <div
-                    key={`${ingredient.componentSequenceNr}-${ingredient.rank}`}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
-                  >
-                    <div className="flex items-center gap-2">
-                      {ingredient.substanceName ? (
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          <LocalizedText text={ingredient.substanceName} />
+                {amp.ingredients.map((ingredient) => {
+                  const content = (
+                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {ingredient.substanceName ? (
+                          <span className={`font-medium ${ingredient.substanceCode ? 'text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                            <LocalizedText text={ingredient.substanceName} />
+                          </span>
+                        ) : (
+                          <span className="text-gray-500 dark:text-gray-400 italic">
+                            {t('detail.unknownSubstance')}
+                          </span>
+                        )}
+                        {ingredient.type === 'EXCIPIENT' && (
+                          <Badge variant="outline" size="sm">{t('detail.excipients')}</Badge>
+                        )}
+                      </div>
+                      {ingredient.strengthDescription && (
+                        <span className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                          {ingredient.strengthDescription}
                         </span>
-                      ) : (
-                        <span className="text-gray-500 dark:text-gray-400 italic">
-                          {t('detail.unknownSubstance')}
-                        </span>
-                      )}
-                      {ingredient.type === 'EXCIPIENT' && (
-                        <Badge variant="outline" size="sm">{t('detail.excipients')}</Badge>
                       )}
                     </div>
-                    {ingredient.strengthDescription && (
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-mono">
-                        {ingredient.strengthDescription}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                  );
+
+                  return ingredient.substanceCode ? (
+                    <Link
+                      key={`${ingredient.componentSequenceNr}-${ingredient.rank}`}
+                      href={links.toIngredient(ingredient.substanceName, ingredient.substanceCode)}
+                      className="block group"
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div key={`${ingredient.componentSequenceNr}-${ingredient.rank}`}>
+                      {content}
+                    </div>
+                  );
+                })}
               </div>
             </Section>
           )}

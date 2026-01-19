@@ -34,7 +34,8 @@
     "atc": "ATC",
     "medication": "Médicament",
     "classification": "Classification",
-    "therapeuticGroup": "Groupe Thérapeutique"
+    "therapeuticGroup": "Groupe Thérapeutique",
+    "ingredient": "Ingrédient"
   },
   "search": {
     "resultsFor": "pour",

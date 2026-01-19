@@ -36,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // Fetch VTMs
+  // Fetch VTMs (Virtual Therapeutic Moieties) -> /substances/
   const vtmResult = await sql`
     SELECT code, name FROM vtm
     WHERE end_date IS NULL OR end_date > NOW()
@@ -53,6 +53,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         url: `${BASE_URL}/${lang}/substances/${slug}`,
         changeFrequency: 'monthly',
         priority: 0.8,
+      });
+    }
+  }
+
+  // Fetch Substances (ingredients) -> /ingredients/
+  const substanceResult = await sql`
+    SELECT code, name FROM substance
+    WHERE end_date IS NULL OR end_date > NOW()
+    ORDER BY code
+  `;
+
+  for (const substance of substanceResult.rows) {
+    const code = substance.code as string;
+    const name = substance.name as MultilingualText | null;
+
+    for (const lang of LANGUAGES) {
+      const slug = generateEntitySlug(name, code, lang);
+      entries.push({
+        url: `${BASE_URL}/${lang}/ingredients/${slug}`,
+        changeFrequency: 'monthly',
+        priority: 0.6,
       });
     }
   }

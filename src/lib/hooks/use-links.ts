@@ -16,6 +16,7 @@ export interface SearchLinkParams {
   atc?: string;
   company?: string;
   vmpGroup?: string;
+  substance?: string;
   page?: number;
 }
 
@@ -25,6 +26,7 @@ export interface SearchLinkParams {
 export interface UseLinksReturn {
   // Entity detail pages
   toSubstance: (name: MultilingualText | null | undefined, code: string) => string;
+  toIngredient: (name: MultilingualText | null | undefined, code: string) => string;
   toGeneric: (name: MultilingualText | null | undefined, code: string) => string;
   toMedication: (name: MultilingualText | null | undefined, code: string) => string;
   toPackage: (name: MultilingualText | null | undefined, code: string) => string;
@@ -84,6 +86,9 @@ export function useLinks(): UseLinksReturn {
     toSubstance: (name, code) =>
       `/${language}/substances/${entitySlug(name, code)}`,
 
+    toIngredient: (name, code) =>
+      `/${language}/ingredients/${entitySlug(name, code)}`,
+
     toGeneric: (name, code) =>
       `/${language}/generics/${entitySlug(name, code)}`,
 
@@ -109,8 +114,9 @@ export function useLinks(): UseLinksReturn {
     toEntity: (type, name, code) => {
       switch (type) {
         case 'vtm':
-        case 'substance':
           return `/${language}/substances/${entitySlug(name, code)}`;
+        case 'substance':
+          return `/${language}/ingredients/${entitySlug(name, code)}`;
         case 'vmp':
           return `/${language}/generics/${entitySlug(name, code)}`;
         case 'amp':
@@ -147,6 +153,7 @@ export function useLinks(): UseLinksReturn {
       if (params.atc) searchParams.set('atc', params.atc);
       if (params.company) searchParams.set('company', params.company);
       if (params.vmpGroup) searchParams.set('vmpGroup', params.vmpGroup);
+      if (params.substance) searchParams.set('substance', params.substance);
       if (params.page && params.page > 1) searchParams.set('page', params.page.toString());
 
       const qs = searchParams.toString();
@@ -181,6 +188,9 @@ export function createLinks(language: Language): UseLinksReturn {
     toSubstance: (name, code) =>
       `/${language}/substances/${entitySlug(name, code)}`,
 
+    toIngredient: (name, code) =>
+      `/${language}/ingredients/${entitySlug(name, code)}`,
+
     toGeneric: (name, code) =>
       `/${language}/generics/${entitySlug(name, code)}`,
 
@@ -205,8 +215,9 @@ export function createLinks(language: Language): UseLinksReturn {
     toEntity: (type, name, code) => {
       switch (type) {
         case 'vtm':
-        case 'substance':
           return `/${language}/substances/${entitySlug(name, code)}`;
+        case 'substance':
+          return `/${language}/ingredients/${entitySlug(name, code)}`;
         case 'vmp':
           return `/${language}/generics/${entitySlug(name, code)}`;
         case 'amp':
@@ -241,6 +252,7 @@ export function createLinks(language: Language): UseLinksReturn {
       if (params.atc) searchParams.set('atc', params.atc);
       if (params.company) searchParams.set('company', params.company);
       if (params.vmpGroup) searchParams.set('vmpGroup', params.vmpGroup);
+      if (params.substance) searchParams.set('substance', params.substance);
       if (params.page && params.page > 1) searchParams.set('page', params.page.toString());
 
       const qs = searchParams.toString();

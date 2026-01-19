@@ -25,7 +25,7 @@ export function generateAlternates(
  * Generate alternates for an entity with multilingual name
  */
 export function generateEntityAlternates(
-  entityType: 'substances' | 'generics' | 'medications' | 'packages' | 'therapeutic-groups',
+  entityType: 'substances' | 'ingredients' | 'generics' | 'medications' | 'packages' | 'therapeutic-groups',
   name: MultilingualText | null | undefined,
   id: string
 ) {

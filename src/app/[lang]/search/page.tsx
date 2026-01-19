@@ -32,11 +32,12 @@ function SearchContent() {
   const atcCode = searchParams.get('atc') || undefined;
   const companyCode = searchParams.get('company') || undefined;
   const vmpGroupCode = searchParams.get('vmpGroup') || undefined;
+  const substanceCode = searchParams.get('substance') || undefined;
 
   const filters = useMemo(() => {
-    const hasFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode;
-    return hasFilters ? { vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode } : undefined;
-  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode]);
+    const hasFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode || substanceCode;
+    return hasFilters ? { vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode } : undefined;
+  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode]);
 
   const [query, setQuery] = useState(queryParam);
   const [selectedTypes, setSelectedTypes] = useState<EntityType[]>(() => {
@@ -89,6 +90,7 @@ function SearchContent() {
       atc: atcCode,
       company: companyCode,
       vmpGroup: vmpGroupCode,
+      substance: substanceCode,
     }));
   };
 
@@ -117,6 +119,7 @@ function SearchContent() {
       atc: filterKey !== 'atc' ? atcCode : undefined,
       company: filterKey !== 'company' ? companyCode : undefined,
       vmpGroup: filterKey !== 'vmpGroup' ? vmpGroupCode : undefined,
+      substance: filterKey !== 'substance' ? substanceCode : undefined,
     }));
   };
 
@@ -129,8 +132,9 @@ function SearchContent() {
     if (atcCode) list.push({ key: 'atc', label: t('entityLabels.classification'), value: atcCode });
     if (companyCode) list.push({ key: 'company', label: t('entityLabels.company'), value: companyCode });
     if (vmpGroupCode) list.push({ key: 'vmpGroup', label: t('entityLabels.therapeuticGroup'), value: vmpGroupCode });
+    if (substanceCode) list.push({ key: 'substance', label: t('entityLabels.ingredient'), value: substanceCode });
     return list;
-  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, t]);
+  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, t]);
 
   const totalPages = data ? Math.ceil(data.totalCount / RESULTS_PER_PAGE) : 0;
 
