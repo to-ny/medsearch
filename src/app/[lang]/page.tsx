@@ -1,116 +1,133 @@
-'use client';
-
+import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { SearchBar } from '@/components/search/search-bar';
-import { useLinks, useTranslation } from '@/lib/hooks';
+import { isValidLanguage, type Language } from '@/server/types/domain';
+import { getDatabaseStats } from '@/server/actions/batch-lookup';
 
-export default function HomePage() {
-  const { t } = useTranslation();
-  const links = useLinks();
+// Import translations for metadata and content
+import en from '@/locales/en.json';
+import nl from '@/locales/nl.json';
+import fr from '@/locales/fr.json';
+import de from '@/locales/de.json';
+
+const translations = { en, nl, fr, de };
+
+interface Props {
+  params: Promise<{ lang: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang } = await params;
+
+  if (!isValidLanguage(lang)) {
+    return {};
+  }
+
+  const t = translations[lang as Language];
+  const title = `${t.home.title} | ${t.home.subtitle}`;
+  const description = t.pharmacist.heroSubtitle;
+
+  return {
+    title,
+    description,
+    alternates: {
+      languages: {
+        nl: `/nl`,
+        fr: `/fr`,
+        de: `/de`,
+        en: `/en`,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+    },
+  };
+}
+
+export default async function HomePage({ params }: Props) {
+  const { lang } = await params;
+
+  if (!isValidLanguage(lang)) {
+    notFound();
+  }
+
+  const t = translations[lang as Language];
+  const stats = await getDatabaseStats();
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-12rem)] px-4">
-      <div className="max-w-2xl w-full text-center">
-        {/* Hero section */}
-        <div className="mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mx-auto mb-6">
-            <svg
-              className="w-10 h-10 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3">
-            {t('home.title')}
+    <div className="bg-gradient-to-b from-blue-50 to-gray-50 dark:from-gray-900 dark:to-gray-950 py-10 sm:py-14">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-2">
+            {t.home.title}
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
-            {t('home.subtitle')}
+          <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-6">
+            {t.home.subtitle}
           </p>
-        </div>
 
-        {/* Search bar */}
-        <div className="mb-8">
-          <SearchBar
-            size="large"
-            autoFocus
-          />
-        </div>
-
-        {/* Examples */}
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          <p className="mb-2">{t('home.examples')}:</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <ExampleChip query="paracetamol" href={links.toSearch({ q: 'paracetamol' })} />
-            <ExampleChip query="Dafalgan" href={links.toSearch({ q: 'Dafalgan' })} />
-            <ExampleChip query="Ventolin" href={links.toSearch({ q: 'Ventolin' })} />
-            <ExampleChip query="4757811" label={t('home.cnkCode')} href={links.toSearch({ q: '4757811' })} />
-            <ExampleChip query="N02BE01" label={t('home.atcCode')} href={links.toSearch({ q: 'N02BE01' })} />
-            <ExampleChip query="Janssen-Cilag" label={t('home.company')} href={links.toSearch({ q: 'Janssen-Cilag' })} />
+          <div className="max-w-2xl mx-auto mb-4">
+            <SearchBar size="large" autoFocus />
           </div>
-        </div>
 
-        {/* Info cards */}
-        <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-          <InfoCard
-            title={t('home.infoSubstances')}
-            description={t('home.infoSubstancesDescription')}
-            icon={
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-              </svg>
-            }
-          />
-          <InfoCard
-            title={t('home.infoBrands')}
-            description={t('home.infoBrandsDescription')}
-            icon={
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            }
-          />
-          <InfoCard
-            title={t('home.infoReimbursement')}
-            description={t('home.infoReimbursementDescription')}
-            icon={
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            }
-          />
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <span className="text-sm text-gray-500 dark:text-gray-400">{t.home.examples}:</span>
+            <ExampleChip href={`/${lang}/search?q=paracetamol`} label="paracetamol" />
+            <ExampleChip href={`/${lang}/search?q=Dafalgan`} label="Dafalgan" />
+            <ExampleChip href={`/${lang}/search?q=0039347`} label="0039347" sublabel={t.home.cnkCode} />
+            <ExampleChip href={`/${lang}/search?q=Pfizer`} label="Pfizer" sublabel={t.home.company} />
+            <ExampleChip href={`/${lang}/search?q=N02BE01`} label="N02BE01" sublabel={t.home.atcCode} />
+          </div>
+
         </div>
       </div>
-    </div>
-  );
-}
 
-function ExampleChip({ query, label, href }: { query: string; label?: string; href: string }) {
-  return (
-    <a
-      href={href}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-    >
-      <span className="font-medium">{query}</span>
-      {label && (
-        <span className="text-xs text-gray-500 dark:text-gray-400">({label})</span>
+      {stats && (
+        <div className="mt-12 pt-8 border-t border-gray-200/30 dark:border-gray-700/30">
+          <div className="flex justify-center gap-12 text-center">
+            <div>
+              <div className="text-2xl font-semibold text-gray-600 dark:text-gray-400">
+                {stats.totalMedications.toLocaleString()}
+              </div>
+              <div className="text-sm text-gray-400 dark:text-gray-500">
+                {t.pharmacist.stats.medications}
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl font-semibold text-gray-600 dark:text-gray-400">
+                {stats.totalPackages.toLocaleString()}
+              </div>
+              <div className="text-sm text-gray-400 dark:text-gray-500">
+                {t.pharmacist.stats.packages}
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl font-semibold text-gray-600 dark:text-gray-400">
+                {stats.totalSubstances.toLocaleString()}
+              </div>
+              <div className="text-sm text-gray-400 dark:text-gray-500">
+                {t.pharmacist.stats.substances}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
-    </a>
+    </div>
   );
 }
 
-function InfoCard({ title, description, icon }: { title: string; description: string; icon: React.ReactNode }) {
+function ExampleChip({ href, label, sublabel }: { href: string; label: string; sublabel?: string }) {
   return (
-    <div className="p-4 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-      <div className="text-blue-600 dark:text-blue-400 mb-2">{icon}</div>
-      <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-1">{title}</h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
-    </div>
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+    >
+      <span className="font-medium">{label}</span>
+      {sublabel && (
+        <span className="text-xs text-gray-500 dark:text-gray-400">({sublabel})</span>
+      )}
+    </Link>
   );
 }

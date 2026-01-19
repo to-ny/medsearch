@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils/cn';
 import { useDebounce, useLinks, useTranslation } from '@/lib/hooks';
+import { detectCNKInput } from '@/lib/utils/cnk';
 
 interface SearchBarProps {
   defaultValue?: string;
@@ -13,6 +14,8 @@ interface SearchBarProps {
   size?: 'normal' | 'large';
   onSearch?: (query: string) => void;
   className?: string;
+  /** Enable CNK detection and filtering (default: true) */
+  enableCNKDetection?: boolean;
 }
 
 export function SearchBar({
@@ -22,6 +25,7 @@ export function SearchBar({
   size = 'normal',
   onSearch,
   className,
+  enableCNKDetection = true,
 }: SearchBarProps) {
   const { t } = useTranslation();
   const links = useLinks();
@@ -31,6 +35,12 @@ export function SearchBar({
   const router = useRouter();
   const debouncedValue = useDebounce(value, 300);
   const resolvedPlaceholder = placeholder ?? t('common.searchPlaceholder');
+
+  // Detect if input looks like a CNK code
+  const isCNKSearch = useMemo(
+    () => enableCNKDetection && detectCNKInput(value.trim()),
+    [value, enableCNKDetection]
+  );
 
   // Handle debounced search loading state
   useEffect(() => {
@@ -49,15 +59,23 @@ export function SearchBar({
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (value.trim().length >= 3) {
+      const trimmed = value.trim();
+      if (trimmed.length >= 3) {
         if (onSearch) {
-          onSearch(value.trim());
+          onSearch(trimmed);
         } else {
-          router.push(links.toSearch({ q: value.trim() }));
+          // If CNK detected, filter to AMPP type only
+          const isCNK = enableCNKDetection && detectCNKInput(trimmed);
+          router.push(
+            links.toSearch({
+              q: trimmed,
+              ...(isCNK && { types: 'ampp' }),
+            })
+          );
         }
       }
     },
-    [value, onSearch, router, links]
+    [value, onSearch, router, links, enableCNKDetection]
   );
 
   const handleClear = useCallback(() => {
@@ -158,51 +176,41 @@ export function SearchBar({
           )}
         </div>
       </div>
-      {value.length > 0 && value.length < 3 && (
-        <p className="absolute mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {t('common.typeAtLeast')}
-        </p>
-      )}
-    </form>
-  );
-}
-
-/**
- * Compact search bar for header
- */
-export function SearchBarCompact() {
-  const { t } = useTranslation();
-  const links = useLinks();
-  const [value, setValue] = useState('');
-  const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (value.trim().length >= 3) {
-      router.push(links.toSearch({ q: value.trim() }));
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="relative w-full">
-      <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={t('common.search') + '...'}
-        className={cn(
-          'block w-full border border-gray-300 dark:border-gray-600',
-          'bg-white dark:bg-gray-800',
-          'text-gray-900 dark:text-gray-100',
-          'placeholder-gray-400 dark:placeholder-gray-500',
-          'focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-          'py-1.5 pl-9 pr-3 text-sm rounded-lg'
+      {/* CNK indicator or "type at least" message - with proper spacing */}
+      <div className="mt-2 mb-4 min-h-[24px]">
+        {isCNKSearch ? (
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium',
+              'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+            )}
+            role="status"
+            aria-live="polite"
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+              />
+            </svg>
+            {t('pharmacist.cnkDetected')} - {t('entityLabels.package')}
+          </span>
+        ) : (
+          value.length > 0 && value.length < 3 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {t('common.typeAtLeast')}
+            </p>
+          )
         )}
-        aria-label="Search"
-      />
+      </div>
     </form>
   );
 }

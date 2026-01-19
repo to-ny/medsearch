@@ -1,5 +1,30 @@
 import { test, expect } from '@playwright/test';
 
+// CNK Quick Search tests
+test('CNK code search shows indicator and filters to packages', async ({ page }) => {
+  await page.goto('/en');
+
+  const searchInput = page.locator('input[aria-label="Search"]').first();
+  await searchInput.fill('1234567');
+
+  // Should show CNK detected indicator
+  await expect(page.getByText('CNK detected')).toBeVisible();
+
+  // Submit and verify URL has package filter
+  await searchInput.press('Enter');
+  await expect(page).toHaveURL(/types=ampp/);
+});
+
+test('non-CNK search does not add types filter', async ({ page }) => {
+  await page.goto('/en');
+
+  const searchInput = page.locator('input[aria-label="Search"]').first();
+  await searchInput.fill('paracetamol');
+  await searchInput.press('Enter');
+
+  await expect(page).not.toHaveURL(/types=/);
+});
+
 test('search from home returns results with clickable links', async ({ page }) => {
   await page.goto('/en');
 
