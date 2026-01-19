@@ -23,7 +23,8 @@ type SearchFilter =
   | { type: 'amp'; code: string }
   | { type: 'atc'; code: string }
   | { type: 'company'; code: string }
-  | { type: 'vmpGroup'; code: string };
+  | { type: 'vmpGroup'; code: string }
+  | { type: 'substance'; code: string };
 
 interface RelationshipListProps {
   title: string;

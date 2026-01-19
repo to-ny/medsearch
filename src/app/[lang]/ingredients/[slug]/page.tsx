@@ -1,0 +1,45 @@
+import { notFound, redirect } from 'next/navigation';
+import type { Metadata } from 'next';
+import { getSubstanceWithRelations } from '@/server/queries/substance';
+import { getLocalizedText } from '@/server/utils/localization';
+import { SubstanceDetail } from '@/components/detail/substance-detail';
+import { extractIdFromSlug, generateEntitySlug } from '@/lib/utils/slug';
+import { generateEntityAlternates } from '@/lib/utils/seo';
+import type { Language } from '@/server/types/domain';
+
+interface Props {
+  params: Promise<{ lang: string; slug: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang, slug } = await params;
+  const code = extractIdFromSlug(slug);
+
+  const substance = await getSubstanceWithRelations(code);
+  if (substance) {
+    const name = getLocalizedText(substance.name, lang as Language);
+    return {
+      title: name,
+      description: `${name} - Ingredient found in ${substance.usedInAmpCount} products.`,
+      alternates: generateEntityAlternates('ingredients', substance.name, code),
+    };
+  }
+
+  return { title: 'Not Found' };
+}
+
+export default async function IngredientPage({ params }: Props) {
+  const { lang, slug } = await params;
+  const code = extractIdFromSlug(slug);
+
+  const substance = await getSubstanceWithRelations(code);
+  if (substance) {
+    const expectedSlug = generateEntitySlug(substance.name, code, lang as Language);
+    if (slug !== expectedSlug) {
+      redirect(`/${lang}/ingredients/${expectedSlug}`);
+    }
+    return <SubstanceDetail substance={substance} />;
+  }
+
+  notFound();
+}

@@ -34,7 +34,8 @@
     "atc": "ATC",
     "medication": "Geneesmiddel",
     "classification": "Classificatie",
-    "therapeuticGroup": "Therapeutische Groep"
+    "therapeuticGroup": "Therapeutische Groep",
+    "ingredient": "Ingredient"
   },
   "search": {
     "resultsFor": "voor",

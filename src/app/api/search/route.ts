@@ -17,10 +17,11 @@ export async function GET(request: NextRequest) {
     const atcCode = searchParams.get('atc') || undefined;
     const companyCode = searchParams.get('company') || undefined;
     const vmpGroupCode = searchParams.get('vmpGroup') || undefined;
+    const substanceCode = searchParams.get('substance') || undefined;
 
-    const hasFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode;
+    const hasFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode || substanceCode;
     const filters: SearchFilters | undefined = hasFilters
-      ? { vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode }
+      ? { vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode }
       : undefined;
 
     // Parse query parameter - allow empty if filters are present

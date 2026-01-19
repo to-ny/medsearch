@@ -11,6 +11,7 @@ interface SearchFilters {
   atcCode?: string;
   companyCode?: string;
   vmpGroupCode?: string;
+  substanceCode?: string;
 }
 
 interface UseSearchOptions {
@@ -38,7 +39,7 @@ const fetcher = async (url: string): Promise<SearchResponse> => {
 function buildSearchUrl(options: UseSearchOptions): string | null {
   const { query, lang, types, limit, offset, enabled = true, filters } = options;
 
-  const hasFilters = filters && (filters.vtmCode || filters.vmpCode || filters.ampCode || filters.atcCode || filters.companyCode || filters.vmpGroupCode);
+  const hasFilters = filters && (filters.vtmCode || filters.vmpCode || filters.ampCode || filters.atcCode || filters.companyCode || filters.vmpGroupCode || filters.substanceCode);
 
   // Don't search if disabled or (query is too short and no filters)
   if (!enabled || (!hasFilters && query.length < 2)) {
@@ -84,6 +85,9 @@ function buildSearchUrl(options: UseSearchOptions): string | null {
   }
   if (filters?.vmpGroupCode) {
     params.set('vmpGroup', filters.vmpGroupCode);
+  }
+  if (filters?.substanceCode) {
+    params.set('substance', filters.substanceCode);
   }
 
   return `/api/search?${params.toString()}`;

@@ -99,6 +99,7 @@ export interface SearchFilters {
   atcCode?: string;       // Filter AMPPs by ATC code
   companyCode?: string;   // Filter AMPs by company actor_nr
   vmpGroupCode?: string;  // Filter VMPs by VMP Group code
+  substanceCode?: string; // Filter AMPs by substance code (via amp_ingredient)
 }
 
 /**
@@ -138,6 +139,7 @@ export async function executeSearch(
     if (filters?.atcCode) relevantTypes.add('ampp');
     if (filters?.companyCode) relevantTypes.add('amp');
     if (filters?.vmpGroupCode) relevantTypes.add('vmp');
+    if (filters?.substanceCode) relevantTypes.add('amp');  // AMPs containing this substance
 
     return relevantTypes.size > 0 ? relevantTypes : null;
   };
@@ -151,7 +153,7 @@ export async function executeSearch(
   // offset independently (e.g., VMP offset 80 = 0, AMP offset 80 = 0 even though total > 80)
   const hasRelationshipFilter = filters && (
     filters.vtmCode || filters.vmpCode || filters.ampCode ||
-    filters.atcCode || filters.companyCode || filters.vmpGroupCode
+    filters.atcCode || filters.companyCode || filters.vmpGroupCode || filters.substanceCode
   );
   const useDbPagination = hasRelationshipFilter && types && types.length === 1;
   // When not using DB pagination, fetch up to this many results per type
@@ -348,10 +350,11 @@ export async function executeSearch(
   if (isTypeRelevant('amp')) {
     searchPromises.push(
       (async () => {
-        // Support filtering by VMP code, company code, or VTM code (via VMP)
+        // Support filtering by VMP code, company code, VTM code (via VMP), or substance code
         const vmpFilter = filters?.vmpCode;
         const companyFilter = filters?.companyCode;
         const vtmFilter = filters?.vtmCode;
+        const substanceFilter = filters?.substanceCode;
 
       let result;
       let totalCount: number | null = null;
@@ -456,6 +459,42 @@ export async function executeSearch(
           LEFT JOIN vmp v ON v.code = a.vmp_code
           LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
           WHERE a.company_actor_nr = ${companyFilter}
+            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
+          ORDER BY a.code
+          LIMIT ${maxResultsPerType} OFFSET ${queryOffset}
+        `;
+      } else if (substanceFilter) {
+        // Get accurate count first - AMPs containing this substance as an ingredient
+        const countResult = await sql`
+          SELECT COUNT(DISTINCT a.code)::int as count
+          FROM amp a
+          JOIN amp_ingredient ai ON ai.amp_code = a.code
+          WHERE ai.substance_code = ${substanceFilter}
+            AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
+        `;
+        totalCount = countResult.rows[0]?.count || 0;
+
+        // Only apply offset when single type is selected (DB-level pagination)
+        const queryOffset = useDbPagination ? offset : 0;
+        result = await sql`
+          SELECT DISTINCT ON (a.code)
+            'amp' as entity_type,
+            a.code,
+            a.name,
+            v.name as parent_name,
+            a.vmp_code as parent_code,
+            c.denomination as company_name,
+            NULL as pack_info,
+            NULL as price,
+            NULL as reimbursable,
+            NULL as cnk_code,
+            NULL as product_count,
+            a.black_triangle
+          FROM amp a
+          JOIN amp_ingredient ai ON ai.amp_code = a.code
+          LEFT JOIN vmp v ON v.code = a.vmp_code
+          LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
+          WHERE ai.substance_code = ${substanceFilter}
             AND (a.end_date IS NULL OR a.end_date > CURRENT_DATE)
           ORDER BY a.code
           LIMIT ${maxResultsPerType} OFFSET ${queryOffset}

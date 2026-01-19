@@ -31,7 +31,7 @@ export function EntityTypeBadge({ type, size = 'md', className }: EntityTypeBadg
       case 'vmp_group':
         return t('entityLabels.group');
       case 'substance':
-        return t('entityLabels.substance');
+        return t('entityLabels.ingredient');
       case 'atc':
         return t('entityLabels.atc');
       default:

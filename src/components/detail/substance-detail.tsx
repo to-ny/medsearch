@@ -68,6 +68,8 @@ export function SubstanceDetail({ substance }: SubstanceDetailProps) {
           <RelationshipList
             title={t('detail.productsContainingIngredient')}
             items={ampItems}
+            searchFilter={{ type: 'substance', code: substance.code }}
+            searchType="amp"
           />
         </div>
 
