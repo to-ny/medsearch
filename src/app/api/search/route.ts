@@ -94,11 +94,18 @@ export async function GET(request: NextRequest) {
     const priceMaxParam = searchParams.get('priceMax');
     const priceMax = priceMaxParam ? parseFloat(priceMaxParam) : undefined;
 
+    // Parse Phase C extended filter parameters
+    const chapterIVParam = searchParams.get('chapterIV');
+    const chapterIV = chapterIVParam === 'true' ? true : undefined;
+    const deliveryEnvParam = searchParams.get('deliveryEnv');
+    const deliveryEnvironment = (deliveryEnvParam === 'P' || deliveryEnvParam === 'H') ? deliveryEnvParam : undefined;
+    const medicineType = searchParams.get('medicineType') || undefined;
+
     const hasBasicFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode || substanceCode || reimbursable !== undefined || blackTriangle !== undefined;
-    const hasExtendedFilters = (formCodes && formCodes.length > 0) || (routeCodes && routeCodes.length > 0) || (reimbursementCategories && reimbursementCategories.length > 0) || priceMin !== undefined || priceMax !== undefined;
+    const hasExtendedFilters = (formCodes && formCodes.length > 0) || (routeCodes && routeCodes.length > 0) || (reimbursementCategories && reimbursementCategories.length > 0) || priceMin !== undefined || priceMax !== undefined || chapterIV !== undefined || deliveryEnvironment !== undefined || medicineType !== undefined;
     const hasFilters = hasBasicFilters || hasExtendedFilters;
     const filters: SearchFilters | undefined = hasFilters
-      ? { vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, reimbursable, blackTriangle, formCodes, routeCodes, reimbursementCategories, priceMin, priceMax }
+      ? { vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, reimbursable, blackTriangle, formCodes, routeCodes, reimbursementCategories, priceMin, priceMax, chapterIV, deliveryEnvironment, medicineType }
       : undefined;
 
     // Parse query parameter - allow empty if filters are present

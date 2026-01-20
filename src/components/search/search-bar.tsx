@@ -6,9 +6,19 @@ import { MagnifyingGlassIcon, XMarkIcon, ClockIcon } from '@heroicons/react/24/o
 import { cn } from '@/lib/utils/cn';
 import { useDebounce, useLinks, useTranslation } from '@/lib/hooks';
 import { detectCNKInput } from '@/lib/utils/cnk';
+import type { EntityType } from '@/server/types/domain';
 
 const RECENT_SEARCHES_KEY = 'medsearch_recent_searches';
 const MAX_RECENT_SEARCHES = 5;
+const SUGGESTION_DEBOUNCE_MS = 150;
+
+interface SearchSuggestion {
+  entityType: EntityType;
+  code: string;
+  name: string;
+  parentName?: string;
+  cnkCode?: string;
+}
 
 function getRecentSearches(): string[] {
   if (typeof window === 'undefined') return [];
@@ -45,6 +55,18 @@ function removeRecentSearch(query: string): string[] {
   }
 }
 
+/** Entity type badge colors and labels */
+const ENTITY_TYPE_BADGE: Record<EntityType, { bg: string; text: string; label: string }> = {
+  vtm: { bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-700 dark:text-purple-300', label: 'Substance' },
+  vmp: { bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-700 dark:text-blue-300', label: 'Generic' },
+  amp: { bg: 'bg-green-100 dark:bg-green-900/40', text: 'text-green-700 dark:text-green-300', label: 'Brand' },
+  ampp: { bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-700 dark:text-amber-300', label: 'Package' },
+  company: { bg: 'bg-slate-100 dark:bg-slate-900/40', text: 'text-slate-700 dark:text-slate-300', label: 'Company' },
+  vmp_group: { bg: 'bg-cyan-100 dark:bg-cyan-900/40', text: 'text-cyan-700 dark:text-cyan-300', label: 'Group' },
+  substance: { bg: 'bg-pink-100 dark:bg-pink-900/40', text: 'text-pink-700 dark:text-pink-300', label: 'Ingredient' },
+  atc: { bg: 'bg-indigo-100 dark:bg-indigo-900/40', text: 'text-indigo-700 dark:text-indigo-300', label: 'ATC' },
+};
+
 interface SearchBarProps {
   defaultValue?: string;
   placeholder?: string;
@@ -56,6 +78,8 @@ interface SearchBarProps {
   enableCNKDetection?: boolean;
   /** Show recent searches dropdown (default: true) */
   showRecentSearches?: boolean;
+  /** Show autocomplete suggestions (default: true) */
+  showSuggestions?: boolean;
 }
 
 export function SearchBar({
@@ -67,17 +91,22 @@ export function SearchBar({
   className,
   enableCNKDetection = true,
   showRecentSearches = true,
+  showSuggestions = true,
 }: SearchBarProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const links = useLinks();
   const [value, setValue] = useState(defaultValue);
   const [isLoading, setIsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const debouncedValue = useDebounce(value, 300);
+  const debouncedSuggestionValue = useDebounce(value, SUGGESTION_DEBOUNCE_MS);
   const resolvedPlaceholder = placeholder ?? t('common.searchPlaceholder');
 
   // Initialize recent searches from localStorage (use lazy initial state to avoid effect)
@@ -90,8 +119,56 @@ export function SearchBar({
     }
   }
 
-  // Show dropdown when focused, input is empty, and there are recent searches
-  const showDropdown = showRecentSearches && isFocused && value.length === 0 && recentSearches.length > 0;
+  // Fetch suggestions when typing - use abort controller ref for cleanup
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const fetchSuggestions = useCallback(async (query: string) => {
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    if (!showSuggestions || query.trim().length < 2) {
+      setSuggestions([]);
+      setSelectedIndex(-1);
+      setIsFetchingSuggestions(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setIsFetchingSuggestions(true);
+
+    try {
+      const res = await fetch(
+        `/api/search/suggest?q=${encodeURIComponent(query)}&limit=5&lang=${language}`,
+        { signal: controller.signal }
+      );
+      const data: SearchSuggestion[] = await res.json();
+      setSuggestions(data);
+      setSelectedIndex(-1);
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error('Failed to fetch suggestions:', err);
+        setSuggestions([]);
+      }
+    } finally {
+      setIsFetchingSuggestions(false);
+    }
+  }, [showSuggestions, language]);
+
+  // Trigger suggestion fetch when debounced value changes
+  const prevDebouncedValue = useRef(debouncedSuggestionValue);
+  if (prevDebouncedValue.current !== debouncedSuggestionValue) {
+    prevDebouncedValue.current = debouncedSuggestionValue;
+    // Use queueMicrotask to avoid calling during render
+    queueMicrotask(() => fetchSuggestions(debouncedSuggestionValue));
+  }
+
+  // Show recent searches when input is empty, or suggestions when typing
+  const showRecentDropdown = showRecentSearches && isFocused && value.length === 0 && recentSearches.length > 0;
+  const showSuggestionsDropdown = showSuggestions && isFocused && value.length >= 2 && suggestions.length > 0;
+  const showDropdown = showRecentDropdown || showSuggestionsDropdown;
 
   // Detect if input looks like a CNK code
   const isCNKSearch = useMemo(
@@ -155,6 +232,27 @@ export function SearchBar({
     [executeSearch]
   );
 
+  const handleSuggestionClick = useCallback(
+    (suggestion: SearchSuggestion) => {
+      // Navigate directly to the entity detail page
+      const typeRoutes: Record<EntityType, string> = {
+        vtm: 'substances',
+        vmp: 'generics',
+        amp: 'medications',
+        ampp: 'packages',
+        company: 'companies',
+        vmp_group: 'groups',
+        substance: 'ingredients',
+        atc: 'classifications',
+      };
+      const route = typeRoutes[suggestion.entityType];
+      router.push(`/${language}/${route}/${suggestion.code}`);
+      setIsFocused(false);
+      setSuggestions([]);
+    },
+    [router, language]
+  );
+
   const handleRemoveRecentSearch = useCallback(
     (e: React.MouseEvent, query: string) => {
       e.stopPropagation();
@@ -169,13 +267,47 @@ export function SearchBar({
     inputRef.current?.focus();
   }, []);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setValue('');
-      setIsFocused(false);
-      inputRef.current?.blur();
-    }
-  }, []);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setValue('');
+        setIsFocused(false);
+        setSuggestions([]);
+        setSelectedIndex(-1);
+        inputRef.current?.blur();
+        return;
+      }
+
+      // Handle keyboard navigation for suggestions
+      if (showSuggestionsDropdown && suggestions.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+        } else if (e.key === 'Enter' && selectedIndex >= 0) {
+          e.preventDefault();
+          handleSuggestionClick(suggestions[selectedIndex]);
+        }
+      }
+
+      // Handle keyboard navigation for recent searches
+      if (showRecentDropdown && recentSearches.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev < recentSearches.length - 1 ? prev + 1 : 0));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : recentSearches.length - 1));
+        } else if (e.key === 'Enter' && selectedIndex >= 0) {
+          e.preventDefault();
+          handleRecentSearchClick(recentSearches[selectedIndex]);
+        }
+      }
+    },
+    [showSuggestionsDropdown, suggestions, showRecentDropdown, recentSearches, selectedIndex, handleSuggestionClick, handleRecentSearchClick]
+  );
 
   const handleFocus = useCallback(() => {
     setIsFocused(true);
@@ -287,8 +419,70 @@ export function SearchBar({
           )}
         </div>
 
+        {/* Suggestions dropdown */}
+        {showSuggestionsDropdown && (
+          <div
+            ref={dropdownRef}
+            id="search-suggestions-listbox"
+            className="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden"
+            role="listbox"
+            aria-label={t('search.suggestions')}
+          >
+            <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+              <span>{t('search.suggestions')}</span>
+              {isFetchingSuggestions && (
+                <svg className="h-3 w-3 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              )}
+            </div>
+            <ul>
+              {suggestions.map((suggestion, index) => {
+                const badge = ENTITY_TYPE_BADGE[suggestion.entityType];
+                return (
+                  <li key={`${suggestion.entityType}-${suggestion.code}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors',
+                        index === selectedIndex
+                          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      )}
+                      role="option"
+                      aria-selected={index === selectedIndex}
+                    >
+                      <span className={cn('flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium', badge.bg, badge.text)}>
+                        {badge.label}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="block truncate font-medium">{suggestion.name}</span>
+                        {suggestion.parentName && (
+                          <span className="block truncate text-xs text-gray-500 dark:text-gray-400">
+                            {suggestion.parentName}
+                          </span>
+                        )}
+                      </div>
+                      {suggestion.cnkCode && (
+                        <span className="flex-shrink-0 text-xs text-gray-400 font-mono">
+                          {suggestion.cnkCode}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700">
+              {t('search.useArrowKeys')}
+            </div>
+          </div>
+        )}
+
         {/* Recent searches dropdown */}
-        {showDropdown && (
+        {showRecentDropdown && (
           <div
             ref={dropdownRef}
             id="recent-searches-listbox"
@@ -300,14 +494,19 @@ export function SearchBar({
               {t('search.recentSearches')}
             </div>
             <ul>
-              {recentSearches.map((search) => (
+              {recentSearches.map((search, index) => (
                 <li key={search}>
                   <button
                     type="button"
                     onClick={() => handleRecentSearchClick(search)}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors',
+                      index === selectedIndex
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    )}
                     role="option"
-                    aria-selected="false"
+                    aria-selected={index === selectedIndex}
                   >
                     <ClockIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
                     <span className="flex-1 truncate">{search}</span>

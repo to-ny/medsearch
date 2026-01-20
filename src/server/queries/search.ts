@@ -109,6 +109,11 @@ export interface SearchFilters {
   reimbursementCategories?: string[]; // Filter AMPPs by reimbursement category (A, B, C, etc.)
   priceMin?: number;      // Filter AMPPs by minimum price
   priceMax?: number;      // Filter AMPPs by maximum price
+  // Phase C extended filters
+  chapterIV?: boolean;    // Filter by Chapter IV requirement
+  deliveryEnvironment?: 'P' | 'H'; // Filter by delivery environment (P=Public, H=Hospital)
+  medicineType?: string;  // Filter AMPs by medicine type (ALLOPATHIC, HOMEOPATHIC, etc.)
+  atcLevel?: number;      // Filter ATC classifications by level (1-5)
 }
 
 /**
@@ -398,12 +403,14 @@ export async function executeSearch(
     filters.atcCode || filters.companyCode || filters.vmpGroupCode ||
     filters.reimbursable !== undefined || filters.blackTriangle !== undefined
   );
-  // Phase B extended filters require search_index_extended table
+  // Phase B & C extended filters require search_index_extended table
   const hasExtendedFilters = filters && (
     (filters.formCodes && filters.formCodes.length > 0) ||
     (filters.routeCodes && filters.routeCodes.length > 0) ||
     (filters.reimbursementCategories && filters.reimbursementCategories.length > 0) ||
-    filters.priceMin !== undefined || filters.priceMax !== undefined
+    filters.priceMin !== undefined || filters.priceMax !== undefined ||
+    filters.chapterIV === true || filters.deliveryEnvironment !== undefined ||
+    filters.medicineType !== undefined
   );
   const hasFilters = hasBasicFilters || hasExtendedFilters;
 
@@ -521,6 +528,22 @@ export async function executeSearch(
     // Filter by maximum price - applies to AMPP entities
     baseConditions.push(`(entity_type != 'ampp' OR price <= $${paramIndex++})`);
     baseParams.push(filters.priceMax);
+  }
+
+  // Phase C extended filters (only apply when using search_index_extended)
+  if (filters?.chapterIV === true) {
+    // Filter by Chapter IV requirement - applies to AMPP entities
+    baseConditions.push(`(entity_type != 'ampp' OR chapter_iv_exists = true)`);
+  }
+  if (filters?.deliveryEnvironment) {
+    // Filter by delivery environment - applies to AMPP entities
+    baseConditions.push(`(entity_type != 'ampp' OR delivery_environment = $${paramIndex++})`);
+    baseParams.push(filters.deliveryEnvironment);
+  }
+  if (filters?.medicineType) {
+    // Filter by medicine type - applies to AMP entities
+    baseConditions.push(`(entity_type != 'amp' OR medicine_type = $${paramIndex++})`);
+    baseParams.push(filters.medicineType);
   }
 
   // Base WHERE clause (without type filter) - for facets
