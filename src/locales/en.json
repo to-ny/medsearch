@@ -63,7 +63,15 @@
     "noFormsAvailable": "No forms available",
     "noRoutesAvailable": "No routes available",
     "selected": "selected",
-    "clearSelection": "Clear"
+    "clearSelection": "Clear",
+    "suggestions": "Suggestions",
+    "useArrowKeys": "↑↓ to navigate, Enter to select",
+    "chapterIVOnly": "Chapter IV",
+    "deliveryEnvironment": "Delivery Environment",
+    "medicineType": "Medicine Type",
+    "publicOnly": "Public",
+    "hospitalOnly": "Hospital",
+    "allEnvironments": "All"
   },
   "detail": {
     "overview": "Overview",

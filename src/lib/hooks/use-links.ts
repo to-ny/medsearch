@@ -26,6 +26,10 @@ export interface SearchLinkParams {
   reimbCategory?: string[]; // Reimbursement categories (A, B, C, etc.)
   priceMin?: number;
   priceMax?: number;
+  // Phase C extended filters
+  chapterIV?: boolean;
+  deliveryEnv?: 'P' | 'H';
+  medicineType?: string;
 }
 
 /**
@@ -148,6 +152,10 @@ function createLinksForLanguage(language: Language): UseLinksReturn {
       if (params.reimbCategory && params.reimbCategory.length > 0) searchParams.set('reimbCategory', params.reimbCategory.join(','));
       if (params.priceMin !== undefined) searchParams.set('priceMin', params.priceMin.toString());
       if (params.priceMax !== undefined) searchParams.set('priceMax', params.priceMax.toString());
+      // Phase C extended filters
+      if (params.chapterIV) searchParams.set('chapterIV', 'true');
+      if (params.deliveryEnv) searchParams.set('deliveryEnv', params.deliveryEnv);
+      if (params.medicineType) searchParams.set('medicineType', params.medicineType);
 
       const qs = searchParams.toString();
       return `/${language}/search${qs ? `?${qs}` : ''}`;

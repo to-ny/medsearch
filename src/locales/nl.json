@@ -63,7 +63,15 @@
     "noFormsAvailable": "Geen vormen beschikbaar",
     "noRoutesAvailable": "Geen routes beschikbaar",
     "selected": "geselecteerd",
-    "clearSelection": "Wissen"
+    "clearSelection": "Wissen",
+    "suggestions": "Suggesties",
+    "useArrowKeys": "↑↓ om te navigeren, Enter om te selecteren",
+    "chapterIVOnly": "Hoofdstuk IV",
+    "deliveryEnvironment": "Afleveromgeving",
+    "medicineType": "Geneesmiddeltype",
+    "publicOnly": "Publiek",
+    "hospitalOnly": "Ziekenhuis",
+    "allEnvironments": "Alle"
   },
   "detail": {
     "overview": "Overzicht",

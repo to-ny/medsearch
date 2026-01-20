@@ -52,9 +52,15 @@ function SearchContent() {
   const priceMaxParam = searchParams.get('priceMax');
   const priceMax = priceMaxParam ? parseFloat(priceMaxParam) : undefined;
 
+  // Parse Phase C extended filter parameters
+  const chapterIV = searchParams.get('chapterIV') === 'true';
+  const deliveryEnvParam = searchParams.get('deliveryEnv');
+  const deliveryEnv: 'P' | 'H' | undefined = (deliveryEnvParam === 'P' || deliveryEnvParam === 'H') ? deliveryEnvParam : undefined;
+  const medicineType = searchParams.get('medicineType') || undefined;
+
   const filters = useMemo(() => {
     const hasBasicFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode || substanceCode || reimbursable || blackTriangle;
-    const hasExtendedFilters = formCodes.length > 0 || routeCodes.length > 0 || reimbCategories.length > 0 || priceMin !== undefined || priceMax !== undefined;
+    const hasExtendedFilters = formCodes.length > 0 || routeCodes.length > 0 || reimbCategories.length > 0 || priceMin !== undefined || priceMax !== undefined || chapterIV || deliveryEnv || medicineType;
     const hasFilters = hasBasicFilters || hasExtendedFilters;
     return hasFilters ? {
       vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode,
@@ -65,8 +71,11 @@ function SearchContent() {
       reimbursementCategories: reimbCategories.length > 0 ? reimbCategories : undefined,
       priceMin,
       priceMax,
+      chapterIV: chapterIV || undefined,
+      deliveryEnvironment: deliveryEnv,
+      medicineType,
     } : undefined;
-  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, reimbursable, blackTriangle, formCodes, routeCodes, reimbCategories, priceMin, priceMax]);
+  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, reimbursable, blackTriangle, formCodes, routeCodes, reimbCategories, priceMin, priceMax, chapterIV, deliveryEnv, medicineType]);
 
   const [query, setQuery] = useState(queryParam);
   const [selectedTypes, setSelectedTypes] = useState<EntityType[]>(() => {
@@ -120,6 +129,9 @@ function SearchContent() {
       reimbCategory?: string[];
       priceMin?: number;
       priceMax?: number;
+      chapterIV?: boolean;
+      deliveryEnv?: 'P' | 'H';
+      medicineType?: string;
     }
   ) => {
     router.push(links.toSearch({
@@ -140,6 +152,9 @@ function SearchContent() {
       reimbCategory: overrides?.reimbCategory ?? (reimbCategories.length > 0 ? reimbCategories : undefined),
       priceMin: overrides?.priceMin ?? priceMin,
       priceMax: overrides?.priceMax ?? priceMax,
+      chapterIV: overrides?.chapterIV ?? (chapterIV || undefined),
+      deliveryEnv: overrides?.deliveryEnv ?? deliveryEnv,
+      medicineType: overrides?.medicineType ?? medicineType,
     }));
   };
 
@@ -187,6 +202,19 @@ function SearchContent() {
     updateUrl(query, selectedTypes, 1, { priceMax: value });
   };
 
+  // Phase C filter handlers
+  const handleChapterIVToggle = () => {
+    updateUrl(query, selectedTypes, 1, { chapterIV: !chapterIV });
+  };
+
+  const handleDeliveryEnvChange = (env: 'P' | 'H' | undefined) => {
+    updateUrl(query, selectedTypes, 1, { deliveryEnv: env });
+  };
+
+  const handleMedicineTypeChange = (type: string | undefined) => {
+    updateUrl(query, selectedTypes, 1, { medicineType: type });
+  };
+
   const removeFilter = (filterKey: string) => {
     router.push(links.toSearch({
       q: query || undefined,
@@ -206,6 +234,10 @@ function SearchContent() {
       reimbCategory: filterKey !== 'reimbCategory' ? (reimbCategories.length > 0 ? reimbCategories : undefined) : undefined,
       priceMin: filterKey !== 'priceRange' ? priceMin : undefined,
       priceMax: filterKey !== 'priceRange' ? priceMax : undefined,
+      // Phase C extended filters
+      chapterIV: filterKey !== 'chapterIV' ? (chapterIV || undefined) : undefined,
+      deliveryEnv: filterKey !== 'deliveryEnv' ? deliveryEnv : undefined,
+      medicineType: filterKey !== 'medicineType' ? medicineType : undefined,
     }));
   };
 
@@ -247,8 +279,12 @@ function SearchContent() {
         : priceMin !== undefined ? `>= ${priceMin.toFixed(2)}` : `<= ${priceMax?.toFixed(2)}`;
       list.push({ key: 'priceRange', label: t('search.priceRange'), value: priceLabel });
     }
+    // Phase C extended filters
+    if (chapterIV) list.push({ key: 'chapterIV', label: t('entityLabels.chapterIV'), value: '' });
+    if (deliveryEnv) list.push({ key: 'deliveryEnv', label: t('search.deliveryEnvironment'), value: deliveryEnv === 'P' ? t('detail.public') : t('detail.hospital') });
+    if (medicineType) list.push({ key: 'medicineType', label: t('search.medicineType'), value: t(`medicineTypes.${medicineType}`) });
     return list;
-  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, reimbursable, blackTriangle, formCodes, routeCodes, reimbCategories, priceMin, priceMax, t, data?.appliedFilters]);
+  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, reimbursable, blackTriangle, formCodes, routeCodes, reimbCategories, priceMin, priceMax, chapterIV, deliveryEnv, medicineType, t, data?.appliedFilters]);
 
   const totalPages = data ? Math.ceil(data.totalCount / RESULTS_PER_PAGE) : 0;
 
@@ -376,6 +412,76 @@ function SearchContent() {
                 <span className="text-xs">▲</span>
                 {t('search.blackTriangleOnly')}
               </button>
+            )}
+
+            {/* Chapter IV toggle - only show if AMPP results exist */}
+            {data.facets.byType.ampp > 0 && (
+              <button
+                onClick={handleChapterIVToggle}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  chapterIV
+                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                }`}
+                aria-pressed={chapterIV}
+              >
+                <span className="w-4 h-4 rounded border flex items-center justify-center text-xs">
+                  {chapterIV && '✓'}
+                </span>
+                {t('search.chapterIVOnly')}
+              </button>
+            )}
+
+            {/* Delivery environment filter - only show if AMPP results exist */}
+            {data.facets.byType.ampp > 0 && (
+              <div className="inline-flex items-center gap-1 px-1 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <button
+                  onClick={() => handleDeliveryEnvChange(undefined)}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    !deliveryEnv
+                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {t('search.allEnvironments')}
+                </button>
+                <button
+                  onClick={() => handleDeliveryEnvChange('P')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    deliveryEnv === 'P'
+                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {t('search.publicOnly')}
+                </button>
+                <button
+                  onClick={() => handleDeliveryEnvChange('H')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    deliveryEnv === 'H'
+                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {t('search.hospitalOnly')}
+                </button>
+              </div>
+            )}
+
+            {/* Medicine type filter - only show if AMP results exist */}
+            {data.facets.byType.amp > 0 && (
+              <select
+                value={medicineType || ''}
+                onChange={(e) => handleMedicineTypeChange(e.target.value || undefined)}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-0 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">{t('search.medicineType')}</option>
+                <option value="ALLOPATHIC">{t('medicineTypes.ALLOPATHIC')}</option>
+                <option value="HOMEOPATHIC">{t('medicineTypes.HOMEOPATHIC')}</option>
+                <option value="PHYTOTHERAPY">{t('medicineTypes.PHYTOTHERAPY')}</option>
+                <option value="ANTHROPOSOPHIC">{t('medicineTypes.ANTHROPOSOPHIC')}</option>
+                <option value="TRADITIONAL_HERBAL">{t('medicineTypes.TRADITIONAL_HERBAL')}</option>
+              </select>
             )}
           </div>
 

@@ -106,7 +106,7 @@ export function EntityCard({ entity, variant = 'default', className }: EntityCar
                     type="cnk"
                     value={entity.cnkCode}
                     variant="short"
-                    showTooltip
+                    copyable
                     className="text-xs text-gray-500 dark:text-gray-400"
                   />
                 )}

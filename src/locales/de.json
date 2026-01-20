@@ -63,7 +63,15 @@
     "noFormsAvailable": "Keine Formen verfügbar",
     "noRoutesAvailable": "Keine Wege verfügbar",
     "selected": "ausgewählt",
-    "clearSelection": "Löschen"
+    "clearSelection": "Löschen",
+    "suggestions": "Vorschläge",
+    "useArrowKeys": "↑↓ zum Navigieren, Enter zum Auswählen",
+    "chapterIVOnly": "Kapitel IV",
+    "deliveryEnvironment": "Lieferumgebung",
+    "medicineType": "Arzneimitteltyp",
+    "publicOnly": "Öffentlich",
+    "hospitalOnly": "Krankenhaus",
+    "allEnvironments": "Alle"
   },
   "detail": {
     "overview": "Übersicht",
