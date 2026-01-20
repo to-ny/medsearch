@@ -12,7 +12,8 @@
     "typeAtLeast": "Geben Sie mindestens 3 Zeichen ein",
     "products": "Produkte",
     "retrySearch": "Erneut suchen",
-    "searchAll": "Alle suchen"
+    "searchAll": "Alle suchen",
+    "close": "Schließen"
   },
   "entities": {
     "vtm": "Virtuelle Therapeutische Einheit",
@@ -40,7 +41,29 @@
   },
   "search": {
     "resultsFor": "für",
-    "filteredBy": "Gefiltert nach"
+    "filteredBy": "Gefiltert nach",
+    "clearAllFilters": "Alle löschen",
+    "reimbursableOnly": "Erstattungsfähig",
+    "blackTriangleOnly": "Erweiterte Überwachung",
+    "recentSearches": "Letzte Suchen",
+    "filters": "Filter",
+    "applyFilters": "Anwenden",
+    "entityTypes": "Entitätstypen",
+    "contextFilters": "Zusätzliche Filter",
+    "brandFilters": "Markenfilter",
+    "packageFilters": "Packungsfilter",
+    "pharmaceuticalForm": "Darreichungsform",
+    "routeOfAdministration": "Verabreichungsweg",
+    "reimbursementCategory": "Erstattungskategorie",
+    "priceRange": "Preisspanne",
+    "minPrice": "Min Preis",
+    "maxPrice": "Max Preis",
+    "selectForms": "Formen auswählen...",
+    "selectRoutes": "Wege auswählen...",
+    "noFormsAvailable": "Keine Formen verfügbar",
+    "noRoutesAvailable": "Keine Wege verfügbar",
+    "selected": "ausgewählt",
+    "clearSelection": "Löschen"
   },
   "detail": {
     "overview": "Übersicht",

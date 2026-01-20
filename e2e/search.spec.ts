@@ -49,8 +49,8 @@ test('search by company name finds company', async ({ page }) => {
   await page.goto('/en/search?q=Boiron');
   await page.waitForLoadState('networkidle');
 
-  // Company filter should show results
-  const companyFilter = page.locator('button:has-text("Company")');
+  // Company filter should show results - target the entity type filter button specifically (has aria-pressed)
+  const companyFilter = page.locator('button[aria-pressed]:has-text("Company")');
   await expect(companyFilter).toBeVisible();
 
   // Click company filter to show company results

@@ -12,7 +12,8 @@
     "typeAtLeast": "Tapez au moins 3 caractères",
     "products": "produits",
     "retrySearch": "Réessayer",
-    "searchAll": "Rechercher tout"
+    "searchAll": "Rechercher tout",
+    "close": "Fermer"
   },
   "entities": {
     "vtm": "Groupe Thérapeutique Virtuel",
@@ -40,7 +41,29 @@
   },
   "search": {
     "resultsFor": "pour",
-    "filteredBy": "Filtré par"
+    "filteredBy": "Filtré par",
+    "clearAllFilters": "Tout effacer",
+    "reimbursableOnly": "Remboursable",
+    "blackTriangleOnly": "Surveillance renforcée",
+    "recentSearches": "Recherches récentes",
+    "filters": "Filtres",
+    "applyFilters": "Appliquer",
+    "entityTypes": "Types d'entités",
+    "contextFilters": "Filtres supplémentaires",
+    "brandFilters": "Filtres de marque",
+    "packageFilters": "Filtres de conditionnement",
+    "pharmaceuticalForm": "Forme pharmaceutique",
+    "routeOfAdministration": "Voie d'administration",
+    "reimbursementCategory": "Catégorie de remboursement",
+    "priceRange": "Fourchette de prix",
+    "minPrice": "Prix min",
+    "maxPrice": "Prix max",
+    "selectForms": "Sélectionner les formes...",
+    "selectRoutes": "Sélectionner les voies...",
+    "noFormsAvailable": "Aucune forme disponible",
+    "noRoutesAvailable": "Aucune voie disponible",
+    "selected": "sélectionné(s)",
+    "clearSelection": "Effacer"
   },
   "detail": {
     "overview": "Aperçu",

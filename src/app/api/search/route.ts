@@ -76,9 +76,29 @@ export async function GET(request: NextRequest) {
     const vmpGroupCode = searchParams.get('vmpGroup') || undefined;
     const substanceCode = searchParams.get('substance') || undefined;
 
-    const hasFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode || substanceCode;
+    // Parse boolean filter parameters
+    const reimbursableParam = searchParams.get('reimbursable');
+    const reimbursable = reimbursableParam === 'true' ? true : undefined;
+    const blackTriangleParam = searchParams.get('blackTriangle');
+    const blackTriangle = blackTriangleParam === 'true' ? true : undefined;
+
+    // Parse Phase B extended filter parameters
+    const formParam = searchParams.get('form');
+    const formCodes = formParam ? formParam.split(',').map(c => c.trim()).filter(Boolean) : undefined;
+    const routeParam = searchParams.get('route');
+    const routeCodes = routeParam ? routeParam.split(',').map(c => c.trim()).filter(Boolean) : undefined;
+    const reimbCatParam = searchParams.get('reimbCategory');
+    const reimbursementCategories = reimbCatParam ? reimbCatParam.split(',').map(c => c.trim()).filter(Boolean) : undefined;
+    const priceMinParam = searchParams.get('priceMin');
+    const priceMin = priceMinParam ? parseFloat(priceMinParam) : undefined;
+    const priceMaxParam = searchParams.get('priceMax');
+    const priceMax = priceMaxParam ? parseFloat(priceMaxParam) : undefined;
+
+    const hasBasicFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode || substanceCode || reimbursable !== undefined || blackTriangle !== undefined;
+    const hasExtendedFilters = (formCodes && formCodes.length > 0) || (routeCodes && routeCodes.length > 0) || (reimbursementCategories && reimbursementCategories.length > 0) || priceMin !== undefined || priceMax !== undefined;
+    const hasFilters = hasBasicFilters || hasExtendedFilters;
     const filters: SearchFilters | undefined = hasFilters
-      ? { vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode }
+      ? { vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, reimbursable, blackTriangle, formCodes, routeCodes, reimbursementCategories, priceMin, priceMax }
       : undefined;
 
     // Parse query parameter - allow empty if filters are present

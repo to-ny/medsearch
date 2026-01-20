@@ -30,7 +30,9 @@ const fetcher = async (url: string): Promise<SearchResponse> => {
 function buildSearchUrl(options: UseSearchOptions): string | null {
   const { query, lang, types, limit, offset, enabled = true, filters } = options;
 
-  const hasFilters = filters && (filters.vtmCode || filters.vmpCode || filters.ampCode || filters.atcCode || filters.companyCode || filters.vmpGroupCode || filters.substanceCode);
+  const hasBasicFilters = filters && (filters.vtmCode || filters.vmpCode || filters.ampCode || filters.atcCode || filters.companyCode || filters.vmpGroupCode || filters.substanceCode || filters.reimbursable !== undefined || filters.blackTriangle !== undefined);
+  const hasExtendedFilters = filters && ((filters.formCodes && filters.formCodes.length > 0) || (filters.routeCodes && filters.routeCodes.length > 0) || (filters.reimbursementCategories && filters.reimbursementCategories.length > 0) || filters.priceMin !== undefined || filters.priceMax !== undefined);
+  const hasFilters = hasBasicFilters || hasExtendedFilters;
 
   // Don't search if disabled or (query is too short and no filters)
   // Minimum 3 characters required for text search (trigram index requirement)
@@ -80,6 +82,31 @@ function buildSearchUrl(options: UseSearchOptions): string | null {
   }
   if (filters?.substanceCode) {
     params.set('substance', filters.substanceCode);
+  }
+
+  // Add boolean filters
+  if (filters?.reimbursable === true) {
+    params.set('reimbursable', 'true');
+  }
+  if (filters?.blackTriangle === true) {
+    params.set('blackTriangle', 'true');
+  }
+
+  // Add Phase B extended filters
+  if (filters?.formCodes && filters.formCodes.length > 0) {
+    params.set('form', filters.formCodes.join(','));
+  }
+  if (filters?.routeCodes && filters.routeCodes.length > 0) {
+    params.set('route', filters.routeCodes.join(','));
+  }
+  if (filters?.reimbursementCategories && filters.reimbursementCategories.length > 0) {
+    params.set('reimbCategory', filters.reimbursementCategories.join(','));
+  }
+  if (filters?.priceMin !== undefined) {
+    params.set('priceMin', filters.priceMin.toString());
+  }
+  if (filters?.priceMax !== undefined) {
+    params.set('priceMax', filters.priceMax.toString());
   }
 
   return `/api/search?${params.toString()}`;
