@@ -18,6 +18,14 @@ export interface SearchLinkParams {
   vmpGroup?: string;
   substance?: string;
   page?: number;
+  reimbursable?: boolean;
+  blackTriangle?: boolean;
+  // Phase B extended filters
+  form?: string[];    // Pharmaceutical form codes
+  route?: string[];   // Route of administration codes
+  reimbCategory?: string[]; // Reimbursement categories (A, B, C, etc.)
+  priceMin?: number;
+  priceMax?: number;
 }
 
 /**
@@ -132,6 +140,14 @@ function createLinksForLanguage(language: Language): UseLinksReturn {
       if (params.vmpGroup) searchParams.set('vmpGroup', params.vmpGroup);
       if (params.substance) searchParams.set('substance', params.substance);
       if (params.page && params.page > 1) searchParams.set('page', params.page.toString());
+      if (params.reimbursable) searchParams.set('reimbursable', 'true');
+      if (params.blackTriangle) searchParams.set('blackTriangle', 'true');
+      // Phase B extended filters
+      if (params.form && params.form.length > 0) searchParams.set('form', params.form.join(','));
+      if (params.route && params.route.length > 0) searchParams.set('route', params.route.join(','));
+      if (params.reimbCategory && params.reimbCategory.length > 0) searchParams.set('reimbCategory', params.reimbCategory.join(','));
+      if (params.priceMin !== undefined) searchParams.set('priceMin', params.priceMin.toString());
+      if (params.priceMax !== undefined) searchParams.set('priceMax', params.priceMax.toString());
 
       const qs = searchParams.toString();
       return `/${language}/search${qs ? `?${qs}` : ''}`;

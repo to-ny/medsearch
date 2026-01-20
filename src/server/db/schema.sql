@@ -525,3 +525,82 @@ CREATE INDEX IF NOT EXISTS idx_search_entity_type ON search_index (entity_type);
 
 -- Validity filtering
 CREATE INDEX IF NOT EXISTS idx_search_end_date ON search_index (end_date) WHERE end_date IS NOT NULL;
+
+-- ============================================================================
+-- Search Index Extended - Additional filter columns for Phase B contextual filtering
+-- This table extends search_index with form, route, reimbursement, and other filters.
+-- Kept separate from search_index to reduce migration risk.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS search_index_extended (
+  id SERIAL PRIMARY KEY,
+  entity_type TEXT NOT NULL,
+  code TEXT NOT NULL,
+
+  -- Concatenated searchable text for trigram index
+  search_text TEXT NOT NULL,
+
+  -- Display fields (same as search_index)
+  name JSONB,
+  parent_code TEXT,
+  parent_name JSONB,
+  company_name TEXT,
+  pack_info TEXT,
+  price NUMERIC,
+  reimbursable BOOLEAN,
+  cnk_code TEXT,
+  product_count INT,
+  black_triangle BOOLEAN,
+
+  -- Relationship filter columns (same as search_index)
+  vtm_code TEXT,
+  vmp_code TEXT,
+  amp_code TEXT,
+  atc_code TEXT,
+  company_actor_nr TEXT,
+  vmp_group_code TEXT,
+
+  end_date DATE,
+
+  -- Phase B: Extended filter columns
+  pharmaceutical_form_code VARCHAR(20),
+  pharmaceutical_form_name JSONB,  -- Multilingual: {"nl": "...", "fr": "...", "en": "...", "de": "..."}
+  route_of_administration_code VARCHAR(20),
+  route_of_administration_name JSONB,  -- Multilingual
+  reimbursement_category VARCHAR(10),  -- A, B, C, Cs, Cx, Fa, Fb
+  chapter_iv_exists BOOLEAN DEFAULT FALSE,
+  delivery_environment CHAR(1),  -- P=Public, H=Hospital
+  medicine_type VARCHAR(50),  -- ALLOPATHIC, HOMEOPATHIC, etc.
+
+  UNIQUE(entity_type, code)
+);
+
+-- Trigram index for substring search (accelerates ILIKE '%term%')
+CREATE INDEX IF NOT EXISTS idx_search_ext_text_trgm ON search_index_extended USING GIN (search_text gin_trgm_ops);
+
+-- Code prefix matching
+CREATE INDEX IF NOT EXISTS idx_search_ext_code ON search_index_extended (code);
+
+-- CNK exact match
+CREATE INDEX IF NOT EXISTS idx_search_ext_cnk ON search_index_extended (cnk_code) WHERE cnk_code IS NOT NULL;
+
+-- Relationship filter indexes (partial to save space)
+CREATE INDEX IF NOT EXISTS idx_search_ext_vtm ON search_index_extended (vtm_code) WHERE vtm_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_ext_vmp ON search_index_extended (vmp_code) WHERE vmp_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_ext_amp ON search_index_extended (amp_code) WHERE amp_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_ext_atc ON search_index_extended (atc_code) WHERE atc_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_ext_company ON search_index_extended (company_actor_nr) WHERE company_actor_nr IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_ext_vmp_group ON search_index_extended (vmp_group_code) WHERE vmp_group_code IS NOT NULL;
+
+-- Entity type for faceting
+CREATE INDEX IF NOT EXISTS idx_search_ext_entity_type ON search_index_extended (entity_type);
+
+-- Validity filtering
+CREATE INDEX IF NOT EXISTS idx_search_ext_end_date ON search_index_extended (end_date) WHERE end_date IS NOT NULL;
+
+-- Phase B: Extended filter indexes
+CREATE INDEX IF NOT EXISTS idx_search_ext_form ON search_index_extended (pharmaceutical_form_code) WHERE pharmaceutical_form_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_ext_route ON search_index_extended (route_of_administration_code) WHERE route_of_administration_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_ext_reimb_cat ON search_index_extended (reimbursement_category) WHERE reimbursement_category IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_ext_medicine_type ON search_index_extended (medicine_type) WHERE medicine_type IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_ext_delivery_env ON search_index_extended (delivery_environment) WHERE delivery_environment IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_search_ext_chapter_iv ON search_index_extended (chapter_iv_exists) WHERE chapter_iv_exists = TRUE;

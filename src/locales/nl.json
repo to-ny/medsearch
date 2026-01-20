@@ -12,7 +12,8 @@
     "typeAtLeast": "Typ minstens 3 tekens",
     "products": "producten",
     "retrySearch": "Opnieuw zoeken",
-    "searchAll": "Alles zoeken"
+    "searchAll": "Alles zoeken",
+    "close": "Sluiten"
   },
   "entities": {
     "vtm": "Virtuele Therapeutische Groep",
@@ -40,7 +41,29 @@
   },
   "search": {
     "resultsFor": "voor",
-    "filteredBy": "Gefilterd op"
+    "filteredBy": "Gefilterd op",
+    "clearAllFilters": "Alles wissen",
+    "reimbursableOnly": "Terugbetaalbaar",
+    "blackTriangleOnly": "Extra monitoring",
+    "recentSearches": "Recente zoekopdrachten",
+    "filters": "Filters",
+    "applyFilters": "Toepassen",
+    "entityTypes": "Entiteitstypen",
+    "contextFilters": "Extra filters",
+    "brandFilters": "Merkfilters",
+    "packageFilters": "Verpakkingsfilters",
+    "pharmaceuticalForm": "Farmaceutische vorm",
+    "routeOfAdministration": "Toedieningsweg",
+    "reimbursementCategory": "Terugbetalingscategorie",
+    "priceRange": "Prijsbereik",
+    "minPrice": "Min prijs",
+    "maxPrice": "Max prijs",
+    "selectForms": "Selecteer vormen...",
+    "selectRoutes": "Selecteer toedieningswegen...",
+    "noFormsAvailable": "Geen vormen beschikbaar",
+    "noRoutesAvailable": "Geen routes beschikbaar",
+    "selected": "geselecteerd",
+    "clearSelection": "Wissen"
   },
   "detail": {
     "overview": "Overzicht",

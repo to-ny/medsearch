@@ -36,6 +36,34 @@ export interface SearchRequest {
   offset?: number;
 }
 
+/** Applied filter with human-readable name */
+export interface AppliedFilter {
+  type: 'vtm' | 'vmp' | 'amp' | 'atc' | 'company' | 'vmpGroup' | 'substance';
+  code: string;
+  name: string;  // Localized name for display
+}
+
+/** Available filter option with count */
+export interface FilterOption<T = string> {
+  code: T;
+  name?: MultilingualText;  // Human-readable name (multilingual for forms/routes)
+  count: number;
+}
+
+/** Available filters computed from search results */
+export interface AvailableFilters {
+  /** Pharmaceutical forms available in AMP/AMPP results */
+  forms?: FilterOption[];
+  /** Routes of administration available in AMP/AMPP results */
+  routes?: FilterOption[];
+  /** Reimbursement categories available in AMPP results */
+  reimbCategories?: FilterOption[];
+  /** Medicine types available in AMP results */
+  medicineTypes?: FilterOption[];
+  /** Price range for AMPP results */
+  priceRange?: { min: number; max: number };
+}
+
 /** Search response */
 export interface SearchResponse {
   query: string;
@@ -49,6 +77,9 @@ export interface SearchResponse {
     offset: number;
     hasMore: boolean;
   };
+  appliedFilters?: AppliedFilter[];
+  /** Available filter options computed from current results (Phase B) */
+  availableFilters?: AvailableFilters;
 }
 
 /** Entity detail request (URL params) */

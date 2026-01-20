@@ -12,7 +12,8 @@
     "typeAtLeast": "Type at least 3 characters",
     "products": "products",
     "retrySearch": "Retry Search",
-    "searchAll": "Search all"
+    "searchAll": "Search all",
+    "close": "Close"
   },
   "entities": {
     "vtm": "Virtual Therapeutic Moiety",
@@ -40,7 +41,29 @@
   },
   "search": {
     "resultsFor": "for",
-    "filteredBy": "Filtered by"
+    "filteredBy": "Filtered by",
+    "clearAllFilters": "Clear all",
+    "reimbursableOnly": "Reimbursable",
+    "blackTriangleOnly": "Enhanced Monitoring",
+    "recentSearches": "Recent searches",
+    "filters": "Filters",
+    "applyFilters": "Apply",
+    "entityTypes": "Entity Types",
+    "contextFilters": "Additional Filters",
+    "brandFilters": "Brand Filters",
+    "packageFilters": "Package Filters",
+    "pharmaceuticalForm": "Pharmaceutical Form",
+    "routeOfAdministration": "Route of Administration",
+    "reimbursementCategory": "Reimbursement Category",
+    "priceRange": "Price Range",
+    "minPrice": "Min price",
+    "maxPrice": "Max price",
+    "selectForms": "Select forms...",
+    "selectRoutes": "Select routes...",
+    "noFormsAvailable": "No forms available",
+    "noRoutesAvailable": "No routes available",
+    "selected": "selected",
+    "clearSelection": "Clear"
   },
   "detail": {
     "overview": "Overview",
