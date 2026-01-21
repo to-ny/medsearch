@@ -67,11 +67,21 @@
     "suggestions": "Vorschläge",
     "useArrowKeys": "↑↓ zum Navigieren, Enter zum Auswählen",
     "chapterIVOnly": "Kapitel IV",
+    "blackTriangleTooltip": "Arzneimittel unter intensiver Sicherheitsüberwachung. Melden Sie vermutete Nebenwirkungen.",
+    "chapterIVTooltip": "Erfordert vorherige Genehmigung der Krankenversicherung für die Erstattung.",
     "deliveryEnvironment": "Lieferumgebung",
     "medicineType": "Arzneimitteltyp",
     "publicOnly": "Öffentlich",
     "hospitalOnly": "Krankenhaus",
-    "allEnvironments": "Alle"
+    "allEnvironments": "Alle",
+    "moreFilters": "Mehr Filter",
+    "showMore": "+{count}",
+    "showLess": "Weniger",
+    "availabilitySection": "Verfügbarkeit",
+    "brandPropertiesSection": "Markeneigenschaften",
+    "packagePropertiesSection": "Packungseigenschaften",
+    "reset": "Zurücksetzen",
+    "apply": "Anwenden"
   },
   "detail": {
     "overview": "Übersicht",

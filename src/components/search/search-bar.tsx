@@ -11,6 +11,7 @@ import type { EntityType } from '@/server/types/domain';
 const RECENT_SEARCHES_KEY = 'medsearch_recent_searches';
 const MAX_RECENT_SEARCHES = 5;
 const SUGGESTION_DEBOUNCE_MS = 150;
+const TYPE_HINT_DEBOUNCE_MS = 1000;
 
 interface SearchSuggestion {
   entityType: EntityType;
@@ -108,6 +109,12 @@ export function SearchBar({
   const debouncedValue = useDebounce(value, 300);
   const debouncedSuggestionValue = useDebounce(value, SUGGESTION_DEBOUNCE_MS);
   const resolvedPlaceholder = placeholder ?? t('common.searchPlaceholder');
+
+  // Debounce the "type at least" hint to avoid flashing for fast typists
+  const shouldShowTypeHint = value.length > 0 && value.length < 3;
+  const debouncedShouldShowTypeHint = useDebounce(shouldShowTypeHint, TYPE_HINT_DEBOUNCE_MS);
+  // Show hint only if currently valid AND has been valid for debounce period (hides immediately when >= 3 chars)
+  const showTypeHint = shouldShowTypeHint && debouncedShouldShowTypeHint;
 
   // Initialize recent searches from localStorage (use lazy initial state to avoid effect)
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -525,41 +532,41 @@ export function SearchBar({
           </div>
         )}
       </div>
-      {/* CNK indicator or "type at least" message - with proper spacing */}
-      <div className="mt-2 mb-4 min-h-[24px]">
-        {isCNKSearch ? (
-          <span
-            className={cn(
-              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium',
-              'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-            )}
-            role="status"
-            aria-live="polite"
-          >
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden="true"
+      {/* CNK indicator or "type at least" message - only render when visible */}
+      {(isCNKSearch || showTypeHint) && (
+        <div className="mt-2">
+          {isCNKSearch ? (
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium',
+                'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+              )}
+              role="status"
+              aria-live="polite"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-              />
-            </svg>
-            {t('pharmacist.cnkDetected')} - {t('entityLabels.package')}
-          </span>
-        ) : (
-          value.length > 0 && value.length < 3 && (
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
+              {t('pharmacist.cnkDetected')} - {t('entityLabels.package')}
+            </span>
+          ) : (
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {t('common.typeAtLeast')}
             </p>
-          )
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </form>
   );
 }

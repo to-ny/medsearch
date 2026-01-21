@@ -67,11 +67,21 @@
     "suggestions": "Suggestions",
     "useArrowKeys": "↑↓ to navigate, Enter to select",
     "chapterIVOnly": "Chapter IV",
+    "blackTriangleTooltip": "Medicines under intensive safety monitoring. Report any suspected side effects.",
+    "chapterIVTooltip": "Requires prior authorization from health insurance for reimbursement.",
     "deliveryEnvironment": "Delivery Environment",
     "medicineType": "Medicine Type",
     "publicOnly": "Public",
     "hospitalOnly": "Hospital",
-    "allEnvironments": "All"
+    "allEnvironments": "All",
+    "moreFilters": "More filters",
+    "showMore": "+{count}",
+    "showLess": "Less",
+    "availabilitySection": "Availability",
+    "brandPropertiesSection": "Brand Properties",
+    "packagePropertiesSection": "Package Properties",
+    "reset": "Reset",
+    "apply": "Apply"
   },
   "detail": {
     "overview": "Overview",

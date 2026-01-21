@@ -4,13 +4,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, Suspense, useMemo } from 'react';
 import { XMarkIcon } from '@heroicons/react/20/solid';
 import { SearchBar } from '@/components/search/search-bar';
-import { EntityTypeFilter } from '@/components/search/entity-type-filter';
+import { QuickFilters } from '@/components/search/quick-filters';
 import { Pagination } from '@/components/search/pagination';
 import { EntityCard } from '@/components/entities/entity-card';
 import { EmptyState } from '@/components/shared/empty-state';
 import { SkeletonList } from '@/components/ui/skeleton';
-import { FilterDrawer, MobileFilterContent } from '@/components/search/filter-drawer';
-import { FilterPanel } from '@/components/search/filter-panel';
+import { FilterModal, type ModalFilterValues } from '@/components/search/filter-modal';
 import { useLanguage, useLinks, useSearch, useTranslation } from '@/lib/hooks';
 import type { EntityType } from '@/server/types/domain';
 
@@ -89,6 +88,9 @@ function SearchContent() {
     return isNaN(page) || page < 1 ? 1 : page;
   });
 
+  // Filter modal state
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
   // Sync state with URL params
   useEffect(() => {
     setQuery(queryParam);
@@ -117,6 +119,36 @@ function SearchContent() {
     filters,
   });
 
+  // Compute active filter count for modal filters
+  const activeFilterCount = useMemo(() => {
+    return [
+      reimbursable,
+      blackTriangle,
+      chapterIV,
+      deliveryEnv !== undefined,
+      medicineType !== undefined,
+      formCodes.length > 0,
+      routeCodes.length > 0,
+      reimbCategories.length > 0,
+      priceMin !== undefined,
+      priceMax !== undefined,
+    ].filter(Boolean).length;
+  }, [reimbursable, blackTriangle, chapterIV, deliveryEnv, medicineType, formCodes, routeCodes, reimbCategories, priceMin, priceMax]);
+
+  // Build modal initial values from current URL params
+  const modalInitialValues: ModalFilterValues = useMemo(() => ({
+    reimbursable,
+    chapterIV,
+    deliveryEnv,
+    blackTriangle,
+    medicineType,
+    formCodes,
+    routeCodes,
+    reimbCategories,
+    priceMin,
+    priceMax,
+  }), [reimbursable, chapterIV, deliveryEnv, blackTriangle, medicineType, formCodes, routeCodes, reimbCategories, priceMin, priceMax]);
+
   const updateUrl = (
     newQuery: string,
     newTypes: EntityType[],
@@ -134,6 +166,7 @@ function SearchContent() {
       medicineType?: string;
     }
   ) => {
+    // For each override, check if the key exists in overrides (allowing explicit undefined to clear values)
     router.push(links.toSearch({
       q: newQuery || undefined,
       types: newTypes.length > 0 ? newTypes : undefined,
@@ -145,16 +178,16 @@ function SearchContent() {
       company: companyCode,
       vmpGroup: vmpGroupCode,
       substance: substanceCode,
-      reimbursable: overrides?.reimbursable ?? (reimbursable || undefined),
-      blackTriangle: overrides?.blackTriangle ?? (blackTriangle || undefined),
-      form: overrides?.form ?? (formCodes.length > 0 ? formCodes : undefined),
-      route: overrides?.route ?? (routeCodes.length > 0 ? routeCodes : undefined),
-      reimbCategory: overrides?.reimbCategory ?? (reimbCategories.length > 0 ? reimbCategories : undefined),
-      priceMin: overrides?.priceMin ?? priceMin,
-      priceMax: overrides?.priceMax ?? priceMax,
-      chapterIV: overrides?.chapterIV ?? (chapterIV || undefined),
-      deliveryEnv: overrides?.deliveryEnv ?? deliveryEnv,
-      medicineType: overrides?.medicineType ?? medicineType,
+      reimbursable: overrides && 'reimbursable' in overrides ? overrides.reimbursable : (reimbursable || undefined),
+      blackTriangle: overrides && 'blackTriangle' in overrides ? overrides.blackTriangle : (blackTriangle || undefined),
+      form: overrides && 'form' in overrides ? overrides.form : (formCodes.length > 0 ? formCodes : undefined),
+      route: overrides && 'route' in overrides ? overrides.route : (routeCodes.length > 0 ? routeCodes : undefined),
+      reimbCategory: overrides && 'reimbCategory' in overrides ? overrides.reimbCategory : (reimbCategories.length > 0 ? reimbCategories : undefined),
+      priceMin: overrides && 'priceMin' in overrides ? overrides.priceMin : priceMin,
+      priceMax: overrides && 'priceMax' in overrides ? overrides.priceMax : priceMax,
+      chapterIV: overrides && 'chapterIV' in overrides ? overrides.chapterIV : (chapterIV || undefined),
+      deliveryEnv: overrides && 'deliveryEnv' in overrides ? overrides.deliveryEnv : deliveryEnv,
+      medicineType: overrides && 'medicineType' in overrides ? overrides.medicineType : medicineType,
     }));
   };
 
@@ -173,46 +206,27 @@ function SearchContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleReimbursableToggle = () => {
-    updateUrl(query, selectedTypes, 1, { reimbursable: !reimbursable });
+  // Handler for batch apply from modal
+  const handleApplyFilters = (values: ModalFilterValues) => {
+    updateUrl(query, selectedTypes, 1, {
+      reimbursable: values.reimbursable || undefined,
+      blackTriangle: values.blackTriangle || undefined,
+      chapterIV: values.chapterIV || undefined,
+      deliveryEnv: values.deliveryEnv,
+      medicineType: values.medicineType,
+      form: values.formCodes.length > 0 ? values.formCodes : undefined,
+      route: values.routeCodes.length > 0 ? values.routeCodes : undefined,
+      reimbCategory: values.reimbCategories.length > 0 ? values.reimbCategories : undefined,
+      priceMin: values.priceMin,
+      priceMax: values.priceMax,
+    });
+    setIsFilterModalOpen(false);
   };
 
-  const handleBlackTriangleToggle = () => {
-    updateUrl(query, selectedTypes, 1, { blackTriangle: !blackTriangle });
-  };
-
-  // Phase B filter handlers
-  const handleFormChange = (codes: string[]) => {
-    updateUrl(query, selectedTypes, 1, { form: codes.length > 0 ? codes : undefined });
-  };
-
-  const handleRouteChange = (codes: string[]) => {
-    updateUrl(query, selectedTypes, 1, { route: codes.length > 0 ? codes : undefined });
-  };
-
-  const handleReimbCategoryChange = (categories: string[]) => {
-    updateUrl(query, selectedTypes, 1, { reimbCategory: categories.length > 0 ? categories : undefined });
-  };
-
-  const handlePriceMinChange = (value: number | undefined) => {
-    updateUrl(query, selectedTypes, 1, { priceMin: value });
-  };
-
-  const handlePriceMaxChange = (value: number | undefined) => {
-    updateUrl(query, selectedTypes, 1, { priceMax: value });
-  };
-
-  // Phase C filter handlers
-  const handleChapterIVToggle = () => {
-    updateUrl(query, selectedTypes, 1, { chapterIV: !chapterIV });
-  };
-
-  const handleDeliveryEnvChange = (env: 'P' | 'H' | undefined) => {
-    updateUrl(query, selectedTypes, 1, { deliveryEnv: env });
-  };
-
-  const handleMedicineTypeChange = (type: string | undefined) => {
-    updateUrl(query, selectedTypes, 1, { medicineType: type });
+  // Reset handler for modal
+  const handleResetModalFilters = () => {
+    // Reset is handled in modal - it sets pendingValues to defaults
+    // User must click Apply to apply the reset
   };
 
   const removeFilter = (filterKey: string) => {
@@ -266,8 +280,7 @@ function SearchContent() {
     if (companyCode) list.push({ key: 'company', label: t('entityLabels.company'), value: getFilterName('company', companyCode) });
     if (vmpGroupCode) list.push({ key: 'vmpGroup', label: t('entityLabels.therapeuticGroup'), value: getFilterName('vmpGroup', vmpGroupCode) });
     if (substanceCode) list.push({ key: 'substance', label: t('entityLabels.ingredient'), value: getFilterName('substance', substanceCode) });
-    if (reimbursable) list.push({ key: 'reimbursable', label: t('search.reimbursableOnly'), value: '' });
-    if (blackTriangle) list.push({ key: 'blackTriangle', label: t('search.blackTriangleOnly'), value: '' });
+    // Note: reimbursable, blackTriangle, chapterIV, deliveryEnv, medicineType are NOT added here because they're visible via modal badge count
 
     // Phase B extended filters
     if (formCodes.length > 0) list.push({ key: 'form', label: t('search.pharmaceuticalForm'), value: `${formCodes.length} ${t('search.selected')}` });
@@ -279,47 +292,36 @@ function SearchContent() {
         : priceMin !== undefined ? `>= ${priceMin.toFixed(2)}` : `<= ${priceMax?.toFixed(2)}`;
       list.push({ key: 'priceRange', label: t('search.priceRange'), value: priceLabel });
     }
-    // Phase C extended filters
-    if (chapterIV) list.push({ key: 'chapterIV', label: t('entityLabels.chapterIV'), value: '' });
-    if (deliveryEnv) list.push({ key: 'deliveryEnv', label: t('search.deliveryEnvironment'), value: deliveryEnv === 'P' ? t('detail.public') : t('detail.hospital') });
-    if (medicineType) list.push({ key: 'medicineType', label: t('search.medicineType'), value: t(`medicineTypes.${medicineType}`) });
     return list;
-  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, reimbursable, blackTriangle, formCodes, routeCodes, reimbCategories, priceMin, priceMax, chapterIV, deliveryEnv, medicineType, t, data?.appliedFilters]);
+  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, formCodes, routeCodes, reimbCategories, priceMin, priceMax, t, data?.appliedFilters]);
+
+  // Compute which entity types have active filters targeting them
+  // This allows showing badges with count=0 when filters cause empty results
+  const filteredTypes = useMemo(() => {
+    const types: EntityType[] = [];
+    // Filters targeting AMP
+    if (blackTriangle || medicineType) {
+      types.push('amp');
+    }
+    // Filters targeting AMPP
+    if (reimbursable || chapterIV || deliveryEnv) {
+      types.push('ampp');
+    }
+    return types;
+  }, [blackTriangle, medicineType, reimbursable, chapterIV, deliveryEnv]);
 
   const totalPages = data ? Math.ceil(data.totalCount / RESULTS_PER_PAGE) : 0;
-
-  // Count active contextual filters for mobile badge
-  const contextualFilterCount = activeFilters.length;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Search bar */}
-      <div className="mb-6">
+      <div className="mb-4">
         <SearchBar
           defaultValue={query}
           onSearch={handleSearch}
           autoFocus={!query}
         />
       </div>
-
-      {/* Mobile filter drawer */}
-      {data && (
-        <div className="mb-4 md:hidden">
-          <FilterDrawer activeFilterCount={contextualFilterCount}>
-            <MobileFilterContent
-              selectedTypes={selectedTypes}
-              facets={data.facets.byType}
-              onTypesChange={handleTypesChange}
-              reimbursable={reimbursable}
-              onReimbursableToggle={handleReimbursableToggle}
-              blackTriangle={blackTriangle}
-              onBlackTriangleToggle={handleBlackTriangleToggle}
-              onClearAll={clearAllFilters}
-              hasActiveFilters={activeFilters.length > 0 || reimbursable || blackTriangle}
-            />
-          </FilterDrawer>
-        </div>
-      )}
 
       {/* Active filters */}
       {activeFilters.length > 0 && (
@@ -368,138 +370,15 @@ function SearchContent() {
       ) : data && data.results.length === 0 ? (
         <EmptyState variant="no-results" query={query} />
       ) : data ? (
-        <div className="space-y-6">
-          {/* Type filters - hidden on mobile */}
-          <div className="hidden md:block">
-            <EntityTypeFilter
-              selectedTypes={selectedTypes}
-              facets={data.facets.byType}
-              onChange={handleTypesChange}
-            />
-          </div>
-
-          {/* Contextual filters - hidden on mobile */}
-          <div className="hidden md:flex flex-wrap items-center gap-3">
-            {/* Reimbursable toggle - only show if AMPP results exist */}
-            {data.facets.byType.ampp > 0 && (
-              <button
-                onClick={handleReimbursableToggle}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  reimbursable
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
-                aria-pressed={reimbursable}
-              >
-                <span className="w-4 h-4 rounded border flex items-center justify-center text-xs">
-                  {reimbursable && '✓'}
-                </span>
-                {t('search.reimbursableOnly')}
-              </button>
-            )}
-
-            {/* Black triangle toggle - only show if AMP results exist */}
-            {data.facets.byType.amp > 0 && (
-              <button
-                onClick={handleBlackTriangleToggle}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  blackTriangle
-                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
-                aria-pressed={blackTriangle}
-              >
-                <span className="text-xs">▲</span>
-                {t('search.blackTriangleOnly')}
-              </button>
-            )}
-
-            {/* Chapter IV toggle - only show if AMPP results exist */}
-            {data.facets.byType.ampp > 0 && (
-              <button
-                onClick={handleChapterIVToggle}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  chapterIV
-                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
-                aria-pressed={chapterIV}
-              >
-                <span className="w-4 h-4 rounded border flex items-center justify-center text-xs">
-                  {chapterIV && '✓'}
-                </span>
-                {t('search.chapterIVOnly')}
-              </button>
-            )}
-
-            {/* Delivery environment filter - only show if AMPP results exist */}
-            {data.facets.byType.ampp > 0 && (
-              <div className="inline-flex items-center gap-1 px-1 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <button
-                  onClick={() => handleDeliveryEnvChange(undefined)}
-                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                    !deliveryEnv
-                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                  }`}
-                >
-                  {t('search.allEnvironments')}
-                </button>
-                <button
-                  onClick={() => handleDeliveryEnvChange('P')}
-                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                    deliveryEnv === 'P'
-                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                  }`}
-                >
-                  {t('search.publicOnly')}
-                </button>
-                <button
-                  onClick={() => handleDeliveryEnvChange('H')}
-                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                    deliveryEnv === 'H'
-                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                  }`}
-                >
-                  {t('search.hospitalOnly')}
-                </button>
-              </div>
-            )}
-
-            {/* Medicine type filter - only show if AMP results exist */}
-            {data.facets.byType.amp > 0 && (
-              <select
-                value={medicineType || ''}
-                onChange={(e) => handleMedicineTypeChange(e.target.value || undefined)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-0 focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">{t('search.medicineType')}</option>
-                <option value="ALLOPATHIC">{t('medicineTypes.ALLOPATHIC')}</option>
-                <option value="HOMEOPATHIC">{t('medicineTypes.HOMEOPATHIC')}</option>
-                <option value="PHYTOTHERAPY">{t('medicineTypes.PHYTOTHERAPY')}</option>
-                <option value="ANTHROPOSOPHIC">{t('medicineTypes.ANTHROPOSOPHIC')}</option>
-                <option value="TRADITIONAL_HERBAL">{t('medicineTypes.TRADITIONAL_HERBAL')}</option>
-              </select>
-            )}
-          </div>
-
-          {/* Phase B: Advanced Filter Panel - hidden on mobile */}
-          <FilterPanel
-            availableFilters={data.availableFilters}
+        <div className="space-y-4">
+          {/* Quick filters (entity types + filters button) */}
+          <QuickFilters
+            selectedTypes={selectedTypes}
             facets={data.facets.byType}
-            selectedFormCodes={formCodes}
-            selectedRouteCodes={routeCodes}
-            selectedReimbCategories={reimbCategories}
-            priceMin={priceMin}
-            priceMax={priceMax}
-            onFormChange={handleFormChange}
-            onRouteChange={handleRouteChange}
-            onReimbCategoryChange={handleReimbCategoryChange}
-            onPriceMinChange={handlePriceMinChange}
-            onPriceMaxChange={handlePriceMaxChange}
-            className="hidden md:block"
+            onTypesChange={handleTypesChange}
+            filteredTypes={filteredTypes}
+            activeFilterCount={activeFilterCount}
+            onFiltersClick={() => setIsFilterModalOpen(true)}
           />
 
           {/* Results list */}
@@ -522,6 +401,17 @@ function SearchContent() {
           )}
         </div>
       ) : null}
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onApply={handleApplyFilters}
+        onReset={handleResetModalFilters}
+        initialValues={modalInitialValues}
+        availableFilters={data?.availableFilters}
+        facets={data?.facets.byType || { vtm: 0, vmp: 0, amp: 0, ampp: 0, company: 0, vmp_group: 0, substance: 0, atc: 0 }}
+      />
     </div>
   );
 }

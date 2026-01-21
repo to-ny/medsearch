@@ -67,11 +67,21 @@
     "suggestions": "Suggesties",
     "useArrowKeys": "↑↓ om te navigeren, Enter om te selecteren",
     "chapterIVOnly": "Hoofdstuk IV",
+    "blackTriangleTooltip": "Geneesmiddelen onder intensieve veiligheidsmonitoring. Meld vermoedelijke bijwerkingen.",
+    "chapterIVTooltip": "Vereist voorafgaande toestemming van de ziekteverzekering voor terugbetaling.",
     "deliveryEnvironment": "Afleveromgeving",
     "medicineType": "Geneesmiddeltype",
     "publicOnly": "Publiek",
     "hospitalOnly": "Ziekenhuis",
-    "allEnvironments": "Alle"
+    "allEnvironments": "Alle",
+    "moreFilters": "Meer filters",
+    "showMore": "+{count}",
+    "showLess": "Minder",
+    "availabilitySection": "Beschikbaarheid",
+    "brandPropertiesSection": "Merkeigenschappen",
+    "packagePropertiesSection": "Verpakkingseigenschappen",
+    "reset": "Reset",
+    "apply": "Toepassen"
   },
   "detail": {
     "overview": "Overzicht",

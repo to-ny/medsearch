@@ -67,11 +67,21 @@
     "suggestions": "Suggestions",
     "useArrowKeys": "↑↓ pour naviguer, Entrée pour sélectionner",
     "chapterIVOnly": "Chapitre IV",
+    "blackTriangleTooltip": "Médicaments sous surveillance renforcée. Signalez tout effet indésirable suspecté.",
+    "chapterIVTooltip": "Nécessite une autorisation préalable de l'assurance maladie pour le remboursement.",
     "deliveryEnvironment": "Environnement de livraison",
     "medicineType": "Type de médicament",
     "publicOnly": "Public",
     "hospitalOnly": "Hôpital",
-    "allEnvironments": "Tous"
+    "allEnvironments": "Tous",
+    "moreFilters": "Plus de filtres",
+    "showMore": "+{count}",
+    "showLess": "Moins",
+    "availabilitySection": "Disponibilité",
+    "brandPropertiesSection": "Propriétés de la marque",
+    "packagePropertiesSection": "Propriétés du conditionnement",
+    "reset": "Réinitialiser",
+    "apply": "Appliquer"
   },
   "detail": {
     "overview": "Aperçu",
