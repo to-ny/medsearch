@@ -13,7 +13,10 @@
     "products": "Produkte",
     "retrySearch": "Erneut suchen",
     "searchAll": "Alle suchen",
-    "close": "Schließen"
+    "close": "Schließen",
+    "viewAllPackages": "Alle Packungen anzeigen",
+    "viewAllBrands": "Alle Marken anzeigen",
+    "otherPackages": "Andere Packungen dieser Marke"
   },
   "entities": {
     "vtm": "Virtuelle Therapeutische Einheit",
@@ -140,7 +143,8 @@
     "patientFrailtyDescription": "Diese therapeutische Gruppe erfordert besondere Aufmerksamkeit für gebrechliche Patienten.",
     "noGenericPrescription": "Keine generische Verschreibung",
     "noSwitching": "Kein Wechsel",
-    "productsContainingIngredient": "Produkte mit Diesem Inhaltsstoff"
+    "productsContainingIngredient": "Produkte mit Diesem Inhaltsstoff",
+    "clickSearchToViewPackages": "Klicken Sie auf 'Alle suchen', um alle verfügbaren Packungen anzuzeigen."
   },
   "languages": {
     "dutch": "Niederländisch",

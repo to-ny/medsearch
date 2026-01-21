@@ -13,7 +13,10 @@
     "products": "producten",
     "retrySearch": "Opnieuw zoeken",
     "searchAll": "Alles zoeken",
-    "close": "Sluiten"
+    "close": "Sluiten",
+    "viewAllPackages": "Alle verpakkingen bekijken",
+    "viewAllBrands": "Alle merken bekijken",
+    "otherPackages": "Andere verpakkingen van dit merk"
   },
   "entities": {
     "vtm": "Virtuele Therapeutische Groep",
@@ -140,7 +143,8 @@
     "patientFrailtyDescription": "Deze therapeutische groep vereist speciale aandacht voor kwetsbare patiënten.",
     "noGenericPrescription": "Geen Generiek Voorschrift",
     "noSwitching": "Geen Wisseling",
-    "productsContainingIngredient": "Producten met Dit Ingrediënt"
+    "productsContainingIngredient": "Producten met Dit Ingrediënt",
+    "clickSearchToViewPackages": "Klik op 'Alles zoeken' om alle beschikbare verpakkingen te bekijken."
   },
   "languages": {
     "dutch": "Nederlands",

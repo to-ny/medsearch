@@ -137,8 +137,14 @@ test('AMP sidebar shows validity indicator', async ({ page }) => {
   await page.goto('/en/medications/SAM662556-00');
   await page.waitForLoadState('networkidle');
 
-  // Sidebar should show validity status (Active or Expired)
-  await expect(page.locator('main')).toContainText(/Active|Expired/);
+  // Target the sidebar summary box specifically
+  const sidebar = page.locator('.bg-gray-50, .dark\\:bg-gray-800\\/50').filter({ hasText: 'Summary' }).first();
+  await expect(sidebar).toBeVisible();
+
+  // Find the row with Validity label and verify it shows Active or Expired
+  const validityRow = sidebar.locator('div.flex.justify-between').filter({ hasText: 'Validity' });
+  await expect(validityRow).toBeVisible();
+  await expect(validityRow.locator('span.font-medium')).toContainText(/Active|Expired/);
 });
 
 test('AMP sidebar shows reimbursable percentage', async ({ page }) => {
@@ -146,8 +152,12 @@ test('AMP sidebar shows reimbursable percentage', async ({ page }) => {
   await page.goto('/en/medications/SAM208966-00');
   await page.waitForLoadState('networkidle');
 
-  // Sidebar should show reimbursable percentage
-  await expect(page.locator('main')).toContainText(/%/);
+  // Sidebar should show reimbursable percentage - look for text pattern in sidebar area
+  const sidebarArea = page.locator('.lg\\:col-span-1, .space-y-6').last();
+  await expect(sidebarArea).toBeVisible();
+
+  // Verify that the sidebar contains a percentage value for reimbursable
+  await expect(sidebarArea).toContainText(/\d+%/);
 });
 
 test('VTM sidebar shows package count', async ({ page }) => {
@@ -155,8 +165,14 @@ test('VTM sidebar shows package count', async ({ page }) => {
   await page.goto('/en/substances/974');
   await page.waitForLoadState('networkidle');
 
-  // Sidebar should show package count
-  await expect(page.locator('main')).toContainText(/Package/i);
+  // The sidebar contains a Summary section with package stats
+  // Look for any element containing "Package" text (either "Packages" or "Package Count")
+  await expect(page.getByText(/Package/i).first()).toBeVisible();
+
+  // Verify the page displays numeric statistics (package count, brand products, etc.)
+  const mainContent = await page.locator('main').textContent() || '';
+  // Should contain numbers representing counts
+  expect(mainContent).toMatch(/\d+/);
 });
 
 test('ATC sidebar shows level indicator', async ({ page }) => {
@@ -164,8 +180,17 @@ test('ATC sidebar shows level indicator', async ({ page }) => {
   await page.goto('/en/classifications/C10AA05');
   await page.waitForLoadState('networkidle');
 
-  // Sidebar should show ATC level
-  await expect(page.locator('main')).toContainText(/Level/i);
+  // Target the sidebar summary box specifically
+  const sidebar = page.locator('.bg-gray-50, .dark\\:bg-gray-800\\/50').filter({ hasText: 'Summary' }).first();
+  await expect(sidebar).toBeVisible();
+
+  // Find the row with Level label and verify it shows a number 1-5
+  const levelRow = sidebar.locator('div.flex.justify-between').filter({ hasText: /Level/i });
+  await expect(levelRow).toBeVisible();
+  const levelText = await levelRow.locator('span.font-medium').textContent();
+  const level = parseInt(levelText || '0');
+  expect(level).toBeGreaterThanOrEqual(1);
+  expect(level).toBeLessThanOrEqual(5);
 });
 
 test('Company sidebar shows product statistics', async ({ page }) => {
@@ -173,8 +198,18 @@ test('Company sidebar shows product statistics', async ({ page }) => {
   await page.goto('/en/companies/02605');
   await page.waitForLoadState('networkidle');
 
-  // Sidebar should show product count, generic count, package count
-  await expect(page.locator('main')).toContainText(/Product|Generic|Package/i);
+  // Verify the page has a Summary section (sidebar)
+  await expect(page.getByText('Summary')).toBeVisible();
+
+  // Verify Products text is visible (company has products)
+  await expect(page.getByText('Products').first()).toBeVisible();
+
+  // Verify page displays numeric statistics
+  const mainContent = await page.locator('main').textContent() || '';
+  // Should contain multiple numbers (product count, package count, etc.)
+  const numberMatches = mainContent.match(/\d+/g);
+  expect(numberMatches).not.toBeNull();
+  expect(numberMatches!.length).toBeGreaterThan(1);
 });
 
 test('VMP Group sidebar shows validity indicator', async ({ page }) => {
@@ -184,4 +219,166 @@ test('VMP Group sidebar shows validity indicator', async ({ page }) => {
 
   // Sidebar should show validity status
   await expect(page.locator('main')).toContainText(/Active|Expired/);
+});
+
+// =============================================================================
+// Search All Links Tests
+// =============================================================================
+
+test.describe('Search All Links', () => {
+  test('VTM page "Search all" link returns packages', async ({ page }) => {
+    // Navigate to paracetamol VTM page
+    await page.goto('/en/substances/974');
+    await page.waitForLoadState('networkidle');
+
+    // Find "Search all" link in Available Packages section header
+    const searchAllLink = page.locator('section:has-text("Available Packages") a:has-text("Search all"), section:has-text("Package") a:has-text("Search all")').first();
+    await expect(searchAllLink).toBeVisible();
+
+    // Click the link
+    await searchAllLink.click();
+    await page.waitForLoadState('networkidle');
+
+    // Verify URL contains search with vtm filter and ampp type
+    await expect(page).toHaveURL(/\/search/);
+    await expect(page).toHaveURL(/vtm=974/);
+    await expect(page).toHaveURL(/types=ampp/);
+
+    // Verify results are displayed
+    const amppBadge = page.locator('button[aria-pressed]:has-text("Package")');
+    await expect(amppBadge).toBeVisible();
+    const badgeText = await amppBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test('VMP page "Search all" link for brand products returns results', async ({ page }) => {
+    // Navigate to pantoprazol VMP page
+    await page.goto('/en/generics/26377');
+    await page.waitForLoadState('networkidle');
+
+    // Find "Search all" link near the Brand Products heading
+    // The RelationshipList uses h3 for title, and the link is a sibling in the header div
+    const brandSection = page.locator('h3:has-text("Brand Products")').locator('..');
+    const searchAllLink = brandSection.locator('a:has-text("Search all")');
+    await expect(searchAllLink).toBeVisible();
+
+    // Click the link
+    await searchAllLink.click();
+    await page.waitForLoadState('networkidle');
+
+    // Verify URL contains search with vmp filter and amp type
+    await expect(page).toHaveURL(/\/search/);
+    await expect(page).toHaveURL(/vmp=26377/);
+    await expect(page).toHaveURL(/types=amp/);
+
+    // Verify results are displayed
+    const ampBadge = page.locator('button[aria-pressed]:has-text("Brand")');
+    await expect(ampBadge).toBeVisible();
+    const badgeText = await ampBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test('VMP page "Search all" link for packages returns results', async ({ page }) => {
+    // Navigate to pantoprazol VMP page
+    await page.goto('/en/generics/26377');
+    await page.waitForLoadState('networkidle');
+
+    // Find "Search all" link in Available Packages section header
+    const searchAllLink = page.locator('section:has-text("Available Packages") a:has-text("Search all"), section:has-text("Package") a:has-text("Search all")').first();
+    await expect(searchAllLink).toBeVisible();
+
+    // Click the link
+    await searchAllLink.click();
+    await page.waitForLoadState('networkidle');
+
+    // Verify URL contains search with vmp filter and ampp type
+    await expect(page).toHaveURL(/\/search/);
+    await expect(page).toHaveURL(/vmp=26377/);
+    await expect(page).toHaveURL(/types=ampp/);
+
+    // Verify results are displayed
+    const amppBadge = page.locator('button[aria-pressed]:has-text("Package")');
+    await expect(amppBadge).toBeVisible();
+    const badgeText = await amppBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test('Company page "Search all" link returns products', async ({ page }) => {
+    // Navigate to Boiron company page
+    await page.goto('/en/companies/02605');
+    await page.waitForLoadState('networkidle');
+
+    // Find "Search all" link in Products section header
+    const searchAllLink = page.locator('section:has-text("Products") a:has-text("Search all"), section:has-text("Product") a:has-text("Search all")').first();
+    await expect(searchAllLink).toBeVisible();
+
+    // Click the link
+    await searchAllLink.click();
+    await page.waitForLoadState('networkidle');
+
+    // Verify URL contains search with company filter
+    await expect(page).toHaveURL(/\/search/);
+    await expect(page).toHaveURL(/company=02605/);
+
+    // Verify results are displayed (could be any type)
+    const resultLink = page.locator('a[href*="/medications/"], a[href*="/packages/"]').first();
+    await expect(resultLink).toBeVisible();
+  });
+
+  test('ATC page "Search all" link returns packages', async ({ page }) => {
+    // Navigate to Atorvastatin ATC page
+    await page.goto('/en/classifications/C10AA05');
+    await page.waitForLoadState('networkidle');
+
+    // Find "Search all" link in Products section header
+    const searchAllLink = page.locator('section:has-text("Products") a:has-text("Search all"), section:has-text("Package") a:has-text("Search all")').first();
+    await expect(searchAllLink).toBeVisible();
+
+    // Click the link
+    await searchAllLink.click();
+    await page.waitForLoadState('networkidle');
+
+    // Verify URL contains search with atc filter and ampp type
+    await expect(page).toHaveURL(/\/search/);
+    await expect(page).toHaveURL(/atc=C10AA05/);
+    await expect(page).toHaveURL(/types=ampp/);
+
+    // Verify results are displayed
+    const amppBadge = page.locator('button[aria-pressed]:has-text("Package")');
+    await expect(amppBadge).toBeVisible();
+    const badgeText = await amppBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test('Substance (ingredient) page "Search all" link returns products', async ({ page }) => {
+    // Navigate to sodium ascorbate ingredient page - has 8 AMP products
+    await page.goto('/en/ingredients/sodium-ascorbate_19');
+    await page.waitForLoadState('networkidle');
+
+    // The page should show products section with count
+    await expect(page.getByText(/Products Containing/i)).toBeVisible();
+
+    // Find "Search all" link if it exists (only shown when count > 0)
+    const searchAllLink = page.locator('a:has-text("Search all")');
+    if (await searchAllLink.count() > 0) {
+      // Click the link
+      await searchAllLink.first().click();
+      await page.waitForLoadState('networkidle');
+
+      // Verify URL contains search with substance filter and amp type
+      await expect(page).toHaveURL(/\/search/);
+      await expect(page).toHaveURL(/substance=19/);
+      await expect(page).toHaveURL(/types=amp/);
+
+      // Verify results are displayed
+      await expect(page.locator('a[href*="/medications/"]').first()).toBeVisible();
+    } else {
+      // If no Search all link, verify that the count is 0
+      await expect(page.getByText(/\(0\)/)).toBeVisible();
+    }
+  });
 });

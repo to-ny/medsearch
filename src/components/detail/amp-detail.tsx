@@ -10,6 +10,10 @@ import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { CollapsibleSection } from '@/components/shared/collapsible-section';
 import { PriceDisplay } from '@/components/shared/price-display';
+import { PriceRange } from '@/components/shared/price-range';
+import { ChapterIVIndicator } from '@/components/shared/chapter-iv-indicator';
+import { AlertBox } from '@/components/shared/alert-box';
+import { JsonLd } from '@/components/shared/json-ld';
 import { LocalizedText } from '@/components/shared/localized-text';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -51,19 +55,11 @@ export function AMPDetail({ amp }: AMPDetailProps) {
 
           {/* Black Triangle Warning */}
           {amp.blackTriangle && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <div className="flex gap-3">
-                <ExclamationTriangleIcon className="h-6 w-6 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                <div>
-                  <h3 className="font-medium text-amber-800 dark:text-amber-200">
-                    {t('detail.enhancedMonitoringRequired')}
-                  </h3>
-                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                    {t('detail.enhancedMonitoringDescription')}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <AlertBox
+              variant="warning"
+              title={t('detail.enhancedMonitoringRequired')}
+              description={t('detail.enhancedMonitoringDescription')}
+            />
           )}
 
           {/* Overview */}
@@ -290,6 +286,11 @@ export function AMPDetail({ amp }: AMPDetailProps) {
             </div>
           )}
 
+          {/* Chapter IV Indicator */}
+          {amp.hasChapterIV && (
+            <ChapterIVIndicator hasChapterIV={amp.hasChapterIV} />
+          )}
+
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{t('detail.summary')}</h3>
             <div className="space-y-2 text-sm">
@@ -330,6 +331,20 @@ export function AMPDetail({ amp }: AMPDetailProps) {
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.packages')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{amp.packages.length}</span>
               </div>
+              {/* Price Range */}
+              {(amp.minPrice !== null || amp.maxPrice !== null) && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 dark:text-gray-400">{t('search.priceRange')}</span>
+                  <PriceRange min={amp.minPrice} max={amp.maxPrice} size="sm" />
+                </div>
+              )}
+              {/* Chapter IV */}
+              {amp.hasChapterIV && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('sidebar.chapterIV')}</span>
+                  <ChapterIVIndicator hasChapterIV={amp.hasChapterIV} compact />
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.activeIngredients')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{amp.ingredients.length}</span>
@@ -360,6 +375,23 @@ export function AMPDetail({ amp }: AMPDetailProps) {
           </div>
         </div>
       </div>
+
+      {/* JSON-LD Structured Data */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Drug',
+          name: name,
+          identifier: amp.code,
+          proprietaryName: name,
+          nonProprietaryName: vmpName || undefined,
+          manufacturer: amp.company ? {
+            '@type': 'Organization',
+            name: amp.company.denomination,
+          } : undefined,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }}
+      />
     </div>
   );
 }

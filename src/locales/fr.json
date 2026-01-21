@@ -13,7 +13,10 @@
     "products": "produits",
     "retrySearch": "Réessayer",
     "searchAll": "Rechercher tout",
-    "close": "Fermer"
+    "close": "Fermer",
+    "viewAllPackages": "Voir tous les conditionnements",
+    "viewAllBrands": "Voir toutes les marques",
+    "otherPackages": "Autres conditionnements de cette marque"
   },
   "entities": {
     "vtm": "Groupe Thérapeutique Virtuel",
@@ -140,7 +143,8 @@
     "patientFrailtyDescription": "Ce groupe thérapeutique nécessite une attention particulière pour les patients fragiles.",
     "noGenericPrescription": "Pas de Prescription Générique",
     "noSwitching": "Pas de Substitution",
-    "productsContainingIngredient": "Produits Contenant Cet Ingrédient"
+    "productsContainingIngredient": "Produits Contenant Cet Ingrédient",
+    "clickSearchToViewPackages": "Cliquez sur 'Rechercher tout' pour voir tous les emballages disponibles."
   },
   "languages": {
     "dutch": "Néerlandais",

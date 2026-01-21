@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { EntityHeader } from '@/components/entities/entity-header';
 import { EntityTypeBadge } from '@/components/entities/entity-type-badge';
@@ -8,6 +9,10 @@ import { RelationshipList } from '@/components/entities/relationship-list';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { LocalizedText } from '@/components/shared/localized-text';
+import { PriceRange } from '@/components/shared/price-range';
+import { PriceDisplay } from '@/components/shared/price-display';
+import { ChapterIVIndicator } from '@/components/shared/chapter-iv-indicator';
+import { JsonLd } from '@/components/shared/json-ld';
 import { Card } from '@/components/ui/card';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { formatValidityPeriod } from '@/lib/utils/format';
@@ -160,10 +165,56 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
               </div>
             </Section>
           )}
+
+          {/* Available Packages */}
+          {vmp.packageCount > 0 && (
+            <Section
+              title={t('detail.availablePackages')}
+              count={vmp.packageCount}
+              headerAction={
+                <Link
+                  href={links.toSearch({ vmp: vmp.code, types: 'ampp' })}
+                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title={t('common.searchAll')}
+                >
+                  <MagnifyingGlassIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('common.searchAll')}</span>
+                </Link>
+              }
+            >
+              {/* Cheapest Package */}
+              {vmp.cheapestPackage && (
+                <Link
+                  href={links.toPackage(vmp.cheapestPackage.name, vmp.cheapestPackage.ctiExtended)}
+                  className="block group"
+                >
+                  <Card hover padding="sm">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <EntityTypeBadge type="ampp" size="sm" />
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{t('pricing.cheapest')}</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                            {vmp.cheapestPackage.name ? <LocalizedText text={vmp.cheapestPackage.name} /> : vmp.cheapestPackage.cnkCode}
+                          </p>
+                        </div>
+                      </div>
+                      <PriceDisplay amount={vmp.cheapestPackage.price} size="md" />
+                    </div>
+                  </Card>
+                </Link>
+              )}
+            </Section>
+          )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Chapter IV Indicator */}
+          {vmp.hasChapterIV && (
+            <ChapterIVIndicator hasChapterIV={vmp.hasChapterIV} />
+          )}
+
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{t('detail.summary')}</h3>
             <div className="space-y-2 text-sm">
@@ -186,6 +237,27 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
                 <span className="text-gray-500 dark:text-gray-400">{t('sidebar.packageCount')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{vmp.packageCount}</span>
               </div>
+              {/* Price Range */}
+              {(vmp.minPrice !== null || vmp.maxPrice !== null) && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 dark:text-gray-400">{t('search.priceRange')}</span>
+                  <PriceRange min={vmp.minPrice} max={vmp.maxPrice} size="sm" />
+                </div>
+              )}
+              {/* Reimbursable Percentage */}
+              {vmp.reimbursablePercentage !== null && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('sidebar.reimbursablePercent')}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{vmp.reimbursablePercentage}%</span>
+                </div>
+              )}
+              {/* Chapter IV */}
+              {vmp.hasChapterIV && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('sidebar.chapterIV')}</span>
+                  <ChapterIVIndicator hasChapterIV={vmp.hasChapterIV} compact />
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.dosageRecommendations')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{vmp.dosages.length}</span>
@@ -201,6 +273,18 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
           </div>
         </div>
       </div>
+
+      {/* JSON-LD Structured Data */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Drug',
+          name: name,
+          identifier: vmp.code,
+          nonProprietaryName: vtmName || name,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { EntityTypeBadge } from '@/components/entities/entity-type-badge';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { LocalizedText } from '@/components/shared/localized-text';
+import { JsonLd } from '@/components/shared/json-ld';
 import { Pagination } from '@/components/search/pagination';
 import { Card } from '@/components/ui/card';
 import { formatValidityPeriod, formatAddress, formatCountryName } from '@/lib/utils/format';
@@ -205,6 +206,26 @@ export function CompanyDetail({ company, currentPage, pageSize }: CompanyDetailP
           </div>
         </div>
       </div>
+
+      {/* JSON-LD Structured Data */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: company.denomination,
+          identifier: company.actorNr,
+          legalName: company.denomination,
+          address: addressLines.length > 0 ? {
+            '@type': 'PostalAddress',
+            streetAddress: addressLines[0],
+            addressLocality: company.city || undefined,
+            postalCode: company.postcode || undefined,
+            addressCountry: company.countryCode || undefined,
+          } : undefined,
+          telephone: company.phone || undefined,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }}
+      />
     </div>
   );
 }

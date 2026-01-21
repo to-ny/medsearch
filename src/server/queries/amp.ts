@@ -135,7 +135,39 @@ export async function getAMPWithRelations(code: string): Promise<AMPWithRelation
             AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
           ORDER BY ampp.cti_extended
         ) sub
-      ) AS packages
+      ) AS packages,
+      -- Min price (via AMPP→DMPP chain)
+      (
+        SELECT MIN(d.price)
+        FROM dmpp d
+        JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+        WHERE ampp.amp_code = a.code
+          AND d.price IS NOT NULL
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+      ) AS min_price,
+      -- Max price
+      (
+        SELECT MAX(d.price)
+        FROM dmpp d
+        JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+        WHERE ampp.amp_code = a.code
+          AND d.price IS NOT NULL
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+      ) AS max_price,
+      -- Has Chapter IV
+      (
+        SELECT EXISTS(
+          SELECT 1
+          FROM dmpp_chapter_iv dch
+          JOIN dmpp d ON d.code = dch.dmpp_code AND d.delivery_environment = dch.delivery_environment
+          JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+          WHERE ampp.amp_code = a.code
+            AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+        )
+      ) AS has_chapter_iv
     FROM amp a
     LEFT JOIN vmp v ON v.code = a.vmp_code
     LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
@@ -185,5 +217,8 @@ export async function getAMPWithRelations(code: string): Promise<AMPWithRelation
     ingredients: row.ingredients as AMPIngredient[],
     excipients,
     packages: row.packages as AMPPSummary[],
+    minPrice: row.min_price,
+    maxPrice: row.max_price,
+    hasChapterIV: row.has_chapter_iv,
   };
 }

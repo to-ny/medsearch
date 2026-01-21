@@ -3,6 +3,7 @@ import 'server-only';
 import { sql } from '@/server/db/client';
 import type { VMPWithRelations } from '@/server/types/entities';
 import type { VTMSummary, VMPGroupSummary, AMPSummary, StandardDosageSummary } from '@/server/types/summaries';
+import type { MultilingualText } from '@/server/types/domain';
 
 /**
  * Get a VMP by code with all relationships
@@ -95,7 +96,80 @@ export async function getVMPWithRelations(code: string): Promise<VMPWithRelation
         JOIN amp ON amp.code = ampp.amp_code
         WHERE amp.vmp_code = v.code
           AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-      ) AS package_count
+      ) AS package_count,
+      -- Min price (via AMP→AMPP→DMPP chain)
+      (
+        SELECT MIN(d.price)
+        FROM dmpp d
+        JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+        JOIN amp ON amp.code = ampp.amp_code
+        WHERE amp.vmp_code = v.code
+          AND d.price IS NOT NULL
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+      ) AS min_price,
+      -- Max price
+      (
+        SELECT MAX(d.price)
+        FROM dmpp d
+        JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+        JOIN amp ON amp.code = ampp.amp_code
+        WHERE amp.vmp_code = v.code
+          AND d.price IS NOT NULL
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+      ) AS max_price,
+      -- Reimbursable percentage
+      (
+        SELECT CASE
+          WHEN COUNT(DISTINCT d.code) = 0 THEN NULL
+          ELSE (COUNT(DISTINCT CASE WHEN d.reimbursable THEN d.code END)::float / COUNT(DISTINCT d.code)::float * 100)::int
+        END
+        FROM dmpp d
+        JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+        JOIN amp ON amp.code = ampp.amp_code
+        WHERE amp.vmp_code = v.code
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+      ) AS reimbursable_percentage,
+      -- Has Chapter IV
+      (
+        SELECT EXISTS(
+          SELECT 1
+          FROM dmpp_chapter_iv dch
+          JOIN dmpp d ON d.code = dch.dmpp_code AND d.delivery_environment = dch.delivery_environment
+          JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+          JOIN amp ON amp.code = ampp.amp_code
+          WHERE amp.vmp_code = v.code
+            AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+        )
+      ) AS has_chapter_iv,
+      -- Cheapest package
+      (
+        SELECT json_build_object(
+          'ctiExtended', sub.cti_extended,
+          'price', sub.price,
+          'cnkCode', sub.cnk_code,
+          'name', sub.name
+        )
+        FROM (
+          SELECT
+            ampp.cti_extended,
+            d.price,
+            d.code as cnk_code,
+            ampp.prescription_name as name
+          FROM dmpp d
+          JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+          JOIN amp ON amp.code = ampp.amp_code
+          WHERE amp.vmp_code = v.code
+            AND d.price IS NOT NULL
+            AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+            AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+          ORDER BY d.price ASC
+          LIMIT 1
+        ) sub
+      ) AS cheapest_package
     FROM vmp v
     LEFT JOIN vtm ON vtm.code = v.vtm_code
     LEFT JOIN vmp_group vg ON vg.code = v.vmp_group_code
@@ -120,5 +194,10 @@ export async function getVMPWithRelations(code: string): Promise<VMPWithRelation
     amps: row.amps as AMPSummary[],
     dosages: row.dosages as StandardDosageSummary[],
     packageCount: row.package_count,
+    minPrice: row.min_price,
+    maxPrice: row.max_price,
+    reimbursablePercentage: row.reimbursable_percentage,
+    hasChapterIV: row.has_chapter_iv,
+    cheapestPackage: row.cheapest_package as { ctiExtended: string; price: number; cnkCode: string; name: MultilingualText | null } | null,
   };
 }

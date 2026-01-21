@@ -5,11 +5,13 @@ import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { EntityHeader } from '@/components/entities/entity-header';
 import { EntityTypeBadge } from '@/components/entities/entity-type-badge';
 import { ReimbursementBadge } from '@/components/entities/reimbursement-badge';
+import { SearchAllLink } from '@/components/entities/search-all-link';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { PriceDisplay } from '@/components/shared/price-display';
 import { DocumentLinks } from '@/components/shared/document-links';
 import { LocalizedText } from '@/components/shared/localized-text';
+import { JsonLd } from '@/components/shared/json-ld';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
@@ -383,8 +385,37 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
               </div>
             </div>
           )}
+
+          {/* Other packages from this brand */}
+          <SearchAllLink
+            filters={{ amp: ampp.amp.code, types: 'ampp' }}
+            label={t('common.otherPackages')}
+          />
         </div>
       </div>
+
+      {/* JSON-LD Structured Data */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: name,
+          identifier: ampp.ctiExtended,
+          sku: ampp.cnkCodes[0]?.code,
+          offers: ampp.cnkCodes.filter(c => c.price !== null).map(cnk => ({
+            '@type': 'Offer',
+            price: cnk.price,
+            priceCurrency: 'EUR',
+            availability: 'https://schema.org/InStock',
+            itemCondition: 'https://schema.org/NewCondition',
+          })),
+          manufacturer: ampp.amp.companyName ? {
+            '@type': 'Organization',
+            name: ampp.amp.companyName,
+          } : undefined,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }}
+      />
     </div>
   );
 }

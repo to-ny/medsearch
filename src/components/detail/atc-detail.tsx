@@ -9,6 +9,7 @@ import { EntityTypeBadge } from '@/components/entities/entity-type-badge';
 import { Section } from '@/components/shared/section';
 import { PriceDisplay } from '@/components/shared/price-display';
 import { CodeDisplay } from '@/components/shared/code-display';
+import { JsonLd } from '@/components/shared/json-ld';
 import { Pagination } from '@/components/search/pagination';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -224,6 +225,18 @@ export function ATCDetail({ atc, hierarchy, currentPage, pageSize }: ATCDetailPr
           </div>
         </div>
       </div>
+
+      {/* JSON-LD Structured Data */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'MedicalCode',
+          codeValue: atc.code,
+          codingSystem: 'ATC',
+          name: atc.description,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }}
+      />
     </div>
   );
 }

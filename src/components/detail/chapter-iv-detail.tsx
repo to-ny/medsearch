@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
+import { SearchAllLink } from '@/components/entities/search-all-link';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { CollapsibleSection } from '@/components/shared/collapsible-section';
 import { PriceDisplay } from '@/components/shared/price-display';
+import { JsonLd } from '@/components/shared/json-ld';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { LocalizedText } from '@/components/shared/localized-text';
@@ -37,7 +39,7 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Custom header for Chapter IV */}
+          {/* Custom header for Chapter IV (not in EntityType) */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Badge variant="outline" size="lg">{t('entityLabels.chapterIV')}</Badge>
@@ -45,15 +47,11 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
               Chapter {chapterIV.chapterName} - {chapterIV.paragraphName}
             </h1>
-            <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
-              <span className="font-mono">{t('detail.code')}: {chapterIV.chapterName}-{chapterIV.paragraphName}</span>
-              {keyString && (
-                <>
-                  <span className="hidden sm:inline">•</span>
-                  <span>{keyString}</span>
-                </>
-              )}
-            </div>
+            {keyString && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {keyString}
+              </p>
+            )}
           </div>
 
           {/* Overview */}
@@ -192,8 +190,29 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
               </div>
             </div>
           </div>
+
+          {/* View All Products Link */}
+          {chapterIV.linkedProducts.length > 0 && (
+            <SearchAllLink
+              filters={{ chapterIV: true, types: 'ampp' }}
+              label={t('common.viewAllPackages')}
+              count={chapterIV.linkedProducts.length}
+            />
+          )}
         </div>
       </div>
+
+      {/* JSON-LD Structured Data */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'MedicalGuideline',
+          name: `Chapter ${chapterIV.chapterName} - ${chapterIV.paragraphName}`,
+          identifier: `${chapterIV.chapterName}-${chapterIV.paragraphName}`,
+          description: keyString || undefined,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }}
+      />
     </div>
   );
 }
