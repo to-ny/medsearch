@@ -398,6 +398,7 @@ export async function executeSearch(
   const hasBasicFilters = filters && (
     filters.vtmCode || filters.vmpCode || filters.ampCode ||
     filters.atcCode || filters.companyCode || filters.vmpGroupCode ||
+    filters.substanceCode ||
     filters.reimbursable !== undefined || filters.blackTriangle !== undefined
   );
   // Phase B & C extended filters require search_index_extended table
@@ -482,12 +483,21 @@ export async function executeSearch(
     baseParams.push(filters.atcCode);
   }
   if (filters?.companyCode) {
-    baseConditions.push(`company_actor_nr = $${paramIndex++}`);
+    // For AMP: direct match on company_actor_nr
+    // For AMPP: match via parent AMP's company_actor_nr
+    baseConditions.push(`(company_actor_nr = $${paramIndex} OR (entity_type = 'ampp' AND amp_code IN (SELECT code FROM amp WHERE company_actor_nr = $${paramIndex})))`);
     baseParams.push(filters.companyCode);
+    paramIndex++;
   }
   if (filters?.vmpGroupCode) {
     baseConditions.push(`vmp_group_code = $${paramIndex++}`);
     baseParams.push(filters.vmpGroupCode);
+  }
+  if (filters?.substanceCode) {
+    // Filter AMPs by substance code via amp_ingredient join
+    // Substances are linked to AMPs through the amp_ingredient table
+    baseConditions.push(`(entity_type != 'amp' OR code IN (SELECT DISTINCT amp_code FROM amp_ingredient WHERE substance_code = $${paramIndex++}))`);
+    baseParams.push(filters.substanceCode);
   }
 
   // Boolean filters (these apply to specific entity types)

@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { EntityHeader } from '@/components/entities/entity-header';
 import { RelationshipList } from '@/components/entities/relationship-list';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
+import { PriceRange } from '@/components/shared/price-range';
+import { JsonLd } from '@/components/shared/json-ld';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { formatValidityPeriod } from '@/lib/utils/format';
 import type { VTMWithRelations } from '@/server/types/entities';
@@ -93,6 +96,28 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
             searchFilter={{ type: 'vtm', code: vtm.code }}
             searchType="amp"
           />
+
+          {/* Available Packages */}
+          {vtm.packageCount > 0 && (
+            <Section
+              title={t('detail.availablePackages')}
+              count={vtm.packageCount}
+              headerAction={
+                <Link
+                  href={links.toSearch({ vtm: vtm.code, types: 'ampp' })}
+                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title={t('common.searchAll')}
+                >
+                  <MagnifyingGlassIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('common.searchAll')}</span>
+                </Link>
+              }
+            >
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {t('detail.clickSearchToViewPackages')}
+              </p>
+            </Section>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -132,6 +157,20 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
                 <span className="text-gray-500 dark:text-gray-400">{t('sidebar.packageCount')}</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{vtm.packageCount}</span>
               </div>
+              {/* Price Range */}
+              {(vtm.minPrice !== null || vtm.maxPrice !== null) && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 dark:text-gray-400">{t('search.priceRange')}</span>
+                  <PriceRange min={vtm.minPrice} max={vtm.maxPrice} size="sm" />
+                </div>
+              )}
+              {/* Reimbursable Percentage */}
+              {vtm.reimbursablePercentage !== null && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('sidebar.reimbursablePercent')}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{vtm.reimbursablePercentage}%</span>
+                </div>
+              )}
               {/* Validity indicator */}
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.validity')}</span>
@@ -143,6 +182,18 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
           </div>
         </div>
       </div>
+
+      {/* JSON-LD Structured Data */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Drug',
+          name: name,
+          identifier: vtm.code,
+          activeIngredient: name,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }}
+      />
     </div>
   );
 }

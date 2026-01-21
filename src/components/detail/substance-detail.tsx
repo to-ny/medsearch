@@ -9,6 +9,7 @@ import { EntityTypeBadge } from '@/components/entities/entity-type-badge';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { LocalizedText } from '@/components/shared/localized-text';
+import { JsonLd } from '@/components/shared/json-ld';
 import { Pagination } from '@/components/search/pagination';
 import { Card } from '@/components/ui/card';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
@@ -145,6 +146,17 @@ export function SubstanceDetail({ substance, currentPage, pageSize }: SubstanceD
           </div>
         </div>
       </div>
+
+      {/* JSON-LD Structured Data */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Substance',
+          name: name,
+          identifier: substance.code,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }}
+      />
     </div>
   );
 }

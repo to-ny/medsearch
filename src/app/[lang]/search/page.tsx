@@ -319,7 +319,7 @@ function SearchContent() {
         <SearchBar
           defaultValue={query}
           onSearch={handleSearch}
-          autoFocus={!query}
+          autoFocus={!query && !filters}
         />
       </div>
 

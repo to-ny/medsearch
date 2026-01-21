@@ -29,6 +29,9 @@ export interface VTMWithRelations extends VTM {
   amps: AMPSummary[];
   vmpGroups: VMPGroupSummary[];
   packageCount: number;
+  minPrice: number | null;
+  maxPrice: number | null;
+  reimbursablePercentage: number | null;
 }
 
 /** VMP - Virtual Medicinal Product (Generic) */
@@ -41,6 +44,14 @@ export interface VMP extends ValidityPeriod {
   status: 'AUTHORIZED' | 'REVOKED' | 'SUSPENDED';
 }
 
+/** Cheapest package summary */
+export interface CheapestPackageSummary {
+  ctiExtended: string;
+  price: number;
+  cnkCode: string;
+  name: MultilingualText | null;
+}
+
 /** VMP with relationships loaded */
 export interface VMPWithRelations extends VMP {
   vtm: VTMSummary | null;
@@ -48,6 +59,11 @@ export interface VMPWithRelations extends VMP {
   amps: AMPSummary[];
   dosages: StandardDosageSummary[];
   packageCount: number;
+  minPrice: number | null;
+  maxPrice: number | null;
+  reimbursablePercentage: number | null;
+  hasChapterIV: boolean;
+  cheapestPackage: CheapestPackageSummary | null;
 }
 
 /** AMP - Actual Medicinal Product (Brand) */
@@ -98,6 +114,9 @@ export interface AMPWithRelations extends AMP {
   ingredients: AMPIngredient[];
   excipients: AMPExcipient | null;
   packages: AMPPSummary[];
+  minPrice: number | null;
+  maxPrice: number | null;
+  hasChapterIV: boolean;
 }
 
 /** AMPP - Actual Medicinal Product Package */

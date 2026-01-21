@@ -103,7 +103,45 @@ export async function getVTMWithRelations(code: string): Promise<VTMWithRelation
         JOIN vmp ON vmp.code = amp.vmp_code
         WHERE vmp.vtm_code = v.code
           AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
-      ) as package_count
+      ) as package_count,
+      -- Min price (via VMP→AMP→AMPP→DMPP chain)
+      (
+        SELECT MIN(d.price)
+        FROM dmpp d
+        JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+        JOIN amp ON amp.code = ampp.amp_code
+        JOIN vmp ON vmp.code = amp.vmp_code
+        WHERE vmp.vtm_code = v.code
+          AND d.price IS NOT NULL
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+      ) as min_price,
+      -- Max price
+      (
+        SELECT MAX(d.price)
+        FROM dmpp d
+        JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+        JOIN amp ON amp.code = ampp.amp_code
+        JOIN vmp ON vmp.code = amp.vmp_code
+        WHERE vmp.vtm_code = v.code
+          AND d.price IS NOT NULL
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+      ) as max_price,
+      -- Reimbursable percentage
+      (
+        SELECT CASE
+          WHEN COUNT(DISTINCT d.code) = 0 THEN NULL
+          ELSE (COUNT(DISTINCT CASE WHEN d.reimbursable THEN d.code END)::float / COUNT(DISTINCT d.code)::float * 100)::int
+        END
+        FROM dmpp d
+        JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+        JOIN amp ON amp.code = ampp.amp_code
+        JOIN vmp ON vmp.code = amp.vmp_code
+        WHERE vmp.vtm_code = v.code
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+          AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+      ) as reimbursable_percentage
     FROM vtm v
     WHERE v.code = ${code}
   `;
@@ -121,6 +159,9 @@ export async function getVTMWithRelations(code: string): Promise<VTMWithRelation
     amps: row.amps as AMPSummary[],
     vmpGroups: row.vmp_groups as VMPGroupSummary[],
     packageCount: row.package_count,
+    minPrice: row.min_price,
+    maxPrice: row.max_price,
+    reimbursablePercentage: row.reimbursable_percentage,
   };
 }
 

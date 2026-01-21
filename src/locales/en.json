@@ -13,7 +13,10 @@
     "products": "products",
     "retrySearch": "Retry Search",
     "searchAll": "Search all",
-    "close": "Close"
+    "close": "Close",
+    "viewAllPackages": "View all packages",
+    "viewAllBrands": "View all brands",
+    "otherPackages": "Other packages from this brand"
   },
   "entities": {
     "vtm": "Virtual Therapeutic Moiety",
@@ -140,7 +143,8 @@
     "patientFrailtyDescription": "This therapeutic group requires special attention for frail patients.",
     "noGenericPrescription": "No Generic Prescription",
     "noSwitching": "No Switching",
-    "productsContainingIngredient": "Products Containing This Ingredient"
+    "productsContainingIngredient": "Products Containing This Ingredient",
+    "clickSearchToViewPackages": "Click 'Search all' to view all available packages."
   },
   "languages": {
     "dutch": "Dutch",

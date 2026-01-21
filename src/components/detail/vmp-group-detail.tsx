@@ -8,6 +8,8 @@ import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { CollapsibleSection } from '@/components/shared/collapsible-section';
 import { LocalizedText } from '@/components/shared/localized-text';
+import { AlertBox } from '@/components/shared/alert-box';
+import { JsonLd } from '@/components/shared/json-ld';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/lib/hooks/use-language';
@@ -60,39 +62,25 @@ export function VMPGroupDetail({ vmpGroup }: VMPGroupDetailProps) {
           {(vmpGroup.patientFrailtyIndicator || vmpGroup.noGenericPrescriptionReason || vmpGroup.noSwitchReason) && (
             <div className="space-y-3">
               {vmpGroup.patientFrailtyIndicator && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                  <div className="flex gap-3">
-                    <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h3 className="font-medium text-amber-800 dark:text-amber-200">
-                        {t('detail.patientFrailtyIndicator')}
-                      </h3>
-                      <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                        {t('detail.patientFrailtyDescription')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <AlertBox
+                  variant="warning"
+                  title={t('detail.patientFrailtyIndicator')}
+                  description={t('detail.patientFrailtyDescription')}
+                />
               )}
               {vmpGroup.noGenericPrescriptionReason && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                  <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
-                    {t('detail.noGenericPrescription')}
-                  </h3>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {vmpGroup.noGenericPrescriptionReason}
-                  </p>
-                </div>
+                <AlertBox
+                  variant="info"
+                  title={t('detail.noGenericPrescription')}
+                  description={vmpGroup.noGenericPrescriptionReason}
+                />
               )}
               {vmpGroup.noSwitchReason && (
-                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-                  <h3 className="font-medium text-purple-800 dark:text-purple-200 mb-1">
-                    {t('detail.noSwitching')}
-                  </h3>
-                  <p className="text-sm text-purple-700 dark:text-purple-300">
-                    {vmpGroup.noSwitchReason}
-                  </p>
-                </div>
+                <AlertBox
+                  variant="info"
+                  title={t('detail.noSwitching')}
+                  description={vmpGroup.noSwitchReason}
+                />
               )}
             </div>
           )}
@@ -210,6 +198,17 @@ export function VMPGroupDetail({ vmpGroup }: VMPGroupDetailProps) {
           </div>
         </div>
       </div>
+
+      {/* JSON-LD Structured Data */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'MedicalTherapy',
+          name: name,
+          identifier: vmpGroup.code,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }}
+      />
     </div>
   );
 }
