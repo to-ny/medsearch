@@ -235,25 +235,22 @@ const MIN_FILTER_VALUES = 2;   // Minimum distinct values to show filter
 
 /**
  * Compute available filter options from search results
- * Only computes when extended table is used and relevant entity types exist
+ * Always computes from extended table when relevant entity types exist
  */
 async function computeAvailableFilters(
-  whereClause: string,
+  baseConditions: string[],
   params: unknown[],
-  facetCounts: Record<EntityType, number>,
-  useExtendedTable: boolean
+  facetCounts: Record<EntityType, number>
 ): Promise<AvailableFilters | undefined> {
-  // Only compute if using extended table
-  if (!useExtendedTable) {
-    return undefined;
-  }
-
   const hasAmpOrAmpp = facetCounts.amp > 0 || facetCounts.ampp > 0;
   const hasAmpp = facetCounts.ampp > 0;
 
   if (!hasAmpOrAmpp) {
     return undefined;
   }
+
+  // Build WHERE clause from conditions - always query extended table for filter options
+  const whereClause = baseConditions.join(' AND ');
 
   const availableFilters: AvailableFilters = {};
   const queries: Promise<void>[] = [];
@@ -535,10 +532,12 @@ export async function executeSearch(
     // Filter by Chapter IV requirement - applies to AMPP entities
     baseConditions.push(`(entity_type != 'ampp' OR chapter_iv_exists = true)`);
   }
-  if (filters?.deliveryEnvironment) {
-    // Filter by delivery environment - applies to AMPP entities
-    baseConditions.push(`(entity_type != 'ampp' OR delivery_environment = $${paramIndex++})`);
-    baseParams.push(filters.deliveryEnvironment);
+  if (filters?.deliveryEnvironment === 'P') {
+    // Filter by public delivery environment - applies to AMPP entities
+    baseConditions.push(`(entity_type != 'ampp' OR has_public_env = true)`);
+  } else if (filters?.deliveryEnvironment === 'H') {
+    // Filter by hospital delivery environment - applies to AMPP entities
+    baseConditions.push(`(entity_type != 'ampp' OR has_hospital_env = true)`);
   }
   if (filters?.medicineType) {
     // Filter by medicine type - applies to AMP entities
@@ -593,12 +592,11 @@ export async function executeSearch(
     facetCounts[row.entity_type] = row.count;
   }
 
-  // Compute available filters (Phase B) - only when using extended table
+  // Compute available filters - always use extended table when AMP/AMPP results exist
   const availableFilters = await computeAvailableFilters(
-    baseWhereClause,
+    baseConditions,
     baseParams,
-    facetCounts,
-    hasExtendedFilters ?? false
+    facetCounts
   );
 
   // Convert to RawSearchResult and score

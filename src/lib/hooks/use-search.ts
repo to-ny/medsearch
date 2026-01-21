@@ -31,8 +31,9 @@ function buildSearchUrl(options: UseSearchOptions): string | null {
   const { query, lang, types, limit, offset, enabled = true, filters } = options;
 
   const hasBasicFilters = filters && (filters.vtmCode || filters.vmpCode || filters.ampCode || filters.atcCode || filters.companyCode || filters.vmpGroupCode || filters.substanceCode || filters.reimbursable !== undefined || filters.blackTriangle !== undefined);
-  const hasExtendedFilters = filters && ((filters.formCodes && filters.formCodes.length > 0) || (filters.routeCodes && filters.routeCodes.length > 0) || (filters.reimbursementCategories && filters.reimbursementCategories.length > 0) || filters.priceMin !== undefined || filters.priceMax !== undefined);
-  const hasFilters = hasBasicFilters || hasExtendedFilters;
+  const hasPhaseB = filters && ((filters.formCodes && filters.formCodes.length > 0) || (filters.routeCodes && filters.routeCodes.length > 0) || (filters.reimbursementCategories && filters.reimbursementCategories.length > 0) || filters.priceMin !== undefined || filters.priceMax !== undefined);
+  const hasPhaseC = filters && (filters.chapterIV === true || filters.deliveryEnvironment !== undefined || filters.medicineType !== undefined);
+  const hasFilters = hasBasicFilters || hasPhaseB || hasPhaseC;
 
   // Don't search if disabled or (query is too short and no filters)
   // Minimum 3 characters required for text search (trigram index requirement)
@@ -107,6 +108,17 @@ function buildSearchUrl(options: UseSearchOptions): string | null {
   }
   if (filters?.priceMax !== undefined) {
     params.set('priceMax', filters.priceMax.toString());
+  }
+
+  // Add Phase C extended filters
+  if (filters?.chapterIV === true) {
+    params.set('chapterIV', 'true');
+  }
+  if (filters?.deliveryEnvironment) {
+    params.set('deliveryEnv', filters.deliveryEnvironment);
+  }
+  if (filters?.medicineType) {
+    params.set('medicineType', filters.medicineType);
   }
 
   return `/api/search?${params.toString()}`;

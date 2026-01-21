@@ -54,7 +54,8 @@ async function main() {
       route_of_administration_name JSONB,
       reimbursement_category VARCHAR(10),
       chapter_iv_exists BOOLEAN DEFAULT FALSE,
-      delivery_environment CHAR(1),
+      has_public_env BOOLEAN DEFAULT FALSE,
+      has_hospital_env BOOLEAN DEFAULT FALSE,
       medicine_type VARCHAR(50),
       UNIQUE(entity_type, code)
     )
@@ -74,7 +75,7 @@ async function main() {
       end_date,
       pharmaceutical_form_code, pharmaceutical_form_name,
       route_of_administration_code, route_of_administration_name,
-      reimbursement_category, chapter_iv_exists, delivery_environment, medicine_type
+      reimbursement_category, chapter_iv_exists, has_public_env, has_hospital_env, medicine_type
     )
 
     -- VTM (no extended fields)
@@ -90,7 +91,7 @@ async function main() {
         end_date,
         NULL::varchar(20) as pharmaceutical_form_code, NULL::jsonb as pharmaceutical_form_name,
         NULL::varchar(20) as route_of_administration_code, NULL::jsonb as route_of_administration_name,
-        NULL::varchar(10) as reimbursement_category, FALSE as chapter_iv_exists, NULL::char(1) as delivery_environment, NULL::varchar(50) as medicine_type
+        NULL::varchar(10) as reimbursement_category, FALSE as chapter_iv_exists, FALSE as has_public_env, FALSE as has_hospital_env, NULL::varchar(50) as medicine_type
       FROM vtm
       ORDER BY code
     ) vtm_sub
@@ -111,7 +112,7 @@ async function main() {
         v.end_date,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(20), NULL::jsonb,
-        NULL::varchar(10), FALSE, NULL::char(1), NULL::varchar(50)
+        NULL::varchar(10), FALSE, FALSE, FALSE, NULL::varchar(50)
       FROM vmp v
       LEFT JOIN vtm ON vtm.code = v.vtm_code
       ORDER BY v.code
@@ -133,7 +134,7 @@ async function main() {
         a.end_date,
         comp.pharmaceutical_form_code, pf.name,
         comp.route_of_administration_code, roa.name,
-        NULL::varchar(10), FALSE, NULL::char(1), a.medicine_type
+        NULL::varchar(10), FALSE, FALSE, FALSE, a.medicine_type
       FROM amp a
       LEFT JOIN vmp v ON v.code = a.vmp_code
       LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
@@ -181,10 +182,18 @@ async function main() {
           JOIN dmpp_chapter_iv dc ON dc.dmpp_code = d.code AND dc.delivery_environment = d.delivery_environment
           WHERE d.ampp_cti_extended = ampp.cti_extended
         ))::boolean,
-        (SELECT d.delivery_environment FROM dmpp d
-         WHERE d.ampp_cti_extended = ampp.cti_extended
-         AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-         LIMIT 1),
+        (SELECT EXISTS(
+          SELECT 1 FROM dmpp d
+          WHERE d.ampp_cti_extended = ampp.cti_extended
+          AND d.delivery_environment = 'P'
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+        ))::boolean as has_public_env,
+        (SELECT EXISTS(
+          SELECT 1 FROM dmpp d
+          WHERE d.ampp_cti_extended = ampp.cti_extended
+          AND d.delivery_environment = 'H'
+          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+        ))::boolean as has_hospital_env,
         amp.medicine_type
       FROM ampp
       JOIN amp ON amp.code = ampp.amp_code
@@ -210,7 +219,7 @@ async function main() {
         c.end_date,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(20), NULL::jsonb,
-        NULL::varchar(10), FALSE, NULL::char(1), NULL::varchar(50)
+        NULL::varchar(10), FALSE, FALSE, FALSE, NULL::varchar(50)
       FROM company c
       ORDER BY c.actor_nr
     ) company_sub
@@ -229,7 +238,7 @@ async function main() {
         end_date,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(20), NULL::jsonb,
-        NULL::varchar(10), FALSE, NULL::char(1), NULL::varchar(50)
+        NULL::varchar(10), FALSE, FALSE, FALSE, NULL::varchar(50)
       FROM vmp_group
       ORDER BY code
     ) vmp_group_sub
@@ -248,7 +257,7 @@ async function main() {
         end_date,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(20), NULL::jsonb,
-        NULL::varchar(10), FALSE, NULL::char(1), NULL::varchar(50)
+        NULL::varchar(10), FALSE, FALSE, FALSE, NULL::varchar(50)
       FROM substance
       ORDER BY code
     ) substance_sub
@@ -268,7 +277,7 @@ async function main() {
         NULL::date,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(20), NULL::jsonb,
-        NULL::varchar(10), FALSE, NULL::char(1), NULL::varchar(50)
+        NULL::varchar(10), FALSE, FALSE, FALSE, NULL::varchar(50)
       FROM atc_classification
       ORDER BY code
     ) atc_sub
@@ -325,8 +334,11 @@ async function main() {
   await sql`CREATE INDEX IF NOT EXISTS idx_search_ext_medicine_type ON search_index_extended (medicine_type) WHERE medicine_type IS NOT NULL`;
   console.log('   [OK] idx_search_ext_medicine_type');
 
-  await sql`CREATE INDEX IF NOT EXISTS idx_search_ext_delivery_env ON search_index_extended (delivery_environment) WHERE delivery_environment IS NOT NULL`;
-  console.log('   [OK] idx_search_ext_delivery_env');
+  await sql`CREATE INDEX IF NOT EXISTS idx_search_ext_public_env ON search_index_extended (has_public_env) WHERE has_public_env = TRUE`;
+  console.log('   [OK] idx_search_ext_public_env');
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_search_ext_hospital_env ON search_index_extended (has_hospital_env) WHERE has_hospital_env = TRUE`;
+  console.log('   [OK] idx_search_ext_hospital_env');
 
   await sql`CREATE INDEX IF NOT EXISTS idx_search_ext_chapter_iv ON search_index_extended (chapter_iv_exists) WHERE chapter_iv_exists = TRUE`;
   console.log('   [OK] idx_search_ext_chapter_iv');
@@ -343,7 +355,7 @@ async function main() {
     ORDER BY count DESC
   `;
   console.log('   By entity type:');
-  sampleResult.forEach((r: any) => console.log(`     ${r.entity_type}: ${r.count}`));
+  sampleResult.forEach((r) => console.log(`     ${r.entity_type}: ${r.count}`));
 
   // Final size check
   const finalSize = await sql`SELECT pg_size_pretty(pg_database_size(current_database())) as size`;

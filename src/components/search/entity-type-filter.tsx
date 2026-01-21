@@ -10,6 +10,8 @@ interface EntityTypeFilterProps {
   facets: Record<EntityType, number>;
   onChange: (types: EntityType[]) => void;
   className?: string;
+  /** Entity types that have active filters targeting them (show even if count=0) */
+  filteredTypes?: EntityType[];
 }
 
 const TYPE_ORDER: EntityType[] = ['vtm', 'vmp', 'amp', 'ampp', 'company', 'vmp_group', 'substance', 'atc'];
@@ -19,6 +21,7 @@ export function EntityTypeFilter({
   facets,
   onChange,
   className,
+  filteredTypes = [],
 }: EntityTypeFilterProps) {
   const { t } = useTranslation();
   const totalCount = Object.values(facets).reduce((sum, count) => sum + count, 0);
@@ -68,8 +71,10 @@ export function EntityTypeFilter({
         const count = facets[type] || 0;
         const isSelected = selectedTypes.includes(type);
         const config = ENTITY_TYPE_CONFIG[type];
+        const isFilteredType = filteredTypes.includes(type);
 
-        if (count === 0) return null;
+        // Hide if count is 0, unless this type has active filters targeting it
+        if (count === 0 && !isFilteredType) return null;
 
         return (
           <button
