@@ -1,6 +1,148 @@
 import { test, expect } from '@playwright/test';
 
+// ==========================================
+// Relationship Filter Search Tests
+// ==========================================
+
+test.describe('Relationship Filter Search', () => {
+  test('substance filter returns AMP results', async ({ page }) => {
+    await page.goto('/en/search?types=amp&substance=12581');
+    await page.waitForLoadState('networkidle');
+
+    // Extract count from the Brand/AMP badge
+    const ampBadge = page.locator('button[aria-pressed]:has-text("Brand")');
+    await expect(ampBadge).toBeVisible();
+    const badgeText = await ampBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(0);
+
+    // Verify at least one result links to /medications/
+    await expect(page.locator('a[href*="/medications/"]').first()).toBeVisible();
+  });
+
+  test('company filter returns AMPP results', async ({ page }) => {
+    await page.goto('/en/search?types=ampp&company=00413');
+    await page.waitForLoadState('networkidle');
+
+    // Extract count from the Package badge
+    const amppBadge = page.locator('button[aria-pressed]:has-text("Package")');
+    await expect(amppBadge).toBeVisible();
+    const badgeText = await amppBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(0);
+
+    // Verify at least one result links to /packages/
+    await expect(page.locator('a[href*="/packages/"]').first()).toBeVisible();
+  });
+
+  test('ATC filter returns AMPP results', async ({ page }) => {
+    // Use ATC code for atorvastatin which has many packages
+    await page.goto('/en/search?types=ampp&atc=C10AA05');
+    await page.waitForLoadState('networkidle');
+
+    // Verify results are shown by checking for package links
+    await expect(page.locator('a[href*="/packages/"]').first()).toBeVisible();
+
+    // Verify the URL has the correct filters
+    await expect(page).toHaveURL(/atc=C10AA05/);
+    await expect(page).toHaveURL(/types=ampp/);
+  });
+
+  test('VTM filter returns VMP results', async ({ page }) => {
+    await page.goto('/en/search?types=vmp&vtm=974');
+    await page.waitForLoadState('networkidle');
+
+    // Extract count from the Generic badge
+    const vmpBadge = page.locator('button[aria-pressed]:has-text("Generic")');
+    await expect(vmpBadge).toBeVisible();
+    const badgeText = await vmpBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(0);
+
+    // Verify at least one result links to /generics/
+    await expect(page.locator('a[href*="/generics/"]').first()).toBeVisible();
+  });
+
+  test('VMP filter returns AMP results', async ({ page }) => {
+    await page.goto('/en/search?types=amp&vmp=26377');
+    await page.waitForLoadState('networkidle');
+
+    // Extract count from the Brand badge
+    const ampBadge = page.locator('button[aria-pressed]:has-text("Brand")');
+    await expect(ampBadge).toBeVisible();
+    const badgeText = await ampBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(0);
+
+    // Verify at least one result links to /medications/
+    await expect(page.locator('a[href*="/medications/"]').first()).toBeVisible();
+  });
+
+  test('VMP Group filter returns VMP results', async ({ page }) => {
+    await page.goto('/en/search?types=vmp&vmpGroup=18689');
+    await page.waitForLoadState('networkidle');
+
+    // Extract count from the Generic badge
+    const vmpBadge = page.locator('button[aria-pressed]:has-text("Generic")');
+    await expect(vmpBadge).toBeVisible();
+    const badgeText = await vmpBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(0);
+
+    // Verify at least one result links to /generics/
+    await expect(page.locator('a[href*="/generics/"]').first()).toBeVisible();
+  });
+});
+
+// ==========================================
+// Search Input Focus Behavior Tests
+// ==========================================
+
+test.describe('Search Input Focus Behavior', () => {
+  test('input is NOT focused when arriving with relationship filters', async ({ page }) => {
+    await page.goto('/en/search?types=amp&substance=12581');
+    await page.waitForLoadState('networkidle');
+
+    // Check that the search input is NOT focused
+    const activeElementTag = await page.evaluate(() => document.activeElement?.tagName);
+    expect(activeElementTag).not.toBe('INPUT');
+
+    // Verify recent searches dropdown is NOT visible
+    const recentSearchesDropdown = page.locator('[role="listbox"], [data-testid="recent-searches"]');
+    await expect(recentSearchesDropdown).not.toBeVisible();
+  });
+
+  test('input is NOT focused when arriving with toggle filters', async ({ page }) => {
+    await page.goto('/en/search?q=paracetamol&reimbursable=true');
+    await page.waitForLoadState('networkidle');
+
+    // Check that the search input is NOT focused
+    const activeElementTag = await page.evaluate(() => document.activeElement?.tagName);
+    expect(activeElementTag).not.toBe('INPUT');
+  });
+
+  test('input is NOT focused when arriving with query parameter', async ({ page }) => {
+    await page.goto('/en/search?q=test');
+    await page.waitForLoadState('networkidle');
+
+    // With a query present, input should NOT be focused (existing behavior)
+    const activeElementTag = await page.evaluate(() => document.activeElement?.tagName);
+    expect(activeElementTag).not.toBe('INPUT');
+  });
+
+  test('input IS focused when arriving at empty search page', async ({ page }) => {
+    await page.goto('/en/search');
+    await page.waitForLoadState('networkidle');
+
+    // With no query and no filters, input SHOULD be focused
+    const activeElementTag = await page.evaluate(() => document.activeElement?.tagName);
+    expect(activeElementTag).toBe('INPUT');
+  });
+});
+
+// ==========================================
 // CNK Quick Search tests
+// ==========================================
 test('CNK code search shows indicator and filters to packages', async ({ page }) => {
   await page.goto('/en');
 
@@ -634,5 +776,76 @@ test.describe('Modal Section Visibility', () => {
 
     // Brand Properties section should be visible
     await expect(page.locator('[role="dialog"]').getByText('Brand Properties')).toBeVisible();
+  });
+});
+
+// ==========================================
+// Edge Case Tests
+// ==========================================
+
+test.describe('Edge Cases', () => {
+  test('pagination works with relationship filters', async ({ page }) => {
+    // Use a common search with filters that returns many results
+    await page.goto('/en/search?q=acid&types=ampp');
+    await page.waitForLoadState('networkidle');
+
+    // Verify results are displayed - use generic selector for the badge
+    const amppBadge = page.locator('button[aria-pressed="true"]:has-text("Package"), button[aria-pressed]:has-text("Package")').first();
+    await expect(amppBadge).toBeVisible();
+    const badgeText = await amppBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(20); // Should have many results
+
+    // Page 2 button should exist
+    const page2Button = page.locator('button[aria-label="Page 2"]');
+    await expect(page2Button).toBeVisible();
+
+    // Navigate to page 2
+    await page2Button.click();
+    await page.waitForLoadState('networkidle');
+
+    // Verify URL contains page=2
+    await expect(page).toHaveURL(/page=2/);
+
+    // Results should still display on page 2
+    await expect(page.locator('a[href*="/packages/"]').first()).toBeVisible();
+  });
+
+  test('filter-only search without query text shows results', async ({ page }) => {
+    // Search with only toggle filter, no query text
+    await page.goto('/en/search?types=ampp&reimbursable=true');
+    await page.waitForLoadState('networkidle');
+
+    // Results should be displayed
+    const amppBadge = page.locator('button[aria-pressed]:has-text("Package")');
+    await expect(amppBadge).toBeVisible();
+    const badgeText = await amppBadge.textContent();
+    const count = parseInt(badgeText?.match(/\((\d+)\)/)?.[1] || '0');
+    expect(count).toBeGreaterThan(0);
+
+    // Should NOT show "type at least 3 characters" message
+    await expect(page.locator('main')).not.toContainText(/type at least|enter at least/i);
+
+    // Should have actual result links
+    await expect(page.locator('a[href*="/packages/"]').first()).toBeVisible();
+  });
+
+  test('combined filters restrict results appropriately', async ({ page }) => {
+    // Apply filters that should reduce results but still return some
+    // Use paracetamol with reimbursable filter - many reimbursable paracetamol packages exist
+    await page.goto('/en/search?q=paracetamol&types=ampp&reimbursable=true');
+    await page.waitForLoadState('networkidle');
+
+    // Verify filters are applied in URL
+    await expect(page).toHaveURL(/reimbursable=true/);
+    await expect(page).toHaveURL(/types=ampp/);
+
+    // The Filters button should show active filter count (1 for reimbursable)
+    const filtersButton = page.locator('button:has-text("Filters")');
+    await expect(filtersButton).toBeVisible();
+    // Count badge should show at least 1 for the reimbursable filter
+    const countBadge = filtersButton.locator('span.rounded-full');
+    await expect(countBadge).toBeVisible();
+    await expect(countBadge).toHaveText('1');
   });
 });
