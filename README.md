@@ -4,7 +4,7 @@ Belgium SAM v2 medication database search application.
 
 ## Database Sync
 
-Two scripts populate the PostgreSQL database. Both require `DATABASE_URL` environment variable.
+Three scripts populate the PostgreSQL database. All require `DATABASE_URL` environment variable.
 
 ### SAM Data Sync
 
@@ -43,4 +43,12 @@ bun run scripts/sync-excipient-database.ts --limit=100 --verbose
 
 # Resume interrupted sync
 bun run scripts/sync-excipient-database.ts --resume --verbose
+```
+
+### Search Index Extended
+
+Populates `search_index_extended` table for advanced filters (Chapter IV, delivery environment, medicine type). Use this for space-constrained databases where the full SAM sync exceeds storage limits.
+
+```bash
+bun run scripts/populate-search-index-extended.ts
 ```
