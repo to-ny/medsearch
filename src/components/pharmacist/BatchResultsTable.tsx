@@ -6,6 +6,26 @@ import { cn } from '@/lib/utils/cn';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { ReimbursementBadge } from '@/components/entities/reimbursement-badge';
 import type { BatchLookupResponse, CNKLookupResult } from '@/server/actions/batch-lookup';
+import type { ValidationMessage } from '@/lib/utils/cnk';
+
+/**
+ * Translates a validation message using the translation function
+ */
+function translateMessage(msg: ValidationMessage, t: (key: string) => string): string {
+  let text = t(msg.key);
+  if (msg.params) {
+    // Handle plural syntax: {remaining, plural, =0 {} other { and {remaining} more}}
+    for (const [key, value] of Object.entries(msg.params)) {
+      const pluralRegex = new RegExp(`\\{${key}, plural, =0 \\{([^}]*)\\} other \\{([^}]*)\\}\\}`, 'g');
+      text = text.replace(pluralRegex, (_match, zeroCase, otherCase) => {
+        return value === 0 ? zeroCase : otherCase.replace(`{${key}}`, String(value));
+      });
+      // Simple replacement
+      text = text.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value));
+    }
+  }
+  return text;
+}
 
 interface BatchResultsTableProps {
   response: BatchLookupResponse;
@@ -162,10 +182,10 @@ export function BatchResultsTable({ response, className }: BatchResultsTableProp
         )}
         role="alert"
       >
-        <h3 className="font-medium text-red-800 dark:text-red-300 mb-2">Error</h3>
+        <h3 className="font-medium text-red-800 dark:text-red-300 mb-2">{t('pharmacist.lookupErrorTitle')}</h3>
         <ul className="list-disc list-inside text-sm text-red-700 dark:text-red-400">
           {response.errors.map((error, index) => (
-            <li key={index}>{error}</li>
+            <li key={index}>{translateMessage(error, t)}</li>
           ))}
         </ul>
       </div>

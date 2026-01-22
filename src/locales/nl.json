@@ -342,6 +342,17 @@
     "packageInfo": "Verpakkingsinfo",
     "price": "Prijs",
     "status": "Status",
+    "lookupErrorTitle": "Zoekfout",
+    "unexpectedError": "Er is een onverwachte fout opgetreden. Probeer het opnieuw.",
+    "validation": {
+      "enterAtLeastOne": "Voer minstens één CNK-code in",
+      "invalidEntries": "Ongeldige invoer (geen 7 cijfers): {entries}{remaining, plural, =0 {} other { en {remaining} meer}}",
+      "duplicatesRemoved": "Dubbele codes verwijderd: {codes}{remaining, plural, =0 {} other { en {remaining} meer}}",
+      "maxCodesExceeded": "Maximaal {limit} codes toegestaan. U heeft {count} geldige codes ingevoerd.",
+      "noValidCodes": "Geen geldige CNK-codes gevonden. CNK-codes moeten precies 7 cijfers bevatten.",
+      "noValidCodesProvided": "Geen geldige CNK-codes opgegeven",
+      "databaseError": "Er is een databasefout opgetreden. Probeer het opnieuw."
+    },
     "features": {
       "instantLookup": "Direct CNK opzoeken",
       "instantLookupDesc": "Typ een 7-cijferige CNK-code en krijg direct resultaten. Auto-detectie filtert alleen verpakkingsresultaten.",

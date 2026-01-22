@@ -4,7 +4,7 @@ import 'server-only';
 
 import { query } from '@/server/db/client';
 import type { MultilingualText } from '@/server/types/domain';
-import { CNK_BATCH_LIMIT, validateBatchInput } from '@/lib/utils/cnk';
+import { CNK_BATCH_LIMIT, validateBatchInput, type ValidationMessage } from '@/lib/utils/cnk';
 
 /** Result for a single CNK lookup */
 export interface CNKLookupResult {
@@ -27,8 +27,8 @@ export interface BatchLookupResponse {
   success: boolean;
   results: CNKLookupResult[];
   notFound: string[];
-  errors: string[];
-  warnings: string[];
+  errors: ValidationMessage[];
+  warnings: ValidationMessage[];
   totalRequested: number;
   totalFound: number;
 }
@@ -60,7 +60,7 @@ export async function batchLookupCNK(input: string): Promise<BatchLookupResponse
       success: false,
       results: [],
       notFound: [],
-      errors: ['No valid CNK codes provided'],
+      errors: [{ key: 'pharmacist.validation.noValidCodesProvided' }],
       warnings: validation.warnings,
       totalRequested: 0,
       totalFound: 0,
@@ -72,7 +72,7 @@ export async function batchLookupCNK(input: string): Promise<BatchLookupResponse
       success: false,
       results: [],
       notFound: [],
-      errors: [`Maximum ${CNK_BATCH_LIMIT} codes allowed. You provided ${codes.length}.`],
+      errors: [{ key: 'pharmacist.validation.maxCodesExceeded', params: { limit: CNK_BATCH_LIMIT, count: codes.length } }],
       warnings: validation.warnings,
       totalRequested: codes.length,
       totalFound: 0,
@@ -192,7 +192,7 @@ export async function batchLookupCNK(input: string): Promise<BatchLookupResponse
       success: false,
       results: [],
       notFound: codes,
-      errors: ['Database error occurred. Please try again.'],
+      errors: [{ key: 'pharmacist.validation.databaseError' }],
       warnings: validation.warnings,
       totalRequested: codes.length,
       totalFound: 0,

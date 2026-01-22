@@ -342,6 +342,17 @@
     "packageInfo": "Packungsinfo",
     "price": "Preis",
     "status": "Status",
+    "lookupErrorTitle": "Suchfehler",
+    "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    "validation": {
+      "enterAtLeastOne": "Bitte geben Sie mindestens einen CNK-Code ein",
+      "invalidEntries": "Ungültige Einträge (keine 7 Ziffern): {entries}{remaining, plural, =0 {} other { und {remaining} weitere}}",
+      "duplicatesRemoved": "Doppelte Codes entfernt: {codes}{remaining, plural, =0 {} other { und {remaining} weitere}}",
+      "maxCodesExceeded": "Maximal {limit} Codes erlaubt. Sie haben {count} gültige Codes eingegeben.",
+      "noValidCodes": "Keine gültigen CNK-Codes gefunden. CNK-Codes müssen genau 7 Ziffern enthalten.",
+      "noValidCodesProvided": "Keine gültigen CNK-Codes angegeben",
+      "databaseError": "Ein Datenbankfehler ist aufgetreten. Bitte versuchen Sie es erneut."
+    },
     "features": {
       "instantLookup": "Sofortige CNK-Suche",
       "instantLookupDesc": "Geben Sie einen 7-stelligen CNK-Code ein und erhalten Sie sofortige Ergebnisse. Automatische Erkennung filtert nur Packungsergebnisse.",

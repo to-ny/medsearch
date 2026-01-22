@@ -9,6 +9,12 @@ export const CNK_PATTERN = /^\d{7}$/;
 /** Maximum number of CNK codes allowed in batch lookup */
 export const CNK_BATCH_LIMIT = 100;
 
+/** Validation message with translation key and parameters */
+export interface ValidationMessage {
+  key: string;
+  params?: Record<string, string | number>;
+}
+
 /**
  * Checks if a string is a valid CNK code format (exactly 7 digits)
  */
@@ -84,22 +90,22 @@ export function parseBatchCNKInput(input: string): {
 }
 
 /**
- * Validates batch input and returns validation result with error messages
+ * Validates batch input and returns validation result with translation keys
  */
 export function validateBatchInput(input: string): {
   isValid: boolean;
   codes: string[];
-  errors: string[];
-  warnings: string[];
+  errors: ValidationMessage[];
+  warnings: ValidationMessage[];
 } {
-  const errors: string[] = [];
-  const warnings: string[] = [];
+  const errors: ValidationMessage[] = [];
+  const warnings: ValidationMessage[] = [];
 
   if (!input.trim()) {
     return {
       isValid: false,
       codes: [],
-      errors: ['Please enter at least one CNK code'],
+      errors: [{ key: 'pharmacist.validation.enterAtLeastOne' }],
       warnings: [],
     };
   }
@@ -110,26 +116,42 @@ export function validateBatchInput(input: string): {
   if (invalidEntries.length > 0) {
     const displayEntries = invalidEntries.slice(0, 5);
     const remaining = invalidEntries.length - 5;
-    const entriesText =
-      remaining > 0
-        ? `${displayEntries.map((e) => `"${e}"`).join(', ')} and ${remaining} more`
-        : displayEntries.map((e) => `"${e}"`).join(', ');
-    errors.push(`Invalid entries (not 7 digits): ${entriesText}`);
+    errors.push({
+      key: 'pharmacist.validation.invalidEntries',
+      params: {
+        entries: displayEntries.map((e) => `"${e}"`).join(', '),
+        remaining,
+      },
+    });
   }
 
   // Check for duplicates
   if (duplicates.length > 0) {
-    warnings.push(`Duplicate codes removed: ${duplicates.slice(0, 5).join(', ')}${duplicates.length > 5 ? ` and ${duplicates.length - 5} more` : ''}`);
+    const displayDuplicates = duplicates.slice(0, 5);
+    const remaining = duplicates.length - 5;
+    warnings.push({
+      key: 'pharmacist.validation.duplicatesRemoved',
+      params: {
+        codes: displayDuplicates.join(', '),
+        remaining,
+      },
+    });
   }
 
   // Check batch limit
   if (validCodes.length > CNK_BATCH_LIMIT) {
-    errors.push(`Maximum ${CNK_BATCH_LIMIT} codes allowed. You entered ${validCodes.length} valid codes.`);
+    errors.push({
+      key: 'pharmacist.validation.maxCodesExceeded',
+      params: {
+        limit: CNK_BATCH_LIMIT,
+        count: validCodes.length,
+      },
+    });
   }
 
   // Check if no valid codes found
   if (validCodes.length === 0 && invalidEntries.length > 0) {
-    errors.push('No valid CNK codes found. CNK codes must be exactly 7 digits.');
+    errors.push({ key: 'pharmacist.validation.noValidCodes' });
   }
 
   return {
