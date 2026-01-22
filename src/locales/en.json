@@ -338,6 +338,17 @@
     "packageInfo": "Package Info",
     "price": "Price",
     "status": "Status",
+    "lookupErrorTitle": "Lookup Error",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "validation": {
+      "enterAtLeastOne": "Please enter at least one CNK code",
+      "invalidEntries": "Invalid entries (not 7 digits): {entries}{remaining, plural, =0 {} other { and {remaining} more}}",
+      "duplicatesRemoved": "Duplicate codes removed: {codes}{remaining, plural, =0 {} other { and {remaining} more}}",
+      "maxCodesExceeded": "Maximum {limit} codes allowed. You entered {count} valid codes.",
+      "noValidCodes": "No valid CNK codes found. CNK codes must be exactly 7 digits.",
+      "noValidCodesProvided": "No valid CNK codes provided",
+      "databaseError": "Database error occurred. Please try again."
+    },
     "features": {
       "instantLookup": "Instant CNK Lookup",
       "instantLookupDesc": "Type any 7-digit CNK code and get instant results. Auto-detection filters to package results only.",

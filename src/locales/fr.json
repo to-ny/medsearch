@@ -338,6 +338,17 @@
     "packageInfo": "Info Conditionnement",
     "price": "Prix",
     "status": "Statut",
+    "lookupErrorTitle": "Erreur de recherche",
+    "unexpectedError": "Une erreur inattendue s'est produite. Veuillez réessayer.",
+    "validation": {
+      "enterAtLeastOne": "Veuillez entrer au moins un code CNK",
+      "invalidEntries": "Entrées invalides (pas 7 chiffres): {entries}{remaining, plural, =0 {} other { et {remaining} de plus}}",
+      "duplicatesRemoved": "Codes en double supprimés: {codes}{remaining, plural, =0 {} other { et {remaining} de plus}}",
+      "maxCodesExceeded": "Maximum {limit} codes autorisés. Vous avez entré {count} codes valides.",
+      "noValidCodes": "Aucun code CNK valide trouvé. Les codes CNK doivent contenir exactement 7 chiffres.",
+      "noValidCodesProvided": "Aucun code CNK valide fourni",
+      "databaseError": "Une erreur de base de données s'est produite. Veuillez réessayer."
+    },
     "features": {
       "instantLookup": "Recherche CNK Instantanée",
       "instantLookupDesc": "Tapez n'importe quel code CNK à 7 chiffres et obtenez des résultats instantanés. La détection automatique filtre uniquement les résultats de conditionnement.",

@@ -3,8 +3,28 @@
 import { useState, useCallback, useTransition, forwardRef, useImperativeHandle } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { useTranslation } from '@/lib/hooks';
-import { validateBatchInput, CNK_BATCH_LIMIT } from '@/lib/utils/cnk';
+import { validateBatchInput, CNK_BATCH_LIMIT, type ValidationMessage } from '@/lib/utils/cnk';
 import { batchLookupCNK, type BatchLookupResponse } from '@/server/actions/batch-lookup';
+
+/**
+ * Translates a validation message using the translation function
+ */
+function translateMessage(msg: ValidationMessage, t: (key: string) => string): string {
+  let text = t(msg.key);
+  if (msg.params) {
+    // Simple parameter replacement (handles {param} syntax)
+    for (const [key, value] of Object.entries(msg.params)) {
+      // Handle plural syntax: {remaining, plural, =0 {} other { and {remaining} more}}
+      const pluralRegex = new RegExp(`\\{${key}, plural, =0 \\{([^}]*)\\} other \\{([^}]*)\\}\\}`, 'g');
+      text = text.replace(pluralRegex, (_match, zeroCase, otherCase) => {
+        return value === 0 ? zeroCase : otherCase.replace(`{${key}}`, String(value));
+      });
+      // Simple replacement
+      text = text.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value));
+    }
+  }
+  return text;
+}
 
 interface BatchLookupFormProps {
   onResults: (response: BatchLookupResponse) => void;
@@ -24,8 +44,8 @@ export const BatchLookupForm = forwardRef<BatchLookupFormRef, BatchLookupFormPro
   const { t } = useTranslation();
   const [input, setInputState] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+  const [validationErrors, setValidationErrors] = useState<ValidationMessage[]>([]);
+  const [validationWarnings, setValidationWarnings] = useState<ValidationMessage[]>([]);
 
   // Real-time validation as user types
   const handleInputChange = useCallback((value: string) => {
@@ -74,7 +94,7 @@ export const BatchLookupForm = forwardRef<BatchLookupFormRef, BatchLookupFormPro
             success: false,
             results: [],
             notFound: [],
-            errors: ['An unexpected error occurred. Please try again.'],
+            errors: [{ key: 'pharmacist.unexpectedError' }],
             warnings: [],
             totalRequested: 0,
             totalFound: 0,
@@ -150,7 +170,7 @@ export const BatchLookupForm = forwardRef<BatchLookupFormRef, BatchLookupFormPro
         >
           <ul className="list-disc list-inside space-y-1">
             {validationErrors.map((error, index) => (
-              <li key={index}>{error}</li>
+              <li key={index}>{translateMessage(error, t)}</li>
             ))}
           </ul>
         </div>
@@ -164,7 +184,7 @@ export const BatchLookupForm = forwardRef<BatchLookupFormRef, BatchLookupFormPro
         >
           <ul className="list-disc list-inside space-y-1">
             {validationWarnings.map((warning, index) => (
-              <li key={index}>{warning}</li>
+              <li key={index}>{translateMessage(warning, t)}</li>
             ))}
           </ul>
         </div>
