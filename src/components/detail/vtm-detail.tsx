@@ -10,7 +10,7 @@ import { InfoList, InfoRow } from '@/components/shared/info-row';
 import { PriceRange } from '@/components/shared/price-range';
 import { JsonLd } from '@/components/shared/json-ld';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
-import { formatValidityPeriod } from '@/lib/utils/format';
+import { ValidityPeriod } from '@/components/shared/validity-period';
 import type { VTMWithRelations } from '@/server/types/entities';
 
 interface VTMDetailProps {
@@ -62,7 +62,7 @@ export function VTMDetail({ vtm }: VTMDetailProps) {
               <InfoList>
                 <InfoRow
                   label={t('detail.validity')}
-                  value={formatValidityPeriod(vtm.startDate, vtm.endDate)}
+                  value={<ValidityPeriod startDate={vtm.startDate} endDate={vtm.endDate} />}
                 />
                 {/* Show all language variants */}
                 {vtm.name.nl && vtm.name.nl !== name && (

@@ -53,13 +53,14 @@ function SearchContent() {
 
   // Parse Phase C extended filter parameters
   const chapterIV = searchParams.get('chapterIV') === 'true';
+  const chapterIVParagraph = searchParams.get('chapterIVPara') || undefined;
   const deliveryEnvParam = searchParams.get('deliveryEnv');
   const deliveryEnv: 'P' | 'H' | undefined = (deliveryEnvParam === 'P' || deliveryEnvParam === 'H') ? deliveryEnvParam : undefined;
   const medicineType = searchParams.get('medicineType') || undefined;
 
   const filters = useMemo(() => {
     const hasBasicFilters = vtmCode || vmpCode || ampCode || atcCode || companyCode || vmpGroupCode || substanceCode || reimbursable || blackTriangle;
-    const hasExtendedFilters = formCodes.length > 0 || routeCodes.length > 0 || reimbCategories.length > 0 || priceMin !== undefined || priceMax !== undefined || chapterIV || deliveryEnv || medicineType;
+    const hasExtendedFilters = formCodes.length > 0 || routeCodes.length > 0 || reimbCategories.length > 0 || priceMin !== undefined || priceMax !== undefined || chapterIV || chapterIVParagraph || deliveryEnv || medicineType;
     const hasFilters = hasBasicFilters || hasExtendedFilters;
     return hasFilters ? {
       vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode,
@@ -71,10 +72,11 @@ function SearchContent() {
       priceMin,
       priceMax,
       chapterIV: chapterIV || undefined,
+      chapterIVParagraph,
       deliveryEnvironment: deliveryEnv,
       medicineType,
     } : undefined;
-  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, reimbursable, blackTriangle, formCodes, routeCodes, reimbCategories, priceMin, priceMax, chapterIV, deliveryEnv, medicineType]);
+  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, reimbursable, blackTriangle, formCodes, routeCodes, reimbCategories, priceMin, priceMax, chapterIV, chapterIVParagraph, deliveryEnv, medicineType]);
 
   const [query, setQuery] = useState(queryParam);
   const [selectedTypes, setSelectedTypes] = useState<EntityType[]>(() => {
@@ -250,6 +252,7 @@ function SearchContent() {
       priceMax: filterKey !== 'priceRange' ? priceMax : undefined,
       // Phase C extended filters
       chapterIV: filterKey !== 'chapterIV' ? (chapterIV || undefined) : undefined,
+      chapterIVParagraph: filterKey !== 'chapterIVPara' ? chapterIVParagraph : undefined,
       deliveryEnv: filterKey !== 'deliveryEnv' ? deliveryEnv : undefined,
       medicineType: filterKey !== 'medicineType' ? medicineType : undefined,
     }));
@@ -280,6 +283,7 @@ function SearchContent() {
     if (companyCode) list.push({ key: 'company', label: t('entityLabels.company'), value: getFilterName('company', companyCode) });
     if (vmpGroupCode) list.push({ key: 'vmpGroup', label: t('entityLabels.therapeuticGroup'), value: getFilterName('vmpGroup', vmpGroupCode) });
     if (substanceCode) list.push({ key: 'substance', label: t('entityLabels.ingredient'), value: getFilterName('substance', substanceCode) });
+    if (chapterIVParagraph) list.push({ key: 'chapterIVPara', label: t('entityLabels.chapterIV'), value: getFilterName('chapterIVParagraph', chapterIVParagraph) });
     // Note: reimbursable, blackTriangle, chapterIV, deliveryEnv, medicineType are NOT added here because they're visible via modal badge count
 
     // Phase B extended filters
@@ -293,7 +297,7 @@ function SearchContent() {
       list.push({ key: 'priceRange', label: t('search.priceRange'), value: priceLabel });
     }
     return list;
-  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, formCodes, routeCodes, reimbCategories, priceMin, priceMax, t, data?.appliedFilters]);
+  }, [vtmCode, vmpCode, ampCode, atcCode, companyCode, vmpGroupCode, substanceCode, chapterIVParagraph, formCodes, routeCodes, reimbCategories, priceMin, priceMax, t, data?.appliedFilters]);
 
   // Compute which entity types have active filters targeting them
   // This allows showing badges with count=0 when filters cause empty results

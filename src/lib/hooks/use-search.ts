@@ -32,7 +32,7 @@ function buildSearchUrl(options: UseSearchOptions): string | null {
 
   const hasBasicFilters = filters && (filters.vtmCode || filters.vmpCode || filters.ampCode || filters.atcCode || filters.companyCode || filters.vmpGroupCode || filters.substanceCode || filters.reimbursable !== undefined || filters.blackTriangle !== undefined);
   const hasPhaseB = filters && ((filters.formCodes && filters.formCodes.length > 0) || (filters.routeCodes && filters.routeCodes.length > 0) || (filters.reimbursementCategories && filters.reimbursementCategories.length > 0) || filters.priceMin !== undefined || filters.priceMax !== undefined);
-  const hasPhaseC = filters && (filters.chapterIV === true || filters.deliveryEnvironment !== undefined || filters.medicineType !== undefined);
+  const hasPhaseC = filters && (filters.chapterIV === true || filters.chapterIVParagraph !== undefined || filters.deliveryEnvironment !== undefined || filters.medicineType !== undefined);
   const hasFilters = hasBasicFilters || hasPhaseB || hasPhaseC;
 
   // Don't search if disabled or (query is too short and no filters)
@@ -113,6 +113,9 @@ function buildSearchUrl(options: UseSearchOptions): string | null {
   // Add Phase C extended filters
   if (filters?.chapterIV === true) {
     params.set('chapterIV', 'true');
+  }
+  if (filters?.chapterIVParagraph) {
+    params.set('chapterIVPara', filters.chapterIVParagraph);
   }
   if (filters?.deliveryEnvironment) {
     params.set('deliveryEnv', filters.deliveryEnvironment);

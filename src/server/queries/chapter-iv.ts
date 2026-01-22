@@ -11,7 +11,55 @@ export async function getChapterIVParagraphWithRelations(
   chapterName: string,
   paragraphName: string
 ): Promise<ChapterIVParagraphWithRelations | null> {
+  // Build legal_reference_path for lookup: "IV/{paragraphName}"
+  const legalRefPath = `${chapterName}/${paragraphName}`;
+
   const result = await sql`
+    WITH RECURSIVE
+    -- First compute hierarchy levels recursively
+    text_hierarchy AS (
+      -- Base case: top-level texts (no parent)
+      SELECT key, parent_text_key, 1 as verse_level
+      FROM legal_text
+      WHERE legal_reference_path = ${legalRefPath}
+        AND parent_text_key IS NULL
+        AND (end_date IS NULL OR end_date > CURRENT_DATE)
+      UNION ALL
+      -- Recursive case: texts with parents
+      SELECT lt.key, lt.parent_text_key, h.verse_level + 1
+      FROM legal_text lt
+      JOIN text_hierarchy h ON lt.parent_text_key = h.key
+      WHERE lt.legal_reference_path = ${legalRefPath}
+        AND (lt.end_date IS NULL OR lt.end_date > CURRENT_DATE)
+    ),
+    numbered_texts AS (
+      -- Assign row numbers to legal_text entries for verse sequencing
+      SELECT
+        lt.key,
+        lt.parent_text_key,
+        lt.content,
+        lt.sequence_nr,
+        lt.start_date,
+        th.verse_level,
+        ROW_NUMBER() OVER (ORDER BY lt.sequence_nr, lt.key) as verse_seq
+      FROM legal_text lt
+      JOIN text_hierarchy th ON th.key = lt.key
+      WHERE lt.legal_reference_path = ${legalRefPath}
+        AND (lt.end_date IS NULL OR lt.end_date > CURRENT_DATE)
+    ),
+    texts_with_parents AS (
+      -- Join to compute parent verse_seq for hierarchy
+      SELECT
+        t.key,
+        t.content,
+        t.sequence_nr,
+        t.start_date,
+        t.verse_seq,
+        t.verse_level,
+        COALESCE(p.verse_seq, 0) as verse_seq_parent
+      FROM numbered_texts t
+      LEFT JOIN numbered_texts p ON p.key = t.parent_text_key
+    )
     SELECT
       civ.chapter_name,
       civ.paragraph_name,
@@ -25,20 +73,18 @@ export async function getChapterIVParagraphWithRelations(
       COALESCE(
         (
           SELECT json_agg(json_build_object(
-            'id', v.id,
+            'id', v.verse_seq,
             'verseSeq', v.verse_seq,
-            'verseNum', v.verse_num,
+            'verseNum', v.verse_seq,
             'verseSeqParent', v.verse_seq_parent,
             'verseLevel', v.verse_level,
-            'text', v.text,
-            'requestType', v.request_type,
-            'agreementTermQuantity', v.agreement_term_quantity,
-            'agreementTermUnit', v.agreement_term_unit,
+            'text', v.content,
+            'requestType', NULL,
+            'agreementTermQuantity', NULL,
+            'agreementTermUnit', NULL,
             'startDate', v.start_date
           ) ORDER BY v.verse_seq)
-          FROM chapter_iv_verse v
-          WHERE v.chapter_name = civ.chapter_name
-            AND v.paragraph_name = civ.paragraph_name
+          FROM texts_with_parents v
         ),
         '[]'::json
       ) as verses

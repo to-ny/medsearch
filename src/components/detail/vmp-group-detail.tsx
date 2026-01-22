@@ -14,7 +14,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/lib/hooks/use-language';
 import { useTranslation } from '@/lib/hooks/use-translation';
-import { formatValidityPeriod, formatQuantity, formatQuantityRange } from '@/lib/utils/format';
+import { formatQuantity, formatQuantityRange } from '@/lib/utils/format';
+import { ValidityPeriod } from '@/components/shared/validity-period';
 import type { VMPGroupWithRelations, StandardDosage } from '@/server/types/entities';
 
 interface VMPGroupDetailProps {
@@ -95,7 +96,7 @@ export function VMPGroupDetail({ vmpGroup }: VMPGroupDetailProps) {
               <InfoList>
                 <InfoRow
                   label={t('detail.validity')}
-                  value={formatValidityPeriod(vmpGroup.startDate, vmpGroup.endDate)}
+                  value={<ValidityPeriod startDate={vmpGroup.startDate} endDate={vmpGroup.endDate} />}
                 />
                 {/* Show all language variants */}
                 {vmpGroup.name.nl && vmpGroup.name.nl !== name && (

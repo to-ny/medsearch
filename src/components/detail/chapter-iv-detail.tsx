@@ -1,17 +1,15 @@
 'use client';
 
-import Link from 'next/link';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
-import { SearchAllLink } from '@/components/entities/search-all-link';
+import { ProductList } from '@/components/entities/product-list';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
-import { CollapsibleSection } from '@/components/shared/collapsible-section';
-import { PriceDisplay } from '@/components/shared/price-display';
 import { JsonLd } from '@/components/shared/json-ld';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { LocalizedText } from '@/components/shared/localized-text';
-import { formatValidityPeriod, formatAgreementTerm } from '@/lib/utils/format';
+import { formatAgreementTerm } from '@/lib/utils/format';
+import { ValidityPeriod } from '@/components/shared/validity-period';
 import { cn } from '@/lib/utils/cn';
 import type { ChapterIVParagraphWithRelations, ChapterIVVerse } from '@/server/types/entities';
 
@@ -72,7 +70,7 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
                 )}
                 <InfoRow
                   label={t('detail.validity')}
-                  value={formatValidityPeriod(chapterIV.startDate, chapterIV.endDate)}
+                  value={<ValidityPeriod startDate={chapterIV.startDate} endDate={chapterIV.endDate} />}
                 />
               </InfoList>
             </Section>
@@ -96,63 +94,19 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
 
           {/* Covered Products */}
           {chapterIV.linkedProducts.length > 0 && (
-            <CollapsibleSection
+            <ProductList
               title={t('chapterIV.coveredProducts')}
-              count={chapterIV.linkedProducts.length}
-              defaultOpen={false}
-            >
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
-                  <thead>
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        {t('chapterIV.cnkCode')}
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        {t('chapterIV.environment')}
-                      </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        {t('chapterIV.price')}
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        {t('detail.reimbursable')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {chapterIV.linkedProducts.map((product) => (
-                      <tr key={`${product.code}-${product.deliveryEnvironment}`}>
-                        <td className="px-3 py-2 font-mono">
-                          {product.amppCtiExtended ? (
-                            <Link
-                              href={links.toPackage(product.name || { en: product.code }, product.amppCtiExtended)}
-                              className="text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                              {product.code}
-                            </Link>
-                          ) : (
-                            <span className="text-gray-900 dark:text-gray-100">{product.code}</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-gray-600 dark:text-gray-400">
-                          {product.deliveryEnvironment === 'P' ? t('detail.public') : t('detail.hospital')}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <PriceDisplay amount={product.price} showNull nullText="-" />
-                        </td>
-                        <td className="px-3 py-2">
-                          {product.reimbursable ? (
-                            <Badge variant="success" size="sm">{t('common.yes')}</Badge>
-                          ) : (
-                            <span className="text-gray-400">{t('common.no')}</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CollapsibleSection>
+              items={chapterIV.linkedProducts.map(p => ({
+                code: p.code,
+                name: p.name,
+                linkCode: p.amppCtiExtended,
+                price: p.price,
+                reimbursable: p.reimbursable,
+                deliveryEnvironment: p.deliveryEnvironment,
+              }))}
+              searchHref={links.toSearch({ chapterIVParagraph: chapterIV.paragraphName, types: 'ampp' })}
+              maxInitialDisplay={5}
+            />
           )}
         </div>
 
@@ -190,15 +144,6 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
               </div>
             </div>
           </div>
-
-          {/* View All Products Link */}
-          {chapterIV.linkedProducts.length > 0 && (
-            <SearchAllLink
-              filters={{ chapterIV: true, types: 'ampp' }}
-              label={t('common.viewAllPackages')}
-              count={chapterIV.linkedProducts.length}
-            />
-          )}
         </div>
       </div>
 

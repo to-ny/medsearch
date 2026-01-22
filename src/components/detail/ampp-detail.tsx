@@ -15,7 +15,8 @@ import { JsonLd } from '@/components/shared/json-ld';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
-import { formatValidityPeriod, formatPrice } from '@/lib/utils/format';
+import { formatPrice } from '@/lib/utils/format';
+import { ValidityPeriod } from '@/components/shared/validity-period';
 import type { AMPPWithRelations } from '@/server/types/entities';
 
 interface AMPPDetailProps {
@@ -76,7 +77,7 @@ export function AMPPDetail({ ampp }: AMPPDetailProps) {
                 )}
                 <InfoRow
                   label={t('detail.validity')}
-                  value={formatValidityPeriod(ampp.startDate, ampp.endDate)}
+                  value={<ValidityPeriod startDate={ampp.startDate} endDate={ampp.endDate} />}
                 />
               </InfoList>
             </Section>

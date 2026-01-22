@@ -28,6 +28,7 @@ export interface SearchLinkParams {
   priceMax?: number;
   // Phase C extended filters
   chapterIV?: boolean;
+  chapterIVParagraph?: string;
   deliveryEnv?: 'P' | 'H';
   medicineType?: string;
 }
@@ -154,6 +155,7 @@ function createLinksForLanguage(language: Language): UseLinksReturn {
       if (params.priceMax !== undefined) searchParams.set('priceMax', params.priceMax.toString());
       // Phase C extended filters
       if (params.chapterIV) searchParams.set('chapterIV', 'true');
+      if (params.chapterIVParagraph) searchParams.set('chapterIVPara', params.chapterIVParagraph);
       if (params.deliveryEnv) searchParams.set('deliveryEnv', params.deliveryEnv);
       if (params.medicineType) searchParams.set('medicineType', params.medicineType);
 

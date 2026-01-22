@@ -1370,7 +1370,8 @@ async function createStagingTables(
     fileTables.forEach(t => tables.add(t));
   }
 
-  // Always include search_index and search_index_extended (populated from all other tables)
+  // Always include derived tables (populated from other staging tables, not from XML directly)
+  tables.add('dmpp_chapter_iv');  // Derived from reimbursement_context
   tables.add('search_index');
   tables.add('search_index_extended');
 
@@ -1473,6 +1474,15 @@ async function createStagingTables(
             PRIMARY KEY (amp_code, component_sequence_nr, rank)
           )
         `,
+        dmpp_chapter_iv: `
+          CREATE TABLE dmpp_chapter_iv_staging (
+            dmpp_code VARCHAR(20) NOT NULL,
+            delivery_environment CHAR(1) NOT NULL DEFAULT 'P',
+            chapter_name VARCHAR(20) NOT NULL,
+            paragraph_name VARCHAR(50) NOT NULL,
+            PRIMARY KEY (dmpp_code, delivery_environment, chapter_name, paragraph_name)
+          )
+        `,
       };
 
       // Use DDL if available for this table
@@ -1565,8 +1575,39 @@ async function importRecords(
   return counts;
 }
 
+/**
+ * Populate dmpp_chapter_iv_staging from reimbursement_context_staging
+ * This is a derived table - Chapter IV links are extracted from legal_reference_path
+ */
+async function populateDmppChapterIV(dryRun: boolean): Promise<void> {
+  console.log('\n3b. Populating dmpp_chapter_iv_staging...\n');
+
+  if (dryRun) {
+    console.log('   [DRY RUN] Would populate dmpp_chapter_iv_staging');
+    tablesWithData.add('dmpp_chapter_iv');
+    return;
+  }
+
+  const result = await query(`
+    INSERT INTO dmpp_chapter_iv_staging (dmpp_code, delivery_environment, chapter_name, paragraph_name)
+    SELECT DISTINCT
+      rc.dmpp_code,
+      rc.delivery_environment,
+      'IV',
+      (regexp_match(rc.legal_reference_path, '-IV-(\\d+)$'))[1]
+    FROM reimbursement_context_staging rc
+    WHERE rc.legal_reference_path ~ '-IV-\\d+$'
+      AND (regexp_match(rc.legal_reference_path, '-IV-(\\d+)$'))[1] IS NOT NULL
+    ON CONFLICT DO NOTHING
+  `);
+
+  const rowCount = result.rowCount || 0;
+  tablesWithData.add('dmpp_chapter_iv');
+  console.log(`   [OK] Populated dmpp_chapter_iv_staging (${rowCount} rows)`);
+}
+
 async function populateSearchIndex(dryRun: boolean): Promise<void> {
-  console.log('\n3b. Populating search_index_staging...\n');
+  console.log('\n3c. Populating search_index_staging...\n');
 
   if (dryRun) {
     console.log('   [DRY RUN] Would populate search_index_staging');
@@ -1741,7 +1782,7 @@ async function populateSearchIndex(dryRun: boolean): Promise<void> {
 }
 
 async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
-  console.log('\n3c. Populating search_index_extended_staging...\n');
+  console.log('\n3d. Populating search_index_extended_staging...\n');
 
   if (dryRun) {
     console.log('   [DRY RUN] Would populate search_index_extended_staging');
@@ -1992,7 +2033,7 @@ async function swapTables(dryRun: boolean): Promise<void> {
     // Fourth: amp and its dependents
     'amp', 'amp_component', 'amp_ingredient', 'ampp', 'dmpp',
     // Fifth: reimbursement and chapter IV
-    'reimbursement_context', 'chapter_iv_paragraph',
+    'reimbursement_context', 'chapter_iv_paragraph', 'dmpp_chapter_iv',
     // Last: search indexes (populated from all other tables)
     'search_index', 'search_index_extended',
   ];
@@ -2324,7 +2365,10 @@ async function main(): Promise<void> {
         await processXmlFile(filesByType.CHAPTERIV, 'Paragraph', transformChapterIVParagraph, progress, dryRun, verbose);
       }
 
-      // Populate search_index from all entity staging tables
+      // Populate derived tables from staging data
+      await populateDmppChapterIV(dryRun);
+
+      // Populate search indexes from all entity staging tables
       await populateSearchIndex(dryRun);
 
       // Populate search_index_extended with additional filter columns

@@ -15,7 +15,7 @@ import { ChapterIVIndicator } from '@/components/shared/chapter-iv-indicator';
 import { JsonLd } from '@/components/shared/json-ld';
 import { Card } from '@/components/ui/card';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
-import { formatValidityPeriod } from '@/lib/utils/format';
+import { ValidityPeriod } from '@/components/shared/validity-period';
 import type { VMPWithRelations } from '@/server/types/entities';
 
 interface VMPDetailProps {
@@ -71,7 +71,7 @@ export function VMPDetail({ vmp }: VMPDetailProps) {
                 )}
                 <InfoRow
                   label={t('detail.validity')}
-                  value={formatValidityPeriod(vmp.startDate, vmp.endDate)}
+                  value={<ValidityPeriod startDate={vmp.startDate} endDate={vmp.endDate} />}
                 />
                 {/* Show all language variants */}
                 {vmp.name.nl && vmp.name.nl !== name && (
