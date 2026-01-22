@@ -144,7 +144,11 @@
     "noGenericPrescription": "Geen Generiek Voorschrift",
     "noSwitching": "Geen Wisseling",
     "productsContainingIngredient": "Producten met Dit Ingrediënt",
-    "clickSearchToViewPackages": "Klik op 'Alles zoeken' om alle beschikbare verpakkingen te bekijken."
+    "clickSearchToViewPackages": "Klik op 'Alles zoeken' om alle beschikbare verpakkingen te bekijken.",
+    "packageLeaflet": "Bijsluiter",
+    "smpc": "SmPC (Samenvatting van de Productkenmerken)",
+    "download": "Downloaden",
+    "previewUnavailable": "Voorbeeld niet beschikbaar. Gebruik de downloadknop."
   },
   "languages": {
     "dutch": "Nederlands",

@@ -144,7 +144,11 @@
     "noGenericPrescription": "Pas de Prescription Générique",
     "noSwitching": "Pas de Substitution",
     "productsContainingIngredient": "Produits Contenant Cet Ingrédient",
-    "clickSearchToViewPackages": "Cliquez sur 'Rechercher tout' pour voir tous les emballages disponibles."
+    "clickSearchToViewPackages": "Cliquez sur 'Rechercher tout' pour voir tous les emballages disponibles.",
+    "packageLeaflet": "Notice",
+    "smpc": "RCP (Résumé des Caractéristiques du Produit)",
+    "download": "Télécharger",
+    "previewUnavailable": "Aperçu non disponible. Utilisez le bouton de téléchargement."
   },
   "languages": {
     "dutch": "Néerlandais",

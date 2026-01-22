@@ -1,9 +1,12 @@
 'use client';
 
-import { DocumentTextIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { useState } from 'react';
+import { DocumentTextIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils/cn';
+import { useTranslation } from '@/lib/hooks/use-translation';
 import type { MultilingualText, Language } from '@/server/types/domain';
 import { LANGUAGES } from '@/server/types/domain';
+import { DocumentPreviewDialog } from './document-preview-dialog';
 
 interface DocumentLinksProps {
   leafletUrls: MultilingualText | null;
@@ -18,12 +21,22 @@ const LANGUAGE_LABELS: Record<Language, string> = {
   de: 'DE',
 };
 
-interface DocumentLinkGroupProps {
+interface PreviewState {
+  url: string;
   title: string;
-  urls: MultilingualText | null;
+  language: Language;
 }
 
-function DocumentLinkGroup({ title, urls }: DocumentLinkGroupProps) {
+interface DocumentLinkGroupProps {
+  title: string;
+  titleKey: string;
+  urls: MultilingualText | null;
+  onPreview: (url: string, title: string, language: Language) => void;
+}
+
+function DocumentLinkGroup({ title, titleKey, urls, onPreview }: DocumentLinkGroupProps) {
+  const { t } = useTranslation();
+
   if (!urls) return null;
 
   const availableUrls = LANGUAGES.filter((lang) => urls[lang]).map((lang) => ({
@@ -33,6 +46,8 @@ function DocumentLinkGroup({ title, urls }: DocumentLinkGroupProps) {
 
   if (availableUrls.length === 0) return null;
 
+  const localizedTitle = t(titleKey);
+
   return (
     <div className="space-y-2">
       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
@@ -41,21 +56,19 @@ function DocumentLinkGroup({ title, urls }: DocumentLinkGroupProps) {
       </h4>
       <div className="flex flex-wrap gap-2">
         {availableUrls.map(({ lang, url }) => (
-          <a
+          <button
             key={lang}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
+            type="button"
+            onClick={() => onPreview(url, localizedTitle, lang)}
             className={cn(
               'inline-flex items-center gap-1 px-2 py-1 text-sm',
               'bg-gray-100 dark:bg-gray-800 rounded',
               'text-blue-600 dark:text-blue-400 hover:underline',
-              'transition-colors'
+              'transition-colors cursor-pointer'
             )}
           >
             {LANGUAGE_LABELS[lang]}
-            <ArrowTopRightOnSquareIcon className="h-3 w-3" />
-          </a>
+          </button>
         ))}
       </div>
     </div>
@@ -63,14 +76,45 @@ function DocumentLinkGroup({ title, urls }: DocumentLinkGroupProps) {
 }
 
 export function DocumentLinks({ leafletUrls, spcUrls, className }: DocumentLinksProps) {
+  const { t } = useTranslation();
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+
   if (!leafletUrls && !spcUrls) {
     return null;
   }
 
+  const handlePreview = (url: string, title: string, language: Language) => {
+    setPreview({ url, title, language });
+  };
+
+  const handleClosePreview = () => {
+    setPreview(null);
+  };
+
   return (
-    <div className={cn('space-y-4', className)}>
-      <DocumentLinkGroup title="Package Leaflet" urls={leafletUrls} />
-      <DocumentLinkGroup title="SmPC (Summary of Product Characteristics)" urls={spcUrls} />
-    </div>
+    <>
+      <div className={cn('space-y-4', className)}>
+        <DocumentLinkGroup
+          title={t('detail.packageLeaflet')}
+          titleKey="detail.packageLeaflet"
+          urls={leafletUrls}
+          onPreview={handlePreview}
+        />
+        <DocumentLinkGroup
+          title={t('detail.smpc')}
+          titleKey="detail.smpc"
+          urls={spcUrls}
+          onPreview={handlePreview}
+        />
+      </div>
+
+      <DocumentPreviewDialog
+        isOpen={preview !== null}
+        onClose={handleClosePreview}
+        url={preview?.url ?? ''}
+        title={preview?.title ?? ''}
+        language={preview?.language ?? 'en'}
+      />
+    </>
   );
 }
