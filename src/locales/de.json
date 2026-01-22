@@ -144,7 +144,11 @@
     "noGenericPrescription": "Keine generische Verschreibung",
     "noSwitching": "Kein Wechsel",
     "productsContainingIngredient": "Produkte mit Diesem Inhaltsstoff",
-    "clickSearchToViewPackages": "Klicken Sie auf 'Alle suchen', um alle verfügbaren Packungen anzuzeigen."
+    "clickSearchToViewPackages": "Klicken Sie auf 'Alle suchen', um alle verfügbaren Packungen anzuzeigen.",
+    "packageLeaflet": "Packungsbeilage",
+    "smpc": "SmPC (Zusammenfassung der Merkmale des Arzneimittels)",
+    "download": "Herunterladen",
+    "previewUnavailable": "Vorschau nicht verfügbar. Verwenden Sie die Download-Schaltfläche."
   },
   "languages": {
     "dutch": "Niederländisch",

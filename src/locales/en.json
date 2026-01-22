@@ -144,7 +144,11 @@
     "noGenericPrescription": "No Generic Prescription",
     "noSwitching": "No Switching",
     "productsContainingIngredient": "Products Containing This Ingredient",
-    "clickSearchToViewPackages": "Click 'Search all' to view all available packages."
+    "clickSearchToViewPackages": "Click 'Search all' to view all available packages.",
+    "packageLeaflet": "Package Leaflet",
+    "smpc": "SmPC (Summary of Product Characteristics)",
+    "download": "Download",
+    "previewUnavailable": "Preview unavailable. Use the download button."
   },
   "languages": {
     "dutch": "Dutch",
