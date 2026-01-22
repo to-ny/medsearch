@@ -2,7 +2,7 @@ import 'server-only';
 
 import { sql } from '@/server/db/client';
 import type { ChapterIVParagraphWithRelations, ChapterIVVerse } from '@/server/types/entities';
-import type { DMPPSummary } from '@/server/types/summaries';
+import type { AMPPSummary } from '@/server/types/summaries';
 
 /**
  * Get a Chapter IV Paragraph by chapter and paragraph name with all details
@@ -97,32 +97,68 @@ export async function getChapterIVParagraphWithRelations(
 
   const row = result.rows[0];
 
-  // Get linked products (DMPPs) with AMPP info for linking
+  // Get linked packages (AMPPs) through dmpp_chapter_iv -> dmpp -> ampp
+  // Using distinct AMPPs since one AMPP can have multiple DMPPs (different delivery environments)
   const productsResult = await sql`
-    SELECT DISTINCT
-      d.code,
-      d.delivery_environment,
-      d.price,
-      d.reimbursable,
-      d.ampp_cti_extended,
-      ampp.prescription_name as ampp_name
+    SELECT DISTINCT ON (ampp.cti_extended)
+      ampp.cti_extended as code,
+      ampp.prescription_name as name,
+      ampp.amp_code,
+      amp.name as amp_name,
+      ampp.pack_display_value,
+      ampp.ex_factory_price,
+      (
+        SELECT d2.code
+        FROM dmpp d2
+        WHERE d2.ampp_cti_extended = ampp.cti_extended
+          AND d2.delivery_environment = 'P'
+          AND (d2.end_date IS NULL OR d2.end_date > CURRENT_DATE)
+        ORDER BY d2.start_date DESC
+        LIMIT 1
+      ) as cnk_code,
+      COALESCE(
+        (
+          SELECT bool_or(d2.reimbursable)
+          FROM dmpp d2
+          WHERE d2.ampp_cti_extended = ampp.cti_extended
+            AND (d2.end_date IS NULL OR d2.end_date > CURRENT_DATE)
+        ),
+        false
+      ) as reimbursable
     FROM dmpp_chapter_iv dciv
     JOIN dmpp d ON d.code = dciv.dmpp_code AND d.delivery_environment = dciv.delivery_environment
-    LEFT JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+    JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+    JOIN amp ON amp.code = ampp.amp_code
     WHERE dciv.chapter_name = ${chapterName}
       AND dciv.paragraph_name = ${paragraphName}
       AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
-    ORDER BY d.code
-    LIMIT 100
+      AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+    ORDER BY ampp.cti_extended
+    LIMIT 20
   `;
 
-  const linkedProducts: DMPPSummary[] = productsResult.rows.map((p) => ({
+  // Get total count of linked AMPPs (without LIMIT)
+  const countResult = await sql`
+    SELECT COUNT(DISTINCT ampp.cti_extended)::int as count
+    FROM dmpp_chapter_iv dciv
+    JOIN dmpp d ON d.code = dciv.dmpp_code AND d.delivery_environment = dciv.delivery_environment
+    JOIN ampp ON ampp.cti_extended = d.ampp_cti_extended
+    WHERE dciv.chapter_name = ${chapterName}
+      AND dciv.paragraph_name = ${paragraphName}
+      AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
+      AND (ampp.end_date IS NULL OR ampp.end_date > CURRENT_DATE)
+  `;
+
+  const linkedProducts: AMPPSummary[] = productsResult.rows.map((p) => ({
+    entityType: 'ampp' as const,
     code: p.code,
-    deliveryEnvironment: p.delivery_environment,
-    price: p.price,
+    name: p.name,
+    ampCode: p.amp_code,
+    ampName: p.amp_name,
+    packDisplayValue: p.pack_display_value,
+    exFactoryPrice: p.ex_factory_price,
+    cnkCode: p.cnk_code,
     reimbursable: p.reimbursable,
-    amppCtiExtended: p.ampp_cti_extended,
-    name: p.ampp_name,
   }));
 
   return {
@@ -137,5 +173,6 @@ export async function getChapterIVParagraphWithRelations(
     endDate: row.end_date,
     verses: row.verses as ChapterIVVerse[],
     linkedProducts,
+    linkedProductsCount: countResult.rows[0]?.count ?? 0,
   };
 }

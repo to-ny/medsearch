@@ -13,7 +13,6 @@ import type {
   VMPGroupSummary,
   StandardDosageSummary,
   ChapterIVParagraphSummary,
-  DMPPSummary,
   ATCSummary,
 } from './summaries';
 
@@ -261,7 +260,8 @@ export interface ChapterIVParagraph extends ValidityPeriod {
 /** Chapter IV with full details */
 export interface ChapterIVParagraphWithRelations extends ChapterIVParagraph {
   verses: ChapterIVVerse[];
-  linkedProducts: DMPPSummary[];
+  linkedProducts: AMPPSummary[];
+  linkedProductsCount: number;
 }
 
 /** Chapter IV Verse - legislation text */

@@ -1,11 +1,15 @@
 'use client';
 
+import Link from 'next/link';
+import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
-import { ProductList } from '@/components/entities/product-list';
+import { EntityTypeBadge } from '@/components/entities/entity-type-badge';
 import { Section } from '@/components/shared/section';
 import { InfoList, InfoRow } from '@/components/shared/info-row';
+import { PriceDisplay } from '@/components/shared/price-display';
 import { JsonLd } from '@/components/shared/json-ld';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 import { LocalizedText } from '@/components/shared/localized-text';
 import { formatAgreementTerm } from '@/lib/utils/format';
@@ -94,19 +98,56 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
 
           {/* Covered Products */}
           {chapterIV.linkedProducts.length > 0 && (
-            <ProductList
+            <Section
               title={t('chapterIV.coveredProducts')}
-              items={chapterIV.linkedProducts.map(p => ({
-                code: p.code,
-                name: p.name,
-                linkCode: p.amppCtiExtended,
-                price: p.price,
-                reimbursable: p.reimbursable,
-                deliveryEnvironment: p.deliveryEnvironment,
-              }))}
-              searchHref={links.toSearch({ chapterIVParagraph: chapterIV.paragraphName, types: 'ampp' })}
-              maxInitialDisplay={5}
-            />
+              count={chapterIV.linkedProductsCount}
+              headerAction={
+                chapterIV.linkedProductsCount > chapterIV.linkedProducts.length ? (
+                  <Link
+                    href={links.toSearch({ chapterIVParagraph: chapterIV.paragraphName, types: 'ampp' })}
+                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                    title={t('common.searchAll')}
+                  >
+                    <MagnifyingGlassIcon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{t('common.searchAll')}</span>
+                  </Link>
+                ) : undefined
+              }
+            >
+              <div className="space-y-2">
+                {chapterIV.linkedProducts.map((pkg) => (
+                  <Link
+                    key={pkg.code}
+                    href={links.toPackage(pkg.name, pkg.code)}
+                    className="block group"
+                  >
+                    <Card hover padding="sm">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <EntityTypeBadge type="ampp" size="sm" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                              {pkg.packDisplayValue || <LocalizedText text={pkg.name} showFallbackIndicator={false} />}
+                            </p>
+                            {pkg.cnkCode && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                CNK: {pkg.cnkCode}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {pkg.reimbursable && (
+                            <Badge variant="success" size="sm">{t('detail.reimbursable')}</Badge>
+                          )}
+                          <PriceDisplay amount={pkg.exFactoryPrice} size="sm" />
+                        </div>
+                      </div>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </Section>
           )}
         </div>
 
@@ -133,7 +174,7 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('detail.products')}</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{chapterIV.linkedProducts.length}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{chapterIV.linkedProductsCount}</span>
               </div>
               {/* Validity indicator */}
               <div className="flex justify-between">
