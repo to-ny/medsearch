@@ -12,7 +12,8 @@ import { LocalizedText } from '@/components/shared/localized-text';
 import { JsonLd } from '@/components/shared/json-ld';
 import { Pagination } from '@/components/search/pagination';
 import { Card } from '@/components/ui/card';
-import { formatValidityPeriod, formatAddress, formatCountryName } from '@/lib/utils/format';
+import { formatAddress, formatCountryName } from '@/lib/utils/format';
+import { ValidityPeriod } from '@/components/shared/validity-period';
 import type { CompanyWithRelations } from '@/server/types/entities';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
 
@@ -110,7 +111,7 @@ export function CompanyDetail({ company, currentPage, pageSize }: CompanyDetailP
               )}
               <InfoRow
                 label={t('detail.validity')}
-                value={formatValidityPeriod(company.startDate, company.endDate)}
+                value={<ValidityPeriod startDate={company.startDate} endDate={company.endDate} />}
               />
             </InfoList>
           </Section>

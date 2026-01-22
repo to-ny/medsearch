@@ -38,7 +38,7 @@ export interface SearchRequest {
 
 /** Applied filter with human-readable name */
 export interface AppliedFilter {
-  type: 'vtm' | 'vmp' | 'amp' | 'atc' | 'company' | 'vmpGroup' | 'substance';
+  type: 'vtm' | 'vmp' | 'amp' | 'atc' | 'company' | 'vmpGroup' | 'substance' | 'chapterIVParagraph';
   code: string;
   name: string;  // Localized name for display
 }

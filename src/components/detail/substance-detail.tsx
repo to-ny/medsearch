@@ -13,7 +13,7 @@ import { JsonLd } from '@/components/shared/json-ld';
 import { Pagination } from '@/components/search/pagination';
 import { Card } from '@/components/ui/card';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
-import { formatValidityPeriod } from '@/lib/utils/format';
+import { ValidityPeriod } from '@/components/shared/validity-period';
 import type { SubstanceWithRelations } from '@/server/types/entities';
 
 interface SubstanceDetailProps {
@@ -54,7 +54,7 @@ export function SubstanceDetail({ substance, currentPage, pageSize }: SubstanceD
             <InfoList>
               <InfoRow
                 label={t('detail.validity')}
-                value={formatValidityPeriod(substance.startDate, substance.endDate)}
+                value={<ValidityPeriod startDate={substance.startDate} endDate={substance.endDate} />}
               />
               {/* Show all language variants */}
               {substance.name.nl && substance.name.nl !== name && (

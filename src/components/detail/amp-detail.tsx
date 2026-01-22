@@ -18,7 +18,7 @@ import { LocalizedText } from '@/components/shared/localized-text';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage, useLinks, useTranslation } from '@/lib/hooks';
-import { formatValidityPeriod } from '@/lib/utils/format';
+import { ValidityPeriod } from '@/components/shared/validity-period';
 import type { AMPWithRelations } from '@/server/types/entities';
 
 interface AMPDetailProps {
@@ -83,7 +83,7 @@ export function AMPDetail({ amp }: AMPDetailProps) {
                 )}
                 <InfoRow
                   label={t('detail.validity')}
-                  value={formatValidityPeriod(amp.startDate, amp.endDate)}
+                  value={<ValidityPeriod startDate={amp.startDate} endDate={amp.endDate} />}
                 />
               </InfoList>
             </Section>

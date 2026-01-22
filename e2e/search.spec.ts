@@ -640,8 +640,8 @@ test.describe('Filter Combinations', () => {
 
 test.describe('UX Behavior', () => {
   test('entity badge shows (0) count when filter excludes all results for that type', async ({ page }) => {
-    // First verify atorvastatin has AMPP results without filter
-    await page.goto('/en/search?q=atorvastatin');
+    // First verify ibuprofen has AMPP results without filter
+    await page.goto('/en/search?q=ibuprofen');
     await page.waitForLoadState('networkidle');
 
     const baselinePackageBadge = page.locator('button[aria-pressed]:has-text("Package")');
@@ -650,11 +650,11 @@ test.describe('UX Behavior', () => {
     const baselineCount = parseInt(baselineText?.match(/\((\d+)\)/)?.[1] || '0');
     expect(baselineCount).toBeGreaterThan(0); // Confirm we have AMPP results
 
-    // Now apply chapterIV filter - atorvastatin has no Chapter IV packages
-    await page.goto('/en/search?q=atorvastatin&chapterIV=true');
+    // Now apply chapterIV filter - ibuprofen has no Chapter IV packages
+    await page.goto('/en/search?q=ibuprofen&chapterIV=true');
     await page.waitForLoadState('networkidle');
 
-    // The Package badge should show (0) since atorvastatin is not Chapter IV
+    // The Package badge should show (0) since ibuprofen is not Chapter IV
     const filteredPackageBadge = page.locator('button[aria-pressed]:has-text("Package")');
     await expect(filteredPackageBadge).toBeVisible();
     const filteredText = await filteredPackageBadge.textContent();

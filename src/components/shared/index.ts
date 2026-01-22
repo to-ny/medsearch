@@ -12,3 +12,4 @@ export { ChapterIVIndicator } from './chapter-iv-indicator';
 export { AlertBox } from './alert-box';
 export { SummaryBox } from './summary-box';
 export { JsonLd } from './json-ld';
+export { ValidityPeriod } from './validity-period';

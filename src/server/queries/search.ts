@@ -111,6 +111,7 @@ export interface SearchFilters {
   priceMax?: number;      // Filter AMPPs by maximum price
   // Phase C extended filters
   chapterIV?: boolean;    // Filter by Chapter IV requirement
+  chapterIVParagraph?: string;  // Filter AMPPs linked to specific Chapter IV paragraph
   deliveryEnvironment?: 'P' | 'H'; // Filter by delivery environment (P=Public, H=Hospital)
   medicineType?: string;  // Filter AMPs by medicine type (ALLOPATHIC, HOMEOPATHIC, etc.)
   atcLevel?: number;      // Filter ATC classifications by level (1-5)
@@ -222,6 +223,19 @@ async function getAppliedFilterNames(
             name: getLocalizedText(result.rows[0].name, lang),
           });
         }
+      })
+    );
+  }
+
+  if (filters.chapterIVParagraph) {
+    queries.push(
+      sql.query('SELECT key_string FROM chapter_iv_paragraph WHERE chapter_name = $1 AND paragraph_name = $2', ['IV', filters.chapterIVParagraph]).then((result) => {
+        const keyString = result.rows[0]?.key_string;
+        appliedFilters.push({
+          type: 'chapterIVParagraph',
+          code: filters.chapterIVParagraph!,
+          name: keyString ? getLocalizedText(keyString, lang) : `§${filters.chapterIVParagraph}`,
+        });
       })
     );
   }
@@ -407,8 +421,8 @@ export async function executeSearch(
     (filters.routeCodes && filters.routeCodes.length > 0) ||
     (filters.reimbursementCategories && filters.reimbursementCategories.length > 0) ||
     filters.priceMin !== undefined || filters.priceMax !== undefined ||
-    filters.chapterIV === true || filters.deliveryEnvironment !== undefined ||
-    filters.medicineType !== undefined
+    filters.chapterIV === true || filters.chapterIVParagraph !== undefined ||
+    filters.deliveryEnvironment !== undefined || filters.medicineType !== undefined
   );
   const hasFilters = hasBasicFilters || hasExtendedFilters;
 
@@ -541,6 +555,16 @@ export async function executeSearch(
   if (filters?.chapterIV === true) {
     // Filter by Chapter IV requirement - applies to AMPP entities
     baseConditions.push(`(entity_type != 'ampp' OR chapter_iv_exists = true)`);
+  }
+  if (filters?.chapterIVParagraph) {
+    // Filter AMPPs linked to specific Chapter IV paragraph via dmpp_chapter_iv
+    baseConditions.push(`(entity_type != 'ampp' OR EXISTS (
+      SELECT 1 FROM dmpp d
+      JOIN dmpp_chapter_iv dc ON dc.dmpp_code = d.code AND dc.delivery_environment = d.delivery_environment
+      WHERE d.ampp_cti_extended = search_index_extended.code
+      AND dc.paragraph_name = $${paramIndex++}
+    ))`);
+    baseParams.push(filters.chapterIVParagraph);
   }
   if (filters?.deliveryEnvironment === 'P') {
     // Filter by public delivery environment - applies to AMPP entities
