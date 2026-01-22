@@ -25,8 +25,8 @@ export function ValidityPeriod({ startDate, endDate, className }: ValidityPeriod
   }
 
   if (start) {
-    return <span className={className}>{t('detail.validFrom')} {start}</span>;
+    return <span className={className}>{t('sidebar.validFrom')} {start}</span>;
   }
 
-  return <span className={className}>{t('detail.validUntil')} {end}</span>;
+  return <span className={className}>{t('sidebar.validUntil')} {end}</span>;
 }
