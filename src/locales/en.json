@@ -166,10 +166,10 @@
   },
   "chapterIV": {
     "coveredProducts": "Covered Products",
-    "processType": "Process Type",
+    "processType": "Authorization Process",
     "processOverride": "Process Override",
     "version": "Version",
-    "modificationStatus": "Modification Status",
+    "modificationStatus": "Status",
     "newRequest": "New Request",
     "prolongation": "Prolongation",
     "validFor": "Valid for",
@@ -177,7 +177,18 @@
     "environment": "Environment",
     "price": "Price",
     "cnkCode": "CNK Code",
-    "requirementsConditions": "Requirements & Conditions"
+    "requirementsConditions": "Requirements & Conditions",
+    "processTypes": {
+      "1": "Automatic Agreement",
+      "2": "Simplified Procedure",
+      "3": "Prior Authorization",
+      "4": "Specific Authorization"
+    },
+    "modificationStatuses": {
+      "E": "Active",
+      "C": "Modified",
+      "S": "Ended"
+    }
   },
   "home": {
     "title": "MedSearch",

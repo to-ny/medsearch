@@ -166,10 +166,10 @@
   },
   "chapterIV": {
     "coveredProducts": "Gedekte Producten",
-    "processType": "Procestype",
+    "processType": "Machtigingsprocedure",
     "processOverride": "Procesvervanging",
     "version": "Versie",
-    "modificationStatus": "Wijzigingsstatus",
+    "modificationStatus": "Status",
     "newRequest": "Nieuwe Aanvraag",
     "prolongation": "Verlenging",
     "validFor": "Geldig voor",
@@ -177,7 +177,18 @@
     "environment": "Omgeving",
     "price": "Prijs",
     "cnkCode": "CNK-code",
-    "requirementsConditions": "Vereisten & Voorwaarden"
+    "requirementsConditions": "Vereisten & Voorwaarden",
+    "processTypes": {
+      "1": "Automatisch Akkoord",
+      "2": "Vereenvoudigde Procedure",
+      "3": "Voorafgaande Machtiging",
+      "4": "Specifieke Machtiging"
+    },
+    "modificationStatuses": {
+      "E": "Actief",
+      "C": "Gewijzigd",
+      "S": "Beëindigd"
+    }
   },
   "home": {
     "title": "MedSearch",

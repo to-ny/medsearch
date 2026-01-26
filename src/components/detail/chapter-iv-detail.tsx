@@ -61,7 +61,10 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
             <Section title={t('detail.overview')}>
               <InfoList>
                 {chapterIV.processType && (
-                  <InfoRow label={t('chapterIV.processType')} value={chapterIV.processType} />
+                  <InfoRow
+                    label={t('chapterIV.processType')}
+                    value={t(`chapterIV.processTypes.${chapterIV.processType}`) || chapterIV.processType}
+                  />
                 )}
                 {chapterIV.processTypeOverrule && (
                   <InfoRow label={t('chapterIV.processOverride')} value={chapterIV.processTypeOverrule} />
@@ -70,7 +73,10 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
                   <InfoRow label={t('chapterIV.version')} value={chapterIV.paragraphVersion.toString()} />
                 )}
                 {chapterIV.modificationStatus && (
-                  <InfoRow label={t('chapterIV.modificationStatus')} value={chapterIV.modificationStatus} />
+                  <InfoRow
+                    label={t('chapterIV.modificationStatus')}
+                    value={t(`chapterIV.modificationStatuses.${chapterIV.modificationStatus}`) || chapterIV.modificationStatus}
+                  />
                 )}
                 <InfoRow
                   label={t('detail.validity')}
@@ -159,7 +165,9 @@ export function ChapterIVDetail({ chapterIV }: ChapterIVDetailProps) {
               {chapterIV.processType && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('chapterIV.processType')}</span>
-                  <Badge variant="outline" size="sm">{chapterIV.processType}</Badge>
+                  <Badge variant="outline" size="sm">
+                    {t(`chapterIV.processTypes.${chapterIV.processType}`) || chapterIV.processType}
+                  </Badge>
                 </div>
               )}
               {chapterIV.paragraphVersion !== null && (

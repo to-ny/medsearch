@@ -166,10 +166,10 @@
   },
   "chapterIV": {
     "coveredProducts": "Abgedeckte Produkte",
-    "processType": "Prozesstyp",
+    "processType": "Genehmigungsverfahren",
     "processOverride": "Prozessüberschreibung",
     "version": "Version",
-    "modificationStatus": "Änderungsstatus",
+    "modificationStatus": "Status",
     "newRequest": "Neuantrag",
     "prolongation": "Verlängerung",
     "validFor": "Gültig für",
@@ -177,7 +177,18 @@
     "environment": "Umgebung",
     "price": "Preis",
     "cnkCode": "CNK-Code",
-    "requirementsConditions": "Anforderungen und Bedingungen"
+    "requirementsConditions": "Anforderungen und Bedingungen",
+    "processTypes": {
+      "1": "Automatische Genehmigung",
+      "2": "Vereinfachtes Verfahren",
+      "3": "Vorabgenehmigung",
+      "4": "Spezifische Genehmigung"
+    },
+    "modificationStatuses": {
+      "E": "Aktiv",
+      "C": "Geändert",
+      "S": "Beendet"
+    }
   },
   "home": {
     "title": "MedSearch",
