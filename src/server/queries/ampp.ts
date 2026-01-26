@@ -64,7 +64,7 @@ export async function getAMPPWithRelations(ctiExtended: string): Promise<AMPPWit
         ),
         '[]'::json
       ) as cnk_codes,
-      -- Chapter IV paragraphs as JSON array
+      -- Chapter IV paragraphs as JSON array (deduplicated - one AMPP may have multiple DMPPs linked to same paragraph)
       COALESCE(
         (
           SELECT json_agg(json_build_object(
@@ -72,10 +72,13 @@ export async function getAMPPWithRelations(ctiExtended: string): Promise<AMPPWit
             'paragraphName', civ.paragraph_name,
             'keyString', civ.key_string
           ))
-          FROM dmpp_chapter_iv dciv
-          JOIN chapter_iv_paragraph civ ON civ.chapter_name = dciv.chapter_name AND civ.paragraph_name = dciv.paragraph_name
-          JOIN dmpp d ON d.code = dciv.dmpp_code AND d.delivery_environment = dciv.delivery_environment
-          WHERE d.ampp_cti_extended = ampp.cti_extended
+          FROM (
+            SELECT DISTINCT civ.chapter_name, civ.paragraph_name, civ.key_string
+            FROM dmpp_chapter_iv dciv
+            JOIN chapter_iv_paragraph civ ON civ.chapter_name = dciv.chapter_name AND civ.paragraph_name = dciv.paragraph_name
+            JOIN dmpp d ON d.code = dciv.dmpp_code AND d.delivery_environment = dciv.delivery_environment
+            WHERE d.ampp_cti_extended = ampp.cti_extended
+          ) civ
         ),
         '[]'::json
       ) as chapter_iv_paragraphs,
