@@ -31,7 +31,7 @@ function detectLanguageFromHeader(acceptLanguage: string | null): string | null 
   return null;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   // Skip API routes, static files, and other special paths
