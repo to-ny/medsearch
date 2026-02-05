@@ -3,7 +3,8 @@
  * Sync SAM Database
  *
  * Downloads and imports SAM XML exports into PostgreSQL database.
- * Uses staging tables for atomic swap with zero downtime.
+ * Uses upsert + mark-and-sweep pattern for efficient incremental updates
+ * without the storage overhead of staging tables.
  *
  * Data source: https://www.vas.ehealth.fgov.be/websamcivics/samcivics/
  *
@@ -103,7 +104,7 @@ const CONFIG = {
 // ============================================================================
 
 interface ProgressState {
-  phase: 'download' | 'parse' | 'import' | 'swap' | 'done';
+  phase: 'download' | 'migrate' | 'import' | 'sweep' | 'search' | 'done';
   startedAt: string;
   lastUpdated: string;
   filesDownloaded: string[];
@@ -111,6 +112,7 @@ interface ProgressState {
   tablesImported: string[];
   recordCounts: Record<string, number>;
   errors: string[];
+  syncId?: number;
 }
 
 interface ParsedRecord {
@@ -126,6 +128,9 @@ const validDmppCodes = new Set<string>();
 import type { VercelPoolClient } from '@vercel/postgres';
 let dbClient: VercelPoolClient | null = null;
 
+// Current sync ID for mark-and-sweep
+let currentSyncId: number;
+
 // ============================================================================
 // Database helpers
 // ============================================================================
@@ -138,21 +143,53 @@ async function getDbClient(): Promise<VercelPoolClient> {
   return dbClient;
 }
 
+async function reconnectDbClient(): Promise<VercelPoolClient> {
+  // Release old connection if it exists
+  if (dbClient) {
+    try {
+      dbClient.release();
+    } catch {
+      // Connection might already be broken
+    }
+    dbClient = null;
+  }
+  // Get a fresh connection
+  const { db } = await import('@vercel/postgres');
+  dbClient = await db.connect();
+  return dbClient;
+}
+
 async function query(text: string, params?: unknown[]) {
   const client = await getDbClient();
   return client.query(text, params);
 }
 
-async function executeInTransaction(callback: () => Promise<void>) {
-  const client = await getDbClient();
-  try {
-    await client.query('BEGIN');
-    await callback();
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
+async function queryWithRetry(text: string, params?: unknown[], maxRetries = 3) {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const client = await getDbClient();
+      return await client.query(text, params);
+    } catch (error) {
+      lastError = error as Error;
+      const errorMessage = String(error);
+
+      // Check if this is a connection error that we should retry
+      if (errorMessage.includes('connection error') ||
+          errorMessage.includes('not queryable') ||
+          errorMessage.includes('ECONNRESET') ||
+          errorMessage.includes('ETIMEDOUT')) {
+        console.log(`   [WARN] Connection error, reconnecting (attempt ${attempt + 1}/${maxRetries})...`);
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); // Exponential backoff
+        await reconnectDbClient();
+        continue;
+      }
+
+      // Non-connection error, don't retry
+      throw error;
+    }
   }
+  throw lastError;
 }
 
 // ============================================================================
@@ -189,6 +226,7 @@ function initProgress(): ProgressState {
     tablesImported: [],
     recordCounts: {},
     errors: [],
+    syncId: Math.floor(Date.now() / 1000), // Unix timestamp
   };
 }
 
@@ -541,13 +579,13 @@ function parseContent(xml: string, tagName: string): { children: XmlElement[]; t
 
   // Find all child elements using depth-aware parsing
   const childOpenRegex = /<((?:ns\d+:)?(\w+))([^>]*?)(\/?)>/g;
-  let match;
+  let childMatch;
   let lastIndex = 0;
   let directText = '';
 
-  while ((match = childOpenRegex.exec(inner)) !== null) {
-    const [fullOpenTag, fullName, localName, attrStr, selfClose] = match;
-    const startIdx = match.index;
+  while ((childMatch = childOpenRegex.exec(inner)) !== null) {
+    const [fullOpenTag, fullName, localName, attrStr, selfClose] = childMatch;
+    const startIdx = childMatch.index;
 
     // Collect text before this child
     directText += inner.slice(lastIndex, startIdx);
@@ -745,6 +783,7 @@ function transformVtm(element: XmlElement): ParsedRecord | null {
       name: JSON.stringify(name),
       start_date: data.attributes.from || null,
       end_date: data.attributes.to || null,
+      sync_id: currentSyncId,
     },
   };
 }
@@ -771,6 +810,7 @@ function transformVmpGroup(element: XmlElement): ParsedRecord | null {
       no_generic_prescription_reason: getChild(data, 'NoGenericPrescriptionReason')?.text || null,
       no_switch_reason: getChild(data, 'NoSwitchReason')?.text || null,
       patient_frailty_indicator: getChild(data, 'PatientFrailtyIndicator')?.text === 'true',
+      sync_id: currentSyncId,
     },
   };
 }
@@ -802,6 +842,7 @@ function transformVmp(element: XmlElement): ParsedRecord | null {
       vtm_code: vtm?.attributes.code || vtm?.attributes.Code || null,
       vmp_group_code: vmpGroup?.attributes.code || vmpGroup?.attributes.Code || null,
       status: getChild(data, 'Status')?.text || 'AUTHORIZED',
+      sync_id: currentSyncId,
     },
   };
 }
@@ -837,6 +878,7 @@ function transformAmp(element: XmlElement): ParsedRecord[] {
       black_triangle: getChild(data, 'BlackTriangle')?.text === 'true',
       medicine_type: getChild(data, 'MedicineType')?.text || null,
       status: getChild(data, 'Status')?.text || 'AUTHORIZED',
+      sync_id: currentSyncId,
     },
   });
 
@@ -857,6 +899,7 @@ function transformAmp(element: XmlElement): ParsedRecord[] {
         sequence_nr: parseInt(seqNr),
         pharmaceutical_form_code: pharmForm?.attributes.code || pharmForm?.attributes.Code || null,
         route_of_administration_code: route?.attributes.code || route?.attributes.Code || null,
+        sync_id: currentSyncId,
       },
     });
 
@@ -880,6 +923,7 @@ function transformAmp(element: XmlElement): ParsedRecord[] {
           strength_value: strengthElement?.text ? parseFloat(strengthElement.text) : null,
           strength_unit: strengthElement?.attributes.unit || strengthElement?.attributes.Unit || null,
           strength_description: getChild(ingData, 'StrengthDescription')?.text || null,
+          sync_id: currentSyncId,
         },
       });
     }
@@ -912,6 +956,7 @@ function transformAmp(element: XmlElement): ParsedRecord[] {
             ? parseFloat(getChild(amppData, 'ExFactoryPrice')!.text)
             : null,
         atc_code: getChild(amppData, 'Atc')?.attributes.code || getChild(amppData, 'Atc')?.attributes.Code || null,
+        sync_id: currentSyncId,
       },
     });
 
@@ -939,6 +984,7 @@ function transformAmp(element: XmlElement): ParsedRecord[] {
           cheap: getChild(dmppData, 'Cheap')?.text === 'true',
           cheapest: getChild(dmppData, 'Cheapest')?.text === 'true',
           reimbursable: getChild(dmppData, 'Reimbursable')?.text === 'true',
+          sync_id: currentSyncId,
         },
       });
     }
@@ -975,6 +1021,7 @@ function transformChapterIVParagraph(element: XmlElement): ParsedRecord | null {
       modification_status: getChild(data, 'ModificationStatus')?.text || null,
       start_date: data.attributes.from || null,
       end_date: data.attributes.to || null,
+      sync_id: currentSyncId,
     },
   };
 }
@@ -1037,6 +1084,7 @@ function transformReimbursementContext(element: XmlElement): ParsedRecord[] {
       pricing_unit_label: pricingLabel ? JSON.stringify(pricingLabel) : null,
       start_date: data.attributes.from || null,
       end_date: data.attributes.to || null,
+      sync_id: currentSyncId,
     },
   });
 
@@ -1059,6 +1107,7 @@ function transformAtcClassification(element: XmlElement): ParsedRecord | null {
     data: {
       code,
       description,
+      sync_id: currentSyncId,
     },
   };
 }
@@ -1080,6 +1129,7 @@ function transformSubstance(element: XmlElement): ParsedRecord | null {
       name: JSON.stringify(name),
       start_date: null,
       end_date: null,
+      sync_id: currentSyncId,
     },
   };
 }
@@ -1099,6 +1149,7 @@ function transformPharmaceuticalForm(element: XmlElement): ParsedRecord | null {
     data: {
       code,
       name: JSON.stringify(name),
+      sync_id: currentSyncId,
     },
   };
 }
@@ -1118,6 +1169,7 @@ function transformRouteOfAdministration(element: XmlElement): ParsedRecord | nul
     data: {
       code,
       name: JSON.stringify(name),
+      sync_id: currentSyncId,
     },
   };
 }
@@ -1156,6 +1208,7 @@ function transformCompany(element: XmlElement): ParsedRecord | null {
       language: getChild(data, 'Language')?.text || null,
       start_date: data.attributes.from || null,
       end_date: data.attributes.to || null,
+      sync_id: currentSyncId,
     },
   };
 }
@@ -1185,6 +1238,7 @@ function transformLegalBasis(element: XmlElement): ParsedRecord[] {
       effective_on: getChild(data, 'EffectiveOn')?.text || null,
       start_date: data.attributes.from || null,
       end_date: data.attributes.to || null,
+      sync_id: currentSyncId,
     },
   });
 
@@ -1232,6 +1286,7 @@ function processLegalReference(
       last_modified_on: getChild(refData, 'LastModifiedOn')?.text || null,
       start_date: refData.attributes.from || null,
       end_date: refData.attributes.to || null,
+      sync_id: currentSyncId,
     },
   });
 
@@ -1282,6 +1337,7 @@ function processLegalText(
       last_modified_on: getChild(textData, 'LastModifiedOn')?.text || null,
       start_date: textData.attributes.from || null,
       end_date: textData.attributes.to || null,
+      sync_id: currentSyncId,
     },
   });
 
@@ -1293,7 +1349,7 @@ function processLegalText(
 }
 
 // ============================================================================
-// Database import
+// Database import (upsert pattern)
 // ============================================================================
 
 // Tables that each file type populates
@@ -1312,6 +1368,30 @@ const REQUIRED_FILE_TYPES = ['AMP', 'VMP', 'RMB', 'CHAPTERIV', 'REF', 'RML', 'CP
 
 // Track which tables have data during this sync
 const tablesWithData = new Set<string>();
+
+// Upsert conflict targets for each table
+const UPSERT_CONFLICT_TARGETS: Record<string, string> = {
+  substance: 'code',
+  atc_classification: 'code',
+  pharmaceutical_form: 'code',
+  route_of_administration: 'code',
+  company: 'actor_nr',
+  vtm: 'code',
+  vmp_group: 'code',
+  vmp: 'code',
+  amp: 'code',
+  amp_component: 'amp_code, sequence_nr',
+  amp_ingredient: 'amp_code, component_sequence_nr, rank',
+  ampp: 'cti_extended',
+  dmpp: 'code, delivery_environment',
+  chapter_iv_paragraph: 'chapter_name, paragraph_name',
+  dmpp_chapter_iv: 'dmpp_code, delivery_environment, chapter_name, paragraph_name',
+  legal_basis: 'key',
+  // For tables with SERIAL PKs, use the unique index for conflict target
+  reimbursement_context: 'dmpp_code, delivery_environment, COALESCE(legal_reference_path, \'\')',
+  legal_reference: 'legal_basis_key, path',
+  legal_text: 'legal_basis_key, legal_reference_path, key',
+};
 
 /**
  * Get all tables that should have data based on required files
@@ -1347,167 +1427,186 @@ async function ensureExtensions(dryRun: boolean): Promise<void> {
   }
 
   try {
-    await query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+    await queryWithRetry('CREATE EXTENSION IF NOT EXISTS pg_trgm');
     console.log('   [OK] pg_trgm extension ready');
   } catch (error) {
     console.log(`   [WARN] Could not create pg_trgm extension: ${error}`);
   }
 }
 
-async function createStagingTables(
-  progress: ProgressState,
-  dryRun: boolean
-): Promise<void> {
-  console.log('\n2. Creating staging tables...\n');
+/**
+ * Ensure sync_id columns exist on all data tables (idempotent migration)
+ */
+async function ensureSyncIdColumns(dryRun: boolean): Promise<void> {
+  console.log('\n2. Ensuring sync_id columns exist...\n');
 
   // Ensure required extensions exist
   await ensureExtensions(dryRun);
 
-  // Only create staging tables for files we have
-  const tables = new Set<string>();
-  for (const fileType of progress.filesDownloaded) {
-    const fileTables = FILE_TABLE_MAPPING[fileType] || [];
-    fileTables.forEach(t => tables.add(t));
-  }
-
-  // Always include derived tables (populated from other staging tables, not from XML directly)
-  tables.add('dmpp_chapter_iv');  // Derived from reimbursement_context
-  tables.add('search_index');
-  tables.add('search_index_extended');
-
-  const tableList = Array.from(tables);
-
-  if (tableList.length === 0) {
-    console.log('   [WARN] No tables to create - no matching files downloaded');
-    return;
-  }
+  const tables = [
+    'substance', 'atc_classification', 'pharmaceutical_form', 'route_of_administration',
+    'company', 'vtm', 'vmp_group', 'vmp', 'amp', 'amp_component', 'amp_ingredient',
+    'ampp', 'dmpp', 'reimbursement_context', 'chapter_iv_paragraph', 'dmpp_chapter_iv',
+    'legal_basis', 'legal_reference', 'legal_text'
+  ];
 
   if (dryRun) {
-    console.log('   [DRY RUN] Would create staging tables for:', tableList.join(', '));
+    console.log('   [DRY RUN] Would ensure sync_id columns for:', tables.join(', '));
     return;
   }
 
-  // Tables with SERIAL id columns - need special handling for staging
-  const tablesWithSerialId = new Set([
-    'reimbursement_context', 'copayment', 'chapter_iv_verse',
-    'legal_reference', 'legal_text', 'sync_metadata', 'dosage_parameter_bounds',
-    'search_index'
-  ]);
-
-  for (const table of tableList) {
+  for (const table of tables) {
     try {
-      // Drop staging table if exists
-      await query(`DROP TABLE IF EXISTS ${table}_staging CASCADE`);
-
-      // Tables that should be created from DDL (either new or have schema updates)
-      const tableDDL: Record<string, string> = {
-        search_index: `
-          CREATE TABLE search_index_staging (
-            id SERIAL PRIMARY KEY,
-            entity_type TEXT NOT NULL,
-            code TEXT NOT NULL,
-            search_text TEXT NOT NULL,
-            name JSONB,
-            parent_code TEXT,
-            parent_name JSONB,
-            company_name TEXT,
-            pack_info TEXT,
-            price NUMERIC,
-            reimbursable BOOLEAN,
-            cnk_code TEXT,
-            product_count INT,
-            black_triangle BOOLEAN,
-            vtm_code TEXT,
-            vmp_code TEXT,
-            amp_code TEXT,
-            atc_code TEXT,
-            company_actor_nr TEXT,
-            vmp_group_code TEXT,
-            end_date DATE,
-            UNIQUE(entity_type, code)
-          )
-        `,
-        search_index_extended: `
-          CREATE TABLE search_index_extended_staging (
-            id SERIAL PRIMARY KEY,
-            entity_type TEXT NOT NULL,
-            code TEXT NOT NULL,
-            search_text TEXT NOT NULL,
-            name JSONB,
-            parent_code TEXT,
-            parent_name JSONB,
-            company_name TEXT,
-            pack_info TEXT,
-            price NUMERIC,
-            reimbursable BOOLEAN,
-            cnk_code TEXT,
-            product_count INT,
-            black_triangle BOOLEAN,
-            vtm_code TEXT,
-            vmp_code TEXT,
-            amp_code TEXT,
-            atc_code TEXT,
-            company_actor_nr TEXT,
-            vmp_group_code TEXT,
-            end_date DATE,
-            pharmaceutical_form_code VARCHAR(20),
-            pharmaceutical_form_name JSONB,
-            route_of_administration_code VARCHAR(20),
-            route_of_administration_name JSONB,
-            reimbursement_category VARCHAR(10),
-            chapter_iv_exists BOOLEAN DEFAULT FALSE,
-            delivery_environment CHAR(1),
-            medicine_type VARCHAR(50),
-            UNIQUE(entity_type, code)
-          )
-        `,
-        amp_ingredient: `
-          CREATE TABLE amp_ingredient_staging (
-            amp_code VARCHAR(50) NOT NULL,
-            component_sequence_nr INTEGER NOT NULL,
-            rank INTEGER NOT NULL,
-            type VARCHAR(50) DEFAULT 'ACTIVE_SUBSTANCE',
-            substance_code VARCHAR(20),
-            strength_value DECIMAL(15, 4),
-            strength_unit VARCHAR(50),
-            strength_description VARCHAR(255),
-            PRIMARY KEY (amp_code, component_sequence_nr, rank)
-          )
-        `,
-        dmpp_chapter_iv: `
-          CREATE TABLE dmpp_chapter_iv_staging (
-            dmpp_code VARCHAR(20) NOT NULL,
-            delivery_environment CHAR(1) NOT NULL DEFAULT 'P',
-            chapter_name VARCHAR(20) NOT NULL,
-            paragraph_name VARCHAR(50) NOT NULL,
-            PRIMARY KEY (dmpp_code, delivery_environment, chapter_name, paragraph_name)
-          )
-        `,
-      };
-
-      // Use DDL if available for this table
-      if (tableDDL[table]) {
-        await query(tableDDL[table]);
-        console.log(`   [OK] Created ${table}_staging (from DDL)`);
-        continue;
-      }
-
-      // Create staging table as copy of production structure
-      // For tables with SERIAL id columns, create without constraints so id can use sequence default
-      if (tablesWithSerialId.has(table)) {
-        // Use INCLUDING DEFAULTS for sequences, then drop NOT NULL on id
-        await query(`CREATE TABLE ${table}_staging (LIKE ${table} INCLUDING DEFAULTS)`);
-        await query(`ALTER TABLE ${table}_staging ALTER COLUMN id DROP NOT NULL`);
-      } else {
-        await query(`CREATE TABLE ${table}_staging (LIKE ${table} INCLUDING ALL)`);
-      }
-
-      console.log(`   [OK] Created ${table}_staging`);
+      await query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS sync_id INTEGER`);
     } catch (error) {
-      // Table might not exist yet, create from schema
-      console.log(`   [WARN] Could not create staging for ${table}: ${error}`);
+      // Table might not exist yet, that's okay - schema.sql will create it
+      console.log(`   [WARN] Could not add sync_id to ${table}: ${error}`);
     }
   }
+
+  // Also ensure unique constraints exist for upsert conflict targets
+  try {
+    await query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_reimbursement_natural
+      ON reimbursement_context (dmpp_code, delivery_environment, COALESCE(legal_reference_path, ''))
+    `);
+  } catch { /* Index might already exist */ }
+
+  try {
+    await query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_legal_reference_natural
+      ON legal_reference (legal_basis_key, path)
+    `);
+  } catch { /* Index might already exist */ }
+
+  try {
+    await query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_legal_text_natural
+      ON legal_text (legal_basis_key, legal_reference_path, key)
+    `);
+  } catch { /* Index might already exist */ }
+
+  console.log('   [OK] sync_id columns and unique constraints ready');
+}
+
+/**
+ * Build a batched upsert SQL statement for a table with multiple rows
+ */
+function buildBatchedUpsertQuery(table: string, columns: string[], rowCount: number): string {
+  const conflictTarget = UPSERT_CONFLICT_TARGETS[table];
+  if (!conflictTarget) {
+    throw new Error(`No conflict target defined for table: ${table}`);
+  }
+
+  // Build VALUE placeholders for multiple rows: ($1, $2, $3), ($4, $5, $6), ...
+  const colCount = columns.length;
+  const valueClauses: string[] = [];
+  for (let row = 0; row < rowCount; row++) {
+    const rowPlaceholders = columns.map((_, col) => `$${row * colCount + col + 1}`).join(', ');
+    valueClauses.push(`(${rowPlaceholders})`);
+  }
+
+  const updateCols = columns
+    .filter(c => !conflictTarget.includes(c)) // Don't update PK columns
+    .map(c => `${c} = EXCLUDED.${c}`)
+    .join(', ');
+
+  // If no columns to update (all columns are part of PK), use DO NOTHING
+  if (!updateCols) {
+    return `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${valueClauses.join(', ')} ON CONFLICT (${conflictTarget}) DO NOTHING`;
+  }
+
+  return `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${valueClauses.join(', ')} ON CONFLICT (${conflictTarget}) DO UPDATE SET ${updateCols}`;
+}
+
+// Batch size for upserts - keep smaller than overall batch to avoid query size limits
+const UPSERT_BATCH_SIZE = 100;
+
+// Tables where expired records should be excluded to save storage
+// Expired = end_date is set and is in the past
+const TABLES_TO_FILTER_EXPIRED = new Set([
+  'legal_text',
+  'legal_reference',
+  'reimbursement_context',
+  'vtm',
+]);
+
+/**
+ * Check if a record is expired based on its end_date field
+ */
+function isExpired(record: ParsedRecord): boolean {
+  const endDate = record.data.end_date;
+  if (!endDate) return false; // No end_date means still active
+
+  // Parse the date and compare to today
+  const endDateObj = new Date(endDate as string);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Compare dates only, not times
+
+  return endDateObj <= today;
+}
+
+/**
+ * Filter out expired records from tables that support it
+ */
+function filterExpiredRecords(records: ParsedRecord[], table: string): ParsedRecord[] {
+  if (!TABLES_TO_FILTER_EXPIRED.has(table)) {
+    return records; // Don't filter tables not in the list
+  }
+
+  return records.filter(record => !isExpired(record));
+}
+
+/**
+ * Get the key columns for deduplication based on the conflict target
+ */
+function getConflictKeyColumns(table: string): string[] {
+  const conflictTarget = UPSERT_CONFLICT_TARGETS[table];
+  if (!conflictTarget) return [];
+
+  // Parse the conflict target to extract column names
+  // Handle cases like: 'code', 'code, delivery_environment', 'COALESCE(legal_reference_path, '')'
+  return conflictTarget
+    .split(',')
+    .map(part => {
+      const trimmed = part.trim();
+      // Extract column name from COALESCE(col, '') patterns
+      const coalesceMatch = trimmed.match(/COALESCE\((\w+),/);
+      if (coalesceMatch) return coalesceMatch[1];
+      // Otherwise it's just a column name
+      return trimmed;
+    });
+}
+
+/**
+ * Build a unique key for a record based on its conflict target columns
+ */
+function buildRecordKey(record: ParsedRecord, keyColumns: string[]): string {
+  return keyColumns
+    .map(col => {
+      const val = record.data[col];
+      // Normalize null/undefined to empty string for key comparison
+      return val === null || val === undefined ? '' : String(val);
+    })
+    .join('|||');
+}
+
+/**
+ * Deduplicate records within a batch based on the conflict target.
+ * Keeps the last occurrence of each duplicate (most recent).
+ */
+function deduplicateBatch(records: ParsedRecord[], table: string): ParsedRecord[] {
+  const keyColumns = getConflictKeyColumns(table);
+  if (keyColumns.length === 0) return records;
+
+  // Use a Map to keep only the last occurrence of each key
+  const seen = new Map<string, ParsedRecord>();
+  for (const record of records) {
+    const key = buildRecordKey(record, keyColumns);
+    seen.set(key, record); // Overwrites duplicates, keeping the last one
+  }
+
+  return Array.from(seen.values());
 }
 
 async function importRecords(
@@ -1526,48 +1625,79 @@ async function importRecords(
   }
 
   for (const [table, tableRecords] of byTable) {
+    // Filter out expired records for applicable tables
+    const activeRecords = filterExpiredRecords(tableRecords, table);
+    const expiredCount = tableRecords.length - activeRecords.length;
+
     if (dryRun) {
       // In dry run, count records and mark table as having data
-      counts[table] = (counts[table] || 0) + tableRecords.length;
+      counts[table] = (counts[table] || 0) + activeRecords.length;
+      if (expiredCount > 0) {
+        console.log(`   [DRY RUN] ${table}: ${expiredCount} expired records would be skipped`);
+      }
       tablesWithData.add(table);
       continue;
     }
 
-    // Track successful inserts for this table
-    let successfulInserts = 0;
+    // Deduplicate all records for this table first
+    const deduplicatedRecords = deduplicateBatch(activeRecords, table);
 
-    // Batch insert
-    for (let i = 0; i < tableRecords.length; i += CONFIG.batchSize) {
-      const batch = tableRecords.slice(i, i + CONFIG.batchSize);
+    // Track successful upserts for this table
+    let successfulUpserts = 0;
 
-      if (batch.length === 0) continue;
+    // Group records by their column structure (they should all be the same, but just in case)
+    const byColumns = new Map<string, ParsedRecord[]>();
+    for (const record of deduplicatedRecords) {
+      const colKey = Object.keys(record.data).sort().join(',');
+      const existing = byColumns.get(colKey) || [];
+      existing.push(record);
+      byColumns.set(colKey, existing);
+    }
 
-      // Get columns from first record
-      const columns = Object.keys(batch[0].data);
-      const placeholders = batch
-        .map((_, rowIndex) =>
-          `(${columns.map((_, colIndex) => `$${rowIndex * columns.length + colIndex + 1}`).join(', ')})`
-        )
-        .join(', ');
+    // Process each column group in batches
+    for (const [, sameColRecords] of byColumns) {
+      const columns = Object.keys(sameColRecords[0].data);
 
-      const values = batch.flatMap(r => columns.map(c => r.data[c]));
+      // Process in batches of UPSERT_BATCH_SIZE
+      for (let i = 0; i < sameColRecords.length; i += UPSERT_BATCH_SIZE) {
+        const batch = sameColRecords.slice(i, i + UPSERT_BATCH_SIZE);
 
-      try {
-        const result = await query(
-          `INSERT INTO ${table}_staging (${columns.join(', ')}) VALUES ${placeholders}`,
-          values
-        );
-        successfulInserts += result.rowCount || batch.length;
-      } catch (error) {
-        if (verbose) {
-          console.error(`   [ERROR] Failed to insert into ${table}_staging: ${error}`);
+        // Flatten all values into a single array
+        const allValues: unknown[] = [];
+        for (const record of batch) {
+          for (const col of columns) {
+            allValues.push(record.data[col]);
+          }
+        }
+
+        try {
+          const upsertSql = buildBatchedUpsertQuery(table, columns, batch.length);
+          await queryWithRetry(upsertSql, allValues);
+          successfulUpserts += batch.length;
+        } catch (error) {
+          // If batch fails, fall back to individual inserts to identify problematic records
+          if (verbose) {
+            console.error(`   [WARN] Batch upsert failed for ${table}, falling back to individual: ${error}`);
+          }
+          for (const record of batch) {
+            const values = columns.map(c => record.data[c]);
+            try {
+              const singleSql = buildBatchedUpsertQuery(table, columns, 1);
+              await queryWithRetry(singleSql, values);
+              successfulUpserts++;
+            } catch (innerError) {
+              if (verbose) {
+                console.error(`   [ERROR] Failed to upsert into ${table}: ${innerError}`);
+              }
+            }
+          }
         }
       }
     }
 
-    // Only count successful inserts and mark table if any succeeded
-    counts[table] = (counts[table] || 0) + successfulInserts;
-    if (successfulInserts > 0) {
+    // Only count successful upserts and mark table if any succeeded
+    counts[table] = (counts[table] || 0) + successfulUpserts;
+    if (successfulUpserts > 0) {
       tablesWithData.add(table);
     }
   }
@@ -1576,47 +1706,100 @@ async function importRecords(
 }
 
 /**
- * Populate dmpp_chapter_iv_staging from reimbursement_context_staging
+ * Populate dmpp_chapter_iv from reimbursement_context
  * This is a derived table - Chapter IV links are extracted from legal_reference_path
  */
 async function populateDmppChapterIV(dryRun: boolean): Promise<void> {
-  console.log('\n3b. Populating dmpp_chapter_iv_staging...\n');
+  console.log('\n3b. Populating dmpp_chapter_iv...\n');
 
   if (dryRun) {
-    console.log('   [DRY RUN] Would populate dmpp_chapter_iv_staging');
+    console.log('   [DRY RUN] Would populate dmpp_chapter_iv');
     tablesWithData.add('dmpp_chapter_iv');
     return;
   }
 
-  const result = await query(`
-    INSERT INTO dmpp_chapter_iv_staging (dmpp_code, delivery_environment, chapter_name, paragraph_name)
+  const result = await queryWithRetry(`
+    INSERT INTO dmpp_chapter_iv (dmpp_code, delivery_environment, chapter_name, paragraph_name, sync_id)
     SELECT DISTINCT
       rc.dmpp_code,
       rc.delivery_environment,
       'IV',
-      (regexp_match(rc.legal_reference_path, '-IV-(\\d+)$'))[1]
-    FROM reimbursement_context_staging rc
+      (regexp_match(rc.legal_reference_path, '-IV-(\\d+)$'))[1],
+      $1::INTEGER
+    FROM reimbursement_context rc
     WHERE rc.legal_reference_path ~ '-IV-\\d+$'
       AND (regexp_match(rc.legal_reference_path, '-IV-(\\d+)$'))[1] IS NOT NULL
-    ON CONFLICT DO NOTHING
-  `);
+    ON CONFLICT (dmpp_code, delivery_environment, chapter_name, paragraph_name)
+    DO UPDATE SET sync_id = EXCLUDED.sync_id
+  `, [currentSyncId]);
 
   const rowCount = result.rowCount || 0;
   tablesWithData.add('dmpp_chapter_iv');
-  console.log(`   [OK] Populated dmpp_chapter_iv_staging (${rowCount} rows)`);
+  console.log(`   [OK] Populated dmpp_chapter_iv (${rowCount} rows)`);
 }
 
-async function populateSearchIndex(dryRun: boolean): Promise<void> {
-  console.log('\n3c. Populating search_index_staging...\n');
+/**
+ * Delete records where sync_id != current sync_id (stale records)
+ * Must delete children before parents to respect FK constraints
+ */
+async function sweepStaleRecords(dryRun: boolean): Promise<void> {
+  console.log('\n4. Sweeping stale records...\n');
+
+  // Order matters for foreign key constraints - children first, then parents
+  const sweepOrder = [
+    // Children first (reverse FK dependency order)
+    'dmpp_chapter_iv', 'reimbursement_context', 'dmpp', 'ampp',
+    'amp_ingredient', 'amp_component', 'amp', 'vmp',
+    'legal_text', 'legal_reference', 'legal_basis',
+    'chapter_iv_paragraph', 'company', 'vmp_group', 'vtm',
+    'route_of_administration', 'pharmaceutical_form',
+    'atc_classification', 'substance'
+  ];
 
   if (dryRun) {
-    console.log('   [DRY RUN] Would populate search_index_staging');
-    tablesWithData.add('search_index');
+    console.log('   [DRY RUN] Would sweep stale records from:', sweepOrder.join(', '));
     return;
   }
 
-  await query(`
-    INSERT INTO search_index_staging (
+  for (const table of sweepOrder) {
+    if (!tablesWithData.has(table)) {
+      continue; // Skip tables that weren't updated
+    }
+
+    try {
+      const result = await queryWithRetry(
+        `DELETE FROM ${table} WHERE sync_id IS NULL OR sync_id != $1`,
+        [currentSyncId]
+      );
+      const deleted = result.rowCount || 0;
+      if (deleted > 0) {
+        console.log(`   [OK] ${table}: deleted ${deleted} stale records`);
+      }
+    } catch (error) {
+      console.error(`   [ERROR] Failed to sweep ${table}: ${error}`);
+    }
+  }
+
+  console.log('\n   [OK] Sweep complete');
+}
+
+/**
+ * Populate search indexes using TRUNCATE + INSERT
+ * Search indexes are derived tables, not synced from XML
+ */
+async function populateSearchIndexes(dryRun: boolean): Promise<void> {
+  console.log('\n5. Populating search indexes...\n');
+
+  if (dryRun) {
+    console.log('   [DRY RUN] Would populate search_index and search_index_extended');
+    return;
+  }
+
+  // Truncate and repopulate search_index
+  console.log('   Populating search_index...');
+  await queryWithRetry('TRUNCATE TABLE search_index RESTART IDENTITY');
+  await queryWithRetry(`
+    INSERT INTO search_index (
       entity_type, code, search_text, name, parent_code, parent_name,
       company_name, pack_info, price, reimbursable, cnk_code,
       product_count, black_triangle,
@@ -1635,7 +1818,7 @@ async function populateSearchIndex(dryRun: boolean): Promise<void> {
         NULL::int as product_count, NULL::boolean as black_triangle,
         NULL::text as vtm_code, NULL::text as vmp_code, NULL::text as amp_code, NULL::text as atc_code, NULL::text as company_actor_nr, NULL::text as vmp_group_code,
         end_date
-      FROM vtm_staging
+      FROM vtm
       ORDER BY code
     ) vtm_sub
 
@@ -1653,8 +1836,8 @@ async function populateSearchIndex(dryRun: boolean): Promise<void> {
         NULL::int, NULL::boolean,
         v.vtm_code, NULL::text, NULL::text, NULL::text, NULL::text, v.vmp_group_code,
         v.end_date
-      FROM vmp_staging v
-      LEFT JOIN vtm_staging vtm ON vtm.code = v.vtm_code
+      FROM vmp v
+      LEFT JOIN vtm ON vtm.code = v.vtm_code
       ORDER BY v.code
     ) vmp_sub
 
@@ -1672,9 +1855,9 @@ async function populateSearchIndex(dryRun: boolean): Promise<void> {
         NULL::int, a.black_triangle,
         v.vtm_code, a.vmp_code, NULL::text, NULL::text, a.company_actor_nr, NULL::text,
         a.end_date
-      FROM amp_staging a
-      LEFT JOIN vmp_staging v ON v.code = a.vmp_code
-      LEFT JOIN company_staging c ON c.actor_nr = a.company_actor_nr
+      FROM amp a
+      LEFT JOIN vmp v ON v.code = a.vmp_code
+      LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
       ORDER BY a.code
     ) amp_sub
 
@@ -1691,12 +1874,12 @@ async function populateSearchIndex(dryRun: boolean): Promise<void> {
         COALESCE(ampp.prescription_name, amp.name), ampp.amp_code, amp.name,
         NULL::text, ampp.pack_display_value, ampp.ex_factory_price,
         (SELECT EXISTS(
-          SELECT 1 FROM dmpp_staging d
+          SELECT 1 FROM dmpp d
           WHERE d.ampp_cti_extended = ampp.cti_extended
           AND d.reimbursable = true
           AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
         ))::boolean,
-        (SELECT d.code FROM dmpp_staging d
+        (SELECT d.code FROM dmpp d
          WHERE d.ampp_cti_extended = ampp.cti_extended
          AND d.delivery_environment = 'P'
          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
@@ -1704,9 +1887,9 @@ async function populateSearchIndex(dryRun: boolean): Promise<void> {
         NULL::int, NULL::boolean,
         v.vtm_code, amp.vmp_code, ampp.amp_code, ampp.atc_code, NULL::text, NULL::text,
         ampp.end_date
-      FROM ampp_staging ampp
-      JOIN amp_staging amp ON amp.code = ampp.amp_code
-      LEFT JOIN vmp_staging v ON v.code = amp.vmp_code
+      FROM ampp
+      JOIN amp ON amp.code = ampp.amp_code
+      LEFT JOIN vmp v ON v.code = amp.vmp_code
       ORDER BY ampp.cti_extended
     ) ampp_sub
 
@@ -1720,10 +1903,10 @@ async function populateSearchIndex(dryRun: boolean): Promise<void> {
         jsonb_build_object('en', c.denomination, 'nl', c.denomination, 'fr', c.denomination, 'de', c.denomination),
         NULL::text, NULL::jsonb,
         NULL::text, NULL::text, NULL::numeric, NULL::boolean, NULL::text,
-        (SELECT COUNT(*)::int FROM amp_staging WHERE company_actor_nr = c.actor_nr), NULL::boolean,
+        (SELECT COUNT(*)::int FROM amp WHERE company_actor_nr = c.actor_nr), NULL::boolean,
         NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text,
         c.end_date
-      FROM company_staging c
+      FROM company c
       ORDER BY c.actor_nr
     ) company_sub
 
@@ -1739,7 +1922,7 @@ async function populateSearchIndex(dryRun: boolean): Promise<void> {
         NULL::int, NULL::boolean,
         NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text,
         end_date
-      FROM vmp_group_staging
+      FROM vmp_group
       ORDER BY code
     ) vmp_group_sub
 
@@ -1755,7 +1938,7 @@ async function populateSearchIndex(dryRun: boolean): Promise<void> {
         NULL::int, NULL::boolean,
         NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text,
         end_date
-      FROM substance_staging
+      FROM substance
       ORDER BY code
     ) substance_sub
 
@@ -1772,26 +1955,17 @@ async function populateSearchIndex(dryRun: boolean): Promise<void> {
         NULL::int, NULL::boolean,
         NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text,
         NULL::date
-      FROM atc_classification_staging
+      FROM atc_classification
       ORDER BY code
     ) atc_sub
   `);
+  console.log('   [OK] Populated search_index');
 
-  tablesWithData.add('search_index');
-  console.log('   [OK] Populated search_index_staging');
-}
-
-async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
-  console.log('\n3d. Populating search_index_extended_staging...\n');
-
-  if (dryRun) {
-    console.log('   [DRY RUN] Would populate search_index_extended_staging');
-    tablesWithData.add('search_index_extended');
-    return;
-  }
-
-  await query(`
-    INSERT INTO search_index_extended_staging (
+  // Truncate and repopulate search_index_extended
+  console.log('   Populating search_index_extended...');
+  await queryWithRetry('TRUNCATE TABLE search_index_extended RESTART IDENTITY');
+  await queryWithRetry(`
+    INSERT INTO search_index_extended (
       entity_type, code, search_text, name, parent_code, parent_name,
       company_name, pack_info, price, reimbursable, cnk_code,
       product_count, black_triangle,
@@ -1816,7 +1990,7 @@ async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
         NULL::varchar(20) as pharmaceutical_form_code, NULL::jsonb as pharmaceutical_form_name,
         NULL::varchar(20) as route_of_administration_code, NULL::jsonb as route_of_administration_name,
         NULL::varchar(10) as reimbursement_category, FALSE as chapter_iv_exists, NULL::char(1) as delivery_environment, NULL::varchar(50) as medicine_type
-      FROM vtm_staging
+      FROM vtm
       ORDER BY code
     ) vtm_sub
 
@@ -1837,8 +2011,8 @@ async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(10), FALSE, NULL::char(1), NULL::varchar(50)
-      FROM vmp_staging v
-      LEFT JOIN vtm_staging vtm ON vtm.code = v.vtm_code
+      FROM vmp v
+      LEFT JOIN vtm ON vtm.code = v.vtm_code
       ORDER BY v.code
     ) vmp_sub
 
@@ -1859,12 +2033,12 @@ async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
         comp.pharmaceutical_form_code, pf.name,
         comp.route_of_administration_code, roa.name,
         NULL::varchar(10), FALSE, NULL::char(1), a.medicine_type
-      FROM amp_staging a
-      LEFT JOIN vmp_staging v ON v.code = a.vmp_code
-      LEFT JOIN company_staging c ON c.actor_nr = a.company_actor_nr
-      LEFT JOIN amp_component_staging comp ON comp.amp_code = a.code AND comp.sequence_nr = 1
-      LEFT JOIN pharmaceutical_form_staging pf ON pf.code = comp.pharmaceutical_form_code
-      LEFT JOIN route_of_administration_staging roa ON roa.code = comp.route_of_administration_code
+      FROM amp a
+      LEFT JOIN vmp v ON v.code = a.vmp_code
+      LEFT JOIN company c ON c.actor_nr = a.company_actor_nr
+      LEFT JOIN amp_component comp ON comp.amp_code = a.code AND comp.sequence_nr = 1
+      LEFT JOIN pharmaceutical_form pf ON pf.code = comp.pharmaceutical_form_code
+      LEFT JOIN route_of_administration roa ON roa.code = comp.route_of_administration_code
       ORDER BY a.code
     ) amp_sub
 
@@ -1881,12 +2055,12 @@ async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
         COALESCE(ampp.prescription_name, amp.name), ampp.amp_code, amp.name,
         NULL::text, ampp.pack_display_value, ampp.ex_factory_price,
         (SELECT EXISTS(
-          SELECT 1 FROM dmpp_staging d
+          SELECT 1 FROM dmpp d
           WHERE d.ampp_cti_extended = ampp.cti_extended
           AND d.reimbursable = true
           AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
         ))::boolean,
-        (SELECT d.code FROM dmpp_staging d
+        (SELECT d.code FROM dmpp d
          WHERE d.ampp_cti_extended = ampp.cti_extended
          AND d.delivery_environment = 'P'
          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
@@ -1896,27 +2070,27 @@ async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
         ampp.end_date,
         comp.pharmaceutical_form_code, pf.name,
         comp.route_of_administration_code, roa.name,
-        (SELECT rc.reimbursement_criterion_category FROM reimbursement_context_staging rc
-         JOIN dmpp_staging d ON d.code = rc.dmpp_code AND d.delivery_environment = rc.delivery_environment
+        (SELECT rc.reimbursement_criterion_category FROM reimbursement_context rc
+         JOIN dmpp d ON d.code = rc.dmpp_code AND d.delivery_environment = rc.delivery_environment
          WHERE d.ampp_cti_extended = ampp.cti_extended
          AND (rc.end_date IS NULL OR rc.end_date > CURRENT_DATE)
          LIMIT 1),
         (SELECT EXISTS(
-          SELECT 1 FROM dmpp_staging d
+          SELECT 1 FROM dmpp d
           JOIN dmpp_chapter_iv dc ON dc.dmpp_code = d.code AND dc.delivery_environment = d.delivery_environment
           WHERE d.ampp_cti_extended = ampp.cti_extended
         ))::boolean,
-        (SELECT d.delivery_environment FROM dmpp_staging d
+        (SELECT d.delivery_environment FROM dmpp d
          WHERE d.ampp_cti_extended = ampp.cti_extended
          AND (d.end_date IS NULL OR d.end_date > CURRENT_DATE)
          LIMIT 1),
         amp.medicine_type
-      FROM ampp_staging ampp
-      JOIN amp_staging amp ON amp.code = ampp.amp_code
-      LEFT JOIN vmp_staging v ON v.code = amp.vmp_code
-      LEFT JOIN amp_component_staging comp ON comp.amp_code = amp.code AND comp.sequence_nr = 1
-      LEFT JOIN pharmaceutical_form_staging pf ON pf.code = comp.pharmaceutical_form_code
-      LEFT JOIN route_of_administration_staging roa ON roa.code = comp.route_of_administration_code
+      FROM ampp
+      JOIN amp ON amp.code = ampp.amp_code
+      LEFT JOIN vmp v ON v.code = amp.vmp_code
+      LEFT JOIN amp_component comp ON comp.amp_code = amp.code AND comp.sequence_nr = 1
+      LEFT JOIN pharmaceutical_form pf ON pf.code = comp.pharmaceutical_form_code
+      LEFT JOIN route_of_administration roa ON roa.code = comp.route_of_administration_code
       ORDER BY ampp.cti_extended
     ) ampp_sub
 
@@ -1930,13 +2104,13 @@ async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
         jsonb_build_object('en', c.denomination, 'nl', c.denomination, 'fr', c.denomination, 'de', c.denomination),
         NULL::text, NULL::jsonb,
         NULL::text, NULL::text, NULL::numeric, NULL::boolean, NULL::text,
-        (SELECT COUNT(*)::int FROM amp_staging WHERE company_actor_nr = c.actor_nr), NULL::boolean,
+        (SELECT COUNT(*)::int FROM amp WHERE company_actor_nr = c.actor_nr), NULL::boolean,
         NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text,
         c.end_date,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(10), FALSE, NULL::char(1), NULL::varchar(50)
-      FROM company_staging c
+      FROM company c
       ORDER BY c.actor_nr
     ) company_sub
 
@@ -1955,7 +2129,7 @@ async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(10), FALSE, NULL::char(1), NULL::varchar(50)
-      FROM vmp_group_staging
+      FROM vmp_group
       ORDER BY code
     ) vmp_group_sub
 
@@ -1974,7 +2148,7 @@ async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(10), FALSE, NULL::char(1), NULL::varchar(50)
-      FROM substance_staging
+      FROM substance
       ORDER BY code
     ) substance_sub
 
@@ -1994,155 +2168,48 @@ async function populateSearchIndexExtended(dryRun: boolean): Promise<void> {
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(20), NULL::jsonb,
         NULL::varchar(10), FALSE, NULL::char(1), NULL::varchar(50)
-      FROM atc_classification_staging
+      FROM atc_classification
       ORDER BY code
     ) atc_sub
   `);
+  console.log('   [OK] Populated search_index_extended');
 
-  tablesWithData.add('search_index_extended');
-  console.log('   [OK] Populated search_index_extended_staging');
-}
+  // Recreate indexes
+  console.log('   Recreating search indexes...');
 
-async function swapTables(dryRun: boolean): Promise<void> {
-  console.log('\n4. Validating and swapping staging tables to production...\n');
+  // search_index indexes
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_text_trgm ON search_index USING GIN (search_text gin_trgm_ops)`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_code ON search_index (code)`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_cnk ON search_index (cnk_code) WHERE cnk_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_vtm ON search_index (vtm_code) WHERE vtm_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_vmp ON search_index (vmp_code) WHERE vmp_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_amp ON search_index (amp_code) WHERE amp_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_atc ON search_index (atc_code) WHERE atc_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_company ON search_index (company_actor_nr) WHERE company_actor_nr IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_vmp_group ON search_index (vmp_group_code) WHERE vmp_group_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_entity_type ON search_index (entity_type)`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_end_date ON search_index (end_date) WHERE end_date IS NOT NULL`);
 
-  // CRITICAL: Validate ALL expected tables have data before swapping ANY
-  // This prevents partial updates that could leave the database in an inconsistent state
-  const missingTables = validateAllTablesHaveData();
+  // search_index_extended indexes
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_text_trgm ON search_index_extended USING GIN (search_text gin_trgm_ops)`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_code ON search_index_extended (code)`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_cnk ON search_index_extended (cnk_code) WHERE cnk_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_vtm ON search_index_extended (vtm_code) WHERE vtm_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_vmp ON search_index_extended (vmp_code) WHERE vmp_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_amp ON search_index_extended (amp_code) WHERE amp_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_atc ON search_index_extended (atc_code) WHERE atc_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_company ON search_index_extended (company_actor_nr) WHERE company_actor_nr IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_vmp_group ON search_index_extended (vmp_group_code) WHERE vmp_group_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_entity_type ON search_index_extended (entity_type)`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_end_date ON search_index_extended (end_date) WHERE end_date IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_form ON search_index_extended (pharmaceutical_form_code) WHERE pharmaceutical_form_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_route ON search_index_extended (route_of_administration_code) WHERE route_of_administration_code IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_reimb_cat ON search_index_extended (reimbursement_category) WHERE reimbursement_category IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_medicine_type ON search_index_extended (medicine_type) WHERE medicine_type IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_delivery_env ON search_index_extended (delivery_environment) WHERE delivery_environment IS NOT NULL`);
+  await queryWithRetry(`CREATE INDEX IF NOT EXISTS idx_search_ext_chapter_iv ON search_index_extended (chapter_iv_exists) WHERE chapter_iv_exists = TRUE`);
 
-  if (missingTables.length > 0) {
-    console.error('   [ERROR] ALL-OR-NOTHING VALIDATION FAILED');
-    console.error('   The following expected tables have no data:', missingTables.join(', '));
-    console.error('   Aborting sync to prevent partial/stale data.');
-    console.error('   No changes have been made to the production database.');
-    throw new Error(`Missing data for tables: ${missingTables.join(', ')}`);
-  }
-
-  console.log('   [OK] All expected tables have data - proceeding with atomic swap\n');
-
-  // Order matters for foreign key constraints
-  // Tables with dependencies should be swapped after their parents
-  const tableOrder = [
-    // First: reference tables (no dependencies)
-    'substance', 'atc_classification', 'pharmaceutical_form', 'route_of_administration',
-    'company', 'vtm', 'vmp_group',
-    // Second: legal tables
-    'legal_basis', 'legal_reference', 'legal_text',
-    // Third: tables depending on reference tables
-    'vmp',
-    // Fourth: amp and its dependents
-    'amp', 'amp_component', 'amp_ingredient', 'ampp', 'dmpp',
-    // Fifth: reimbursement and chapter IV
-    'reimbursement_context', 'chapter_iv_paragraph', 'dmpp_chapter_iv',
-    // Last: search indexes (populated from all other tables)
-    'search_index', 'search_index_extended',
-  ];
-
-  // Only swap tables that have data (should be all expected tables after validation)
-  const tablesToSwap = tableOrder.filter(t => tablesWithData.has(t));
-
-  if (dryRun) {
-    console.log('   [DRY RUN] Would swap tables:', tablesToSwap.join(', '));
-    return;
-  }
-
-  // Atomic swap - all tables in a single transaction
-  // If any swap fails, the entire transaction is rolled back
-  await executeInTransaction(async () => {
-    for (const table of tablesToSwap) {
-      try {
-        // Rename production to old
-        await query(`ALTER TABLE IF EXISTS ${table} RENAME TO ${table}_old`);
-        // Rename staging to production
-        await query(`ALTER TABLE IF EXISTS ${table}_staging RENAME TO ${table}`);
-        // Drop old table
-        await query(`DROP TABLE IF EXISTS ${table}_old CASCADE`);
-
-        console.log(`   [OK] Swapped ${table}`);
-      } catch (error) {
-        console.error(`   [ERROR] Failed to swap ${table}: ${error}`);
-        console.error('   Rolling back ALL changes...');
-        throw error;
-      }
-    }
-
-    // Add PRIMARY KEY constraints (staging tables don't have them for faster inserts)
-    // First, deduplicate any tables that may have duplicate keys from XML parsing
-    console.log('   Deduplicating and adding PRIMARY KEY constraints...');
-    const primaryKeys: [string, string][] = [
-      ['substance', 'code'],
-      ['atc_classification', 'code'],
-      ['pharmaceutical_form', 'code'],
-      ['route_of_administration', 'code'],
-      ['company', 'actor_nr'],
-      ['vtm', 'code'],
-      ['vmp_group', 'code'],
-      ['legal_basis', 'key'],
-      ['vmp', 'code'],
-      ['amp', 'code'],
-      ['ampp', 'cti_extended'],
-    ];
-    for (const [table, column] of primaryKeys) {
-      if (tablesToSwap.includes(table)) {
-        try {
-          // Delete duplicates keeping only one row per key
-          await query(`
-            DELETE FROM ${table} a USING ${table} b
-            WHERE a.ctid < b.ctid AND a.${column} = b.${column}
-          `);
-          // Add primary key
-          await query(`ALTER TABLE ${table} ADD PRIMARY KEY (${column})`);
-        } catch {
-          // Ignore if PK already exists or fails
-        }
-      }
-    }
-    console.log('   [OK] Deduplicated and added PRIMARY KEY constraints');
-
-    // Create indexes for search_index if it was newly created
-    if (tablesToSwap.includes('search_index')) {
-      console.log('   Creating search_index indexes...');
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_text_trgm ON search_index USING GIN (search_text gin_trgm_ops)`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_code ON search_index (code)`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_cnk ON search_index (cnk_code) WHERE cnk_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_vtm ON search_index (vtm_code) WHERE vtm_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_vmp ON search_index (vmp_code) WHERE vmp_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_amp ON search_index (amp_code) WHERE amp_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_atc ON search_index (atc_code) WHERE atc_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_company ON search_index (company_actor_nr) WHERE company_actor_nr IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_vmp_group ON search_index (vmp_group_code) WHERE vmp_group_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_entity_type ON search_index (entity_type)`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_end_date ON search_index (end_date) WHERE end_date IS NOT NULL`);
-      console.log('   [OK] Created search_index indexes');
-    }
-
-    // Create indexes for search_index_extended if it was newly created
-    if (tablesToSwap.includes('search_index_extended')) {
-      console.log('   Creating search_index_extended indexes...');
-      // Base indexes (same as search_index)
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_text_trgm ON search_index_extended USING GIN (search_text gin_trgm_ops)`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_code ON search_index_extended (code)`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_cnk ON search_index_extended (cnk_code) WHERE cnk_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_vtm ON search_index_extended (vtm_code) WHERE vtm_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_vmp ON search_index_extended (vmp_code) WHERE vmp_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_amp ON search_index_extended (amp_code) WHERE amp_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_atc ON search_index_extended (atc_code) WHERE atc_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_company ON search_index_extended (company_actor_nr) WHERE company_actor_nr IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_vmp_group ON search_index_extended (vmp_group_code) WHERE vmp_group_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_entity_type ON search_index_extended (entity_type)`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_end_date ON search_index_extended (end_date) WHERE end_date IS NOT NULL`);
-      // Extended filter indexes
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_form ON search_index_extended (pharmaceutical_form_code) WHERE pharmaceutical_form_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_route ON search_index_extended (route_of_administration_code) WHERE route_of_administration_code IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_reimb_cat ON search_index_extended (reimbursement_category) WHERE reimbursement_category IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_medicine_type ON search_index_extended (medicine_type) WHERE medicine_type IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_delivery_env ON search_index_extended (delivery_environment) WHERE delivery_environment IS NOT NULL`);
-      await query(`CREATE INDEX IF NOT EXISTS idx_search_ext_chapter_iv ON search_index_extended (chapter_iv_exists) WHERE chapter_iv_exists = TRUE`);
-      console.log('   [OK] Created search_index_extended indexes');
-    }
-  });
-
-  console.log('\n   [OK] All tables swapped atomically');
+  console.log('   [OK] Search indexes ready');
 }
 
 // ============================================================================
@@ -2242,6 +2309,10 @@ async function main(): Promise<void> {
     progress = initProgress();
   }
 
+  // Set the current sync ID
+  currentSyncId = progress.syncId || Math.floor(Date.now() / 1000);
+  progress.syncId = currentSyncId;
+
   const startTime = Date.now();
 
   try {
@@ -2290,18 +2361,18 @@ async function main(): Promise<void> {
       }
 
       console.log('\n   [OK] All required files present');
-      progress.phase = 'parse';
+      progress.phase = 'migrate';
       saveProgress(progress);
     }
 
-    // Phase 2: Create staging tables
-    if (progress.phase === 'parse') {
-      await createStagingTables(progress, dryRun);
+    // Phase 2: Ensure sync_id columns exist (idempotent migration)
+    if (progress.phase === 'migrate') {
+      await ensureSyncIdColumns(dryRun);
       progress.phase = 'import';
       saveProgress(progress);
     }
 
-    // Phase 3: Parse and import
+    // Phase 3: Parse and import (upsert)
     if (progress.phase === 'import') {
       console.log('\n3. Parsing and importing XML data...\n');
 
@@ -2365,22 +2436,34 @@ async function main(): Promise<void> {
         await processXmlFile(filesByType.CHAPTERIV, 'Paragraph', transformChapterIVParagraph, progress, dryRun, verbose);
       }
 
-      // Populate derived tables from staging data
+      // Populate derived table from imported data
       await populateDmppChapterIV(dryRun);
 
-      // Populate search indexes from all entity staging tables
-      await populateSearchIndex(dryRun);
-
-      // Populate search_index_extended with additional filter columns
-      await populateSearchIndexExtended(dryRun);
-
-      progress.phase = 'swap';
+      progress.phase = 'sweep';
       saveProgress(progress);
     }
 
-    // Phase 4: Swap tables
-    if (progress.phase === 'swap') {
-      await swapTables(dryRun);
+    // Phase 4: Sweep stale records
+    if (progress.phase === 'sweep') {
+      // CRITICAL: Validate ALL expected tables have data before sweeping ANY
+      const missingTables = validateAllTablesHaveData();
+
+      if (missingTables.length > 0) {
+        console.error('\n   [ERROR] ALL-OR-NOTHING VALIDATION FAILED');
+        console.error('   The following expected tables have no data:', missingTables.join(', '));
+        console.error('   Aborting sync to prevent partial/stale data.');
+        console.error('   No records have been deleted from the database.');
+        throw new Error(`Missing data for tables: ${missingTables.join(', ')}`);
+      }
+
+      await sweepStaleRecords(dryRun);
+      progress.phase = 'search';
+      saveProgress(progress);
+    }
+
+    // Phase 5: Populate search indexes
+    if (progress.phase === 'search') {
+      await populateSearchIndexes(dryRun);
       progress.phase = 'done';
       saveProgress(progress);
     }
@@ -2391,6 +2474,7 @@ async function main(): Promise<void> {
     console.log('   Sync Complete!');
     console.log('======================================\n');
     console.log(`   Duration: ${formatTime(elapsed)}`);
+    console.log(`   Sync ID: ${currentSyncId}`);
 
     const recordEntries = Object.entries(progress.recordCounts).sort();
     if (recordEntries.length > 0) {
@@ -2403,7 +2487,7 @@ async function main(): Promise<void> {
       console.log('   Check that XML files exist and contain valid data.');
     }
 
-    // Show tables that will be/were swapped
+    // Show tables that were updated
     if (tablesWithData.size > 0) {
       console.log('\n   Tables with data:', Array.from(tablesWithData).sort().join(', '));
     }

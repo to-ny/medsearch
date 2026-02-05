@@ -15,7 +15,7 @@ bun lint && bun typecheck && bun run test   # Run after code changes
 
 ## Scripts
 
-- `scripts/sync-sam-database.ts` - Syncs SAM XML exports to PostgreSQL
+- `scripts/sync-sam-database.ts` - Syncs SAM XML exports to PostgreSQL (upsert pattern, filters expired records)
 - `scripts/sync-excipient-database.ts` - Extracts excipients from SmPC PDFs to PostgreSQL (run after SAM sync)
 
 ## Domain

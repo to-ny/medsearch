@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS vtm (
   code VARCHAR(20) PRIMARY KEY,
   name JSONB NOT NULL,  -- Multilingual
   start_date DATE,
-  end_date DATE
+  end_date DATE,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 CREATE INDEX IF NOT EXISTS idx_vtm_name ON vtm USING GIN (name);
@@ -35,7 +36,8 @@ CREATE TABLE IF NOT EXISTS vmp_group (
   no_switch_reason VARCHAR(100),
   patient_frailty_indicator BOOLEAN DEFAULT FALSE,
   start_date DATE,
-  end_date DATE
+  end_date DATE,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 CREATE INDEX IF NOT EXISTS idx_vmp_group_name ON vmp_group USING GIN (name);
@@ -51,7 +53,8 @@ CREATE TABLE IF NOT EXISTS vmp (
   vmp_group_code VARCHAR(20) REFERENCES vmp_group(code),
   status VARCHAR(20) DEFAULT 'AUTHORIZED',
   start_date DATE,
-  end_date DATE
+  end_date DATE,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 CREATE INDEX IF NOT EXISTS idx_vmp_name ON vmp USING GIN (name);
@@ -66,7 +69,8 @@ CREATE TABLE IF NOT EXISTS substance (
   code VARCHAR(20) PRIMARY KEY,
   name JSONB NOT NULL,  -- Multilingual
   start_date DATE,
-  end_date DATE
+  end_date DATE,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 CREATE INDEX IF NOT EXISTS idx_substance_name ON substance USING GIN (name);
@@ -89,7 +93,8 @@ CREATE TABLE IF NOT EXISTS company (
   phone VARCHAR(50),
   language VARCHAR(10),
   start_date DATE,
-  end_date DATE
+  end_date DATE,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 CREATE INDEX IF NOT EXISTS idx_company_name ON company (denomination);
@@ -99,7 +104,8 @@ CREATE INDEX IF NOT EXISTS idx_company_name ON company (denomination);
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS pharmaceutical_form (
   code VARCHAR(20) PRIMARY KEY,
-  name JSONB NOT NULL  -- Multilingual
+  name JSONB NOT NULL,  -- Multilingual
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 -- ============================================================================
@@ -107,7 +113,8 @@ CREATE TABLE IF NOT EXISTS pharmaceutical_form (
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS route_of_administration (
   code VARCHAR(20) PRIMARY KEY,
-  name JSONB NOT NULL  -- Multilingual
+  name JSONB NOT NULL,  -- Multilingual
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 -- ============================================================================
@@ -115,7 +122,8 @@ CREATE TABLE IF NOT EXISTS route_of_administration (
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS atc_classification (
   code VARCHAR(20) PRIMARY KEY,
-  description VARCHAR(500) NOT NULL
+  description VARCHAR(500) NOT NULL,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 CREATE INDEX IF NOT EXISTS idx_atc_description ON atc_classification (description);
@@ -134,7 +142,8 @@ CREATE TABLE IF NOT EXISTS amp (
   medicine_type VARCHAR(50),
   status VARCHAR(20) DEFAULT 'AUTHORIZED',
   start_date DATE,
-  end_date DATE
+  end_date DATE,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 CREATE INDEX IF NOT EXISTS idx_amp_name ON amp USING GIN (name);
@@ -151,6 +160,7 @@ CREATE TABLE IF NOT EXISTS amp_component (
   sequence_nr INTEGER NOT NULL,
   pharmaceutical_form_code VARCHAR(20),  -- No FK - reference table may not exist
   route_of_administration_code VARCHAR(20),  -- No FK - reference table may not exist
+  sync_id INTEGER,  -- For mark-and-sweep sync pattern
   PRIMARY KEY (amp_code, sequence_nr)
 );
 
@@ -169,6 +179,7 @@ CREATE TABLE IF NOT EXISTS amp_ingredient (
   strength_value DECIMAL(15, 4),  -- Numeric strength value from <Strength> element
   strength_unit VARCHAR(50),  -- Unit from <Strength unit="..."> attribute (e.g., "mg", "mg/mL", "%")
   strength_description VARCHAR(255),  -- Fallback text for complex cases, e.g., "EQUAL 12.0000 mg/ 6.0000 mL"
+  sync_id INTEGER,  -- For mark-and-sweep sync pattern
   PRIMARY KEY (amp_code, component_sequence_nr, rank),
   FOREIGN KEY (amp_code, component_sequence_nr) REFERENCES amp_component(amp_code, sequence_nr) ON DELETE CASCADE
 );
@@ -192,7 +203,8 @@ CREATE TABLE IF NOT EXISTS ampp (
   ex_factory_price DECIMAL(10, 4),
   atc_code VARCHAR(20),
   start_date DATE,
-  end_date DATE
+  end_date DATE,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 CREATE INDEX IF NOT EXISTS idx_ampp_amp ON ampp (amp_code);
@@ -213,6 +225,7 @@ CREATE TABLE IF NOT EXISTS dmpp (
   reimbursable BOOLEAN DEFAULT FALSE,
   start_date DATE,
   end_date DATE,
+  sync_id INTEGER,  -- For mark-and-sweep sync pattern
   PRIMARY KEY (code, delivery_environment)
 );
 
@@ -240,8 +253,13 @@ CREATE TABLE IF NOT EXISTS reimbursement_context (
   pricing_unit_label JSONB,  -- Multilingual
   start_date DATE,
   end_date DATE,
+  sync_id INTEGER,  -- For mark-and-sweep sync pattern
   FOREIGN KEY (dmpp_code, delivery_environment) REFERENCES dmpp(code, delivery_environment) ON DELETE CASCADE
 );
+
+-- Natural key constraint for upsert pattern
+CREATE UNIQUE INDEX IF NOT EXISTS uq_reimbursement_natural
+ON reimbursement_context (dmpp_code, delivery_environment, COALESCE(legal_reference_path, ''));
 
 CREATE INDEX IF NOT EXISTS idx_reimbursement_dmpp ON reimbursement_context (dmpp_code, delivery_environment);
 CREATE INDEX IF NOT EXISTS idx_reimbursement_legal_ref ON reimbursement_context (legal_reference_path);
@@ -273,6 +291,7 @@ CREATE TABLE IF NOT EXISTS chapter_iv_paragraph (
   modification_status VARCHAR(50),
   start_date DATE,
   end_date DATE,
+  sync_id INTEGER,  -- For mark-and-sweep sync pattern
   PRIMARY KEY (chapter_name, paragraph_name)
 );
 
@@ -308,6 +327,7 @@ CREATE TABLE IF NOT EXISTS dmpp_chapter_iv (
   delivery_environment CHAR(1) NOT NULL DEFAULT 'P',
   chapter_name VARCHAR(20) NOT NULL,
   paragraph_name VARCHAR(50) NOT NULL,
+  sync_id INTEGER,  -- For mark-and-sweep sync pattern
   PRIMARY KEY (dmpp_code, delivery_environment, chapter_name, paragraph_name),
   FOREIGN KEY (dmpp_code, delivery_environment) REFERENCES dmpp(code, delivery_environment) ON DELETE CASCADE,
   FOREIGN KEY (chapter_name, paragraph_name) REFERENCES chapter_iv_paragraph(chapter_name, paragraph_name) ON DELETE CASCADE
@@ -389,7 +409,8 @@ CREATE TABLE IF NOT EXISTS legal_basis (
   type VARCHAR(50) DEFAULT 'ROYAL_DECREE',
   effective_on DATE,
   start_date DATE,
-  end_date DATE
+  end_date DATE,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
 
 -- ============================================================================
@@ -407,8 +428,13 @@ CREATE TABLE IF NOT EXISTS legal_reference (
   first_published_on DATE,
   last_modified_on DATE,
   start_date DATE,
-  end_date DATE
+  end_date DATE,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
+
+-- Natural key constraint for upsert pattern
+CREATE UNIQUE INDEX IF NOT EXISTS uq_legal_reference_natural
+ON legal_reference (legal_basis_key, path);
 
 CREATE INDEX IF NOT EXISTS idx_legal_reference_basis ON legal_reference (legal_basis_key);
 CREATE INDEX IF NOT EXISTS idx_legal_reference_path ON legal_reference (path);
@@ -429,8 +455,13 @@ CREATE TABLE IF NOT EXISTS legal_text (
   sequence_nr INTEGER NOT NULL DEFAULT 0,
   last_modified_on DATE,
   start_date DATE,
-  end_date DATE
+  end_date DATE,
+  sync_id INTEGER  -- For mark-and-sweep sync pattern
 );
+
+-- Natural key constraint for upsert pattern
+CREATE UNIQUE INDEX IF NOT EXISTS uq_legal_text_natural
+ON legal_text (legal_basis_key, legal_reference_path, key);
 
 CREATE INDEX IF NOT EXISTS idx_legal_text_basis ON legal_text (legal_basis_key);
 CREATE INDEX IF NOT EXISTS idx_legal_text_ref_path ON legal_text (legal_reference_path);
