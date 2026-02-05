@@ -4,11 +4,13 @@ Belgium SAM v2 medication database search application.
 
 ## Database Sync
 
-Three scripts populate the PostgreSQL database. All require `DATABASE_URL` environment variable.
+Two scripts populate the PostgreSQL database. All require `DATABASE_URL` environment variable.
 
 ### SAM Data Sync
 
 Downloads and imports SAM XML exports (medications, pricing, reimbursement).
+
+Uses upsert pattern for incremental updates. Expired records (where `end_date` is in the past) are excluded to optimize storage.
 
 ```bash
 # Full sync (downloads ~300MB XML export)
@@ -45,10 +47,3 @@ bun run scripts/sync-excipient-database.ts --limit=100 --verbose
 bun run scripts/sync-excipient-database.ts --resume --verbose
 ```
 
-### Search Index Extended
-
-Populates `search_index_extended` table for advanced filters (Chapter IV, delivery environment, medicine type). Use this for space-constrained databases where the full SAM sync exceeds storage limits.
-
-```bash
-bun run scripts/populate-search-index-extended.ts
-```
