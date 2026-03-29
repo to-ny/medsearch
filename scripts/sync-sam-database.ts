@@ -125,8 +125,9 @@ interface ParsedRecord {
 const validDmppCodes = new Set<string>();
 
 // Database connection (lazy loaded)
-import type { VercelPoolClient } from '@vercel/postgres';
-let dbClient: VercelPoolClient | null = null;
+import { Pool, type PoolClient } from 'pg';
+let dbClient: PoolClient | null = null;
+let dbPool: Pool | null = null;
 
 // Current sync ID for mark-and-sweep
 let currentSyncId: number;
@@ -135,15 +136,21 @@ let currentSyncId: number;
 // Database helpers
 // ============================================================================
 
-async function getDbClient(): Promise<VercelPoolClient> {
+function getPool(): Pool {
+  if (!dbPool) {
+    dbPool = new Pool({ connectionString: process.env.DATABASE_URL });
+  }
+  return dbPool;
+}
+
+async function getDbClient(): Promise<PoolClient> {
   if (!dbClient) {
-    const { db } = await import('@vercel/postgres');
-    dbClient = await db.connect();
+    dbClient = await getPool().connect();
   }
   return dbClient;
 }
 
-async function reconnectDbClient(): Promise<VercelPoolClient> {
+async function reconnectDbClient(): Promise<PoolClient> {
   // Release old connection if it exists
   if (dbClient) {
     try {
@@ -154,8 +161,7 @@ async function reconnectDbClient(): Promise<VercelPoolClient> {
     dbClient = null;
   }
   // Get a fresh connection
-  const { db } = await import('@vercel/postgres');
-  dbClient = await db.connect();
+  dbClient = await getPool().connect();
   return dbClient;
 }
 

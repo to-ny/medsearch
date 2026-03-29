@@ -122,17 +122,24 @@ interface ProgressState {
 }
 
 // Database connection (lazy loaded)
-import type { VercelPoolClient } from '@vercel/postgres';
-let dbClient: VercelPoolClient | null = null;
+import { Pool, type PoolClient } from 'pg';
+let dbClient: PoolClient | null = null;
+let dbPool: Pool | null = null;
 
 // ============================================================================
 // Database helpers
 // ============================================================================
 
-async function getDbClient(): Promise<VercelPoolClient> {
+function getPool(): Pool {
+  if (!dbPool) {
+    dbPool = new Pool({ connectionString: process.env.DATABASE_URL });
+  }
+  return dbPool;
+}
+
+async function getDbClient(): Promise<PoolClient> {
   if (!dbClient) {
-    const { db } = await import('@vercel/postgres');
-    dbClient = await db.connect();
+    dbClient = await getPool().connect();
   }
   return dbClient;
 }

@@ -1,11 +1,15 @@
 /**
  * Database client for PostgreSQL connection
- * Uses @vercel/postgres for Vercel deployment with Neon
+ * Uses pg (node-postgres) with connection pooling
  */
 
 import 'server-only';
 
-import { sql as vercelSql, db as vercelDb, VercelPoolClient } from '@vercel/postgres';
+import { Pool, type PoolClient, type QueryResultRow } from 'pg';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 /**
  * Validate SQL identifier (table name, column name) to prevent SQL injection
@@ -27,11 +31,39 @@ function validateIdentifiers(names: string[], context: string): void {
   }
 }
 
-// Re-export the sql tagged template function for queries
-export const sql = vercelSql;
+/**
+ * Tagged template function for SQL queries — drop-in replacement for @vercel/postgres sql`...`
+ * Also exposes a .query() method for parameterized queries.
+ */
+function createSql() {
+  async function sql<T extends QueryResultRow = QueryResultRow>(
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ): Promise<{ rows: T[]; rowCount: number }> {
+    // Build parameterized query from template literal
+    const text = strings.reduce((prev, curr, i) => prev + '$' + i + curr);
+    const result = await pool.query<T>(text, values);
+    return { rows: result.rows, rowCount: result.rowCount ?? 0 };
+  }
 
-// Re-export the db pool for transactions
-export const db = vercelDb;
+  sql.query = async <T extends QueryResultRow = QueryResultRow>(
+    text: string,
+    params?: unknown[]
+  ): Promise<{ rows: T[]; rowCount: number }> => {
+    const result = await pool.query<T>(text, params);
+    return { rows: result.rows, rowCount: result.rowCount ?? 0 };
+  };
+
+  return sql;
+}
+
+export const sql = createSql();
+
+// Export pool for direct access (transactions, etc.)
+export const db = pool;
+
+// Re-export PoolClient type for scripts
+export type { PoolClient };
 
 /**
  * Check if the database connection is working
@@ -61,25 +93,20 @@ export async function query<T = Record<string, unknown>>(
   text: string,
   params?: unknown[]
 ): Promise<{ rows: T[]; rowCount: number }> {
-  const client = await db.connect();
-  try {
-    const result = await client.query(text, params);
-    return {
-      rows: result.rows as T[],
-      rowCount: result.rowCount ?? 0,
-    };
-  } finally {
-    client.release();
-  }
+  const result = await pool.query(text, params);
+  return {
+    rows: result.rows as T[],
+    rowCount: result.rowCount ?? 0,
+  };
 }
 
 /**
  * Execute multiple queries in a transaction
  */
 export async function transaction<T>(
-  callback: (client: VercelPoolClient) => Promise<T>
+  callback: (client: PoolClient) => Promise<T>
 ): Promise<T> {
-  const client = await db.connect();
+  const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const result = await callback(client);
