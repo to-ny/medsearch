@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const isRemote = !!process.env.PLAYWRIGHT_BASE_URL;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -13,12 +15,14 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    command: 'bun run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  ...(!isRemote && {
+    webServer: {
+      command: 'bun run dev',
+      url: 'http://localhost:3000',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+  }),
   timeout: 30 * 1000,
   expect: { timeout: 10 * 1000 },
 });
