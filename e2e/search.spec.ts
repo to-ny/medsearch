@@ -489,10 +489,16 @@ test.describe('Filter Functionality', () => {
 
   test('blackTriangle=true filters to only enhanced monitoring medications', async ({ page }) => {
     // Search for paracetamol - a common medication where most brands are NOT under enhanced monitoring
+    // Use types=amp to ensure Brand badge is the active (aria-pressed) badge
     await page.goto('/en/search?q=paracetamol');
     await page.waitForLoadState('networkidle');
 
-    const baselineAmpBadge = page.locator('button[aria-pressed]:has-text("Brand")');
+    // Expand badges to ensure Brand is visible
+    const expandButton = page.locator('button:has-text("+")');
+    if (await expandButton.isVisible()) await expandButton.click();
+
+    const baselineAmpBadge = page.locator('button:has-text("Brand")');
+    await expect(baselineAmpBadge).toBeVisible();
     const baselineCount = await baselineAmpBadge.textContent();
     const baselineNumber = parseInt(baselineCount?.match(/\((\d+)\)/)?.[1] || '0');
     expect(baselineNumber).toBeGreaterThan(0); // Ensure we have baseline data
@@ -501,7 +507,12 @@ test.describe('Filter Functionality', () => {
     await page.goto('/en/search?q=paracetamol&blackTriangle=true');
     await page.waitForLoadState('networkidle');
 
-    const filteredAmpBadge = page.locator('button[aria-pressed]:has-text("Brand")');
+    // Expand badges again if collapsed
+    const expandButton2 = page.locator('button:has-text("+")');
+    if (await expandButton2.isVisible()) await expandButton2.click();
+
+    const filteredAmpBadge = page.locator('button:has-text("Brand")');
+    await expect(filteredAmpBadge).toBeVisible();
     const filteredCount = await filteredAmpBadge.textContent();
     const filteredNumber = parseInt(filteredCount?.match(/\((\d+)\)/)?.[1] || '0');
 
