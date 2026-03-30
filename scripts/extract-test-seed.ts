@@ -107,6 +107,10 @@ async function main() {
   // Get AMP codes from extra AMPPs
   const extraAmppParentAmps = await query(`SELECT DISTINCT amp_code FROM ampp WHERE cti_extended = ANY($1)`, [extraAmppCodes]);
   const extraVmpCodes = vmpGroupVmps.map(r => r.code as string);
+  // AMPPs for AMP SAM208966-00 (detail page reimbursable percentage test)
+  const amp208966Ampps = await query(`SELECT cti_extended FROM ampp WHERE amp_code = 'SAM208966-00' LIMIT 10`);
+  extraAmppCodes.push(...amp208966Ampps.map(r => r.cti_extended as string));
+
   // AMPs linked to VMP 26377 (detail page needs brand products + packages)
   const vmp26377LinkedAmps = await query(`SELECT code FROM amp WHERE vmp_code = '26377' LIMIT 5`);
   extraAmpCodes.push(...vmp26377LinkedAmps.map(r => r.code as string));
