@@ -568,10 +568,10 @@ export async function executeSearch(
   }
   if (filters?.deliveryEnvironment === 'P') {
     // Filter by public delivery environment - applies to AMPP entities
-    baseConditions.push(`(entity_type != 'ampp' OR has_public_env = true)`);
+    baseConditions.push(`(entity_type != 'ampp' OR delivery_environment = 'P')`);
   } else if (filters?.deliveryEnvironment === 'H') {
     // Filter by hospital delivery environment - applies to AMPP entities
-    baseConditions.push(`(entity_type != 'ampp' OR has_hospital_env = true)`);
+    baseConditions.push(`(entity_type != 'ampp' OR delivery_environment = 'H')`);
   }
   if (filters?.medicineType) {
     // Filter by medicine type - applies to AMP entities
